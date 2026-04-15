@@ -1,4 +1,4 @@
-export type QuestionType = "multiple_choice" | "true_false_not_given" | "matching";
+export type QuestionType = "multiple_choice" | "true_false_not_given" | "matching" | "sentence_completion";
 
 export interface Question {
   id: string;
@@ -14,359 +14,433 @@ export interface ReadingCard {
   id: string;
   title: string;
   difficulty: "Easy" | "Medium" | "Hard";
+  topic: string;
+  band: string;
   passage: string;
   questions: Question[];
 }
 
-export const readingCards: ReadingCard[] = [
+export const readingMaterialDatabase: ReadingCard[] = [
   {
-    id: "card-1",
-    title: "Urban Greenery",
-    difficulty: "Medium",
-    passage: "Urban green spaces play a vital role in improving city life. Trees and parks help reduce air pollution by absorbing carbon dioxide and releasing oxygen. They also lower temperatures during heatwaves through shade and evapotranspiration. Moreover, access to greenery has been linked to better mental health and reduced stress levels among residents. However, many rapidly growing cities still prioritize concrete development over planting new parks.",
-    questions: [
-      {
-        id: "q1-1",
-        type: "multiple_choice",
-        text: "What is one benefit of urban trees mentioned?",
-        options: ["A) They increase traffic speed", "B) They absorb carbon dioxide", "C) They raise city temperatures", "D) They reduce the need for buildings"],
-        correctAnswer: "B) They absorb carbon dioxide",
-        explanation: "The passage explicitly states that trees help reduce air pollution by absorbing carbon dioxide.",
-        evidence: ["Trees and parks help reduce air pollution by absorbing carbon dioxide and releasing oxygen."]
-      },
-      {
-        id: "q1-2",
-        type: "true_false_not_given",
-        text: "Residents in cities with many parks always report perfect mental health.",
-        options: ["True", "False", "Not Given"],
-        correctAnswer: "Not Given",
-        explanation: "The passage says it is 'linked to better mental health', not 'perfect mental health'.",
-        evidence: ["Moreover, access to greenery has been linked to better mental health and reduced stress levels among residents."]
-      },
-      {
-        id: "q1-3",
-        type: "matching",
-        text: "Match: i. Urban green spaces",
-        options: ["A) still focus mainly on construction", "B) help combat rising temperatures"],
-        correctAnswer: "B) help combat rising temperatures",
-        explanation: "Urban green spaces lower temperatures during heatwaves.",
-        evidence: ["They also lower temperatures during heatwaves through shade and evapotranspiration."]
-      }
-    ]
-  },
-  {
-    id: "card-2",
-    title: "Renewable Energy",
-    difficulty: "Easy",
-    passage: "The global shift towards renewable energy sources has accelerated in recent years. Solar and wind power have become significantly cheaper, making them competitive with fossil fuels. Governments worldwide are investing heavily in green infrastructure to meet climate targets. Despite this progress, fossil fuels still account for the majority of global energy consumption. The transition requires not only new technology but also changes in policy and consumer behavior.",
-    questions: [
-      {
-        id: "q2-1",
-        type: "multiple_choice",
-        text: "Why has renewable energy become more competitive?",
-        options: ["A) Fossil fuels are banned", "B) Solar and wind costs have dropped", "C) People stopped using electricity", "D) Governments shut down power plants"],
-        correctAnswer: "B) Solar and wind costs have dropped",
-        explanation: "The text notes that solar and wind power have become significantly cheaper.",
-        evidence: ["Solar and wind power have become significantly cheaper, making them competitive with fossil fuels."]
-      },
-      {
-        id: "q2-2",
-        type: "true_false_not_given",
-        text: "Fossil fuels currently provide most of the world's energy.",
-        options: ["True", "False", "Not Given"],
-        correctAnswer: "True",
-        explanation: "The passage confirms fossil fuels still account for the majority of global energy consumption.",
-        evidence: ["Despite this progress, fossil fuels still account for the majority of global energy consumption."]
-      },
-      {
-        id: "q2-3",
-        type: "matching",
-        text: "Match: i. Governments",
-        options: ["A) are investing in green infrastructure", "B) still dominate global energy supply"],
-        correctAnswer: "A) are investing in green infrastructure",
-        explanation: "Governments worldwide are investing heavily in green infrastructure.",
-        evidence: ["Governments worldwide are investing heavily in green infrastructure to meet climate targets."]
-      }
-    ]
-  },
-  {
-    id: "card-3",
-    title: "Sleep and Productivity",
-    difficulty: "Medium",
-    passage: "Adequate sleep is essential for maintaining high levels of productivity. Research shows that individuals who sleep fewer than six hours per night experience significant cognitive decline. Memory consolidation, a key function of sleep, directly affects learning and decision-making. Many companies have started to recognise the importance of employee well-being, including sleep. Flexible working hours and nap rooms are becoming more common in progressive workplaces.",
-    questions: [
-      {
-        id: "q3-1",
-        type: "multiple_choice",
-        text: "What happens when people sleep fewer than six hours?",
-        options: ["A) They become more productive", "B) They experience cognitive decline", "C) They develop stronger memory", "D) They need less food"],
-        correctAnswer: "B) They experience cognitive decline",
-        explanation: "Individuals sleeping less than six hours experience significant cognitive decline.",
-        evidence: ["Research shows that individuals who sleep fewer than six hours per night experience significant cognitive decline."]
-      },
-      {
-        id: "q3-2",
-        type: "true_false_not_given",
-        text: "All major companies now offer nap rooms for employees.",
-        options: ["True", "False", "Not Given"],
-        correctAnswer: "Not Given",
-        explanation: "The passage says 'many companies' and 'becoming more common', but does not mention 'all major companies'.",
-        evidence: ["Many companies have started to recognise the importance of employee well-being, including sleep.", "Flexible working hours and nap rooms are becoming more common in progressive workplaces."]
-      },
-      {
-        id: "q3-3",
-        type: "matching",
-        text: "Match: i. Memory consolidation",
-        options: ["A) offer flexible hours and nap rooms", "B) affects learning and decision-making"],
-        correctAnswer: "B) affects learning and decision-making",
-        explanation: "Memory consolidation directly affects learning and decision-making.",
-        evidence: ["Memory consolidation, a key function of sleep, directly affects learning and decision-making."]
-      }
-    ]
-  },
-  {
-    id: "card-4",
-    title: "Plastic Pollution",
+    id: "environment-climate-change-1",
+    title: "Rising Global Temperatures",
     difficulty: "Hard",
-    passage: "Plastic pollution has become one of the most pressing environmental issues of our time. Every year, millions of tonnes of plastic waste enter the world's oceans, harming marine life. Microplastics have been found in drinking water, food, and even human blood. While recycling efforts have increased, only a small fraction of plastic is actually recycled. Reducing single-use plastics and developing biodegradable alternatives are seen as key solutions.",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Rising global temperatures are causing significant changes in weather patterns worldwide. Extreme heatwaves and intense storms have become more frequent in many regions. Scientists warn that continued greenhouse gas emissions will lead to irreversible damage to ecosystems. Coastal cities face increasing threats from rising sea levels due to melting polar ice. International agreements aim to limit warming to 1.5 degrees Celsius, but progress remains slow.",
     questions: [
       {
-        id: "q4-1",
+        id: "env-1-q1",
         type: "multiple_choice",
-        text: "Where have microplastics been found?",
-        options: ["A) Only in oceans", "B) In drinking water, food, and human blood", "C) In outer space", "D) Only in factories"],
-        correctAnswer: "B) In drinking water, food, and human blood",
-        explanation: "The text explicitly lists drinking water, food, and human blood.",
-        evidence: ["Microplastics have been found in drinking water, food, and even human blood."]
+        text: "What is one consequence of rising global temperatures?",
+        options: ["A) Decreased storm activity", "B) More frequent extreme weather", "C) Lower sea levels", "D) Reduced greenhouse gas emissions"],
+        correctAnswer: "B) More frequent extreme weather",
+        explanation: "The passage says extreme heatwaves and intense storms have become more frequent in many regions.",
+        evidence: ["Extreme heatwaves and intense storms have become more frequent in many regions."]
       },
       {
-        id: "q4-2",
+        id: "env-1-q2",
         type: "true_false_not_given",
-        text: "Most plastic waste is successfully recycled worldwide.",
-        options: ["True", "False", "Not Given"],
-        correctAnswer: "False",
-        explanation: "The passage states that only a small fraction of plastic is actually recycled.",
-        evidence: ["While recycling efforts have increased, only a small fraction of plastic is actually recycled."]
-      },
-      {
-        id: "q4-3",
-        type: "matching",
-        text: "Match: i. Microplastics",
-        options: ["A) are considered a key solution", "B) have been detected in human blood"],
-        correctAnswer: "B) have been detected in human blood",
-        explanation: "Microplastics have been found in drinking water, food, and human blood.",
-        evidence: ["Microplastics have been found in drinking water, food, and even human blood."]
-      }
-    ]
-  },
-  {
-    id: "card-5",
-    title: "Online Education",
-    difficulty: "Medium",
-    passage: "Online education has transformed the way people access knowledge. With the rise of digital platforms, students can learn from anywhere in the world at their own pace. This flexibility has been especially beneficial for working professionals seeking to upskill. However, online learning also presents challenges such as lack of social interaction and difficulty maintaining motivation. Blended learning models that combine online and in-person elements are increasingly popular.",
-    questions: [
-      {
-        id: "q5-1",
-        type: "multiple_choice",
-        text: "Who especially benefits from online learning flexibility?",
-        options: ["A) Kindergarten students", "B) Working professionals", "C) Retired athletes", "D) Hospital patients"],
-        correctAnswer: "B) Working professionals",
-        explanation: "The text mentions flexibility is especially beneficial for working professionals.",
-        evidence: ["This flexibility has been especially beneficial for working professionals seeking to upskill."]
-      },
-      {
-        id: "q5-2",
-        type: "true_false_not_given",
-        text: "Online education has completely replaced traditional classroom learning.",
+        text: "All coastal cities will be underwater by 2050.",
         options: ["True", "False", "Not Given"],
         correctAnswer: "Not Given",
-        explanation: "The passage doesn't mention online education completely replacing traditional classrooms.",
-        evidence: ["Blended learning models that combine online and in-person elements are increasingly popular."]
+        explanation: "The passage says coastal cities face increasing threats, but it does not say all will be underwater by 2050.",
+        evidence: ["Coastal cities face increasing threats from rising sea levels due to melting polar ice."]
       },
       {
-        id: "q5-3",
+        id: "env-1-q3",
         type: "matching",
-        text: "Match: i. Online education",
-        options: ["A) combines online and face-to-face elements", "B) allows learning from anywhere"],
-        correctAnswer: "B) allows learning from anywhere",
-        explanation: "Students can learn from anywhere in the world.",
-        evidence: ["With the rise of digital platforms, students can learn from anywhere in the world at their own pace."]
+        text: "Match the sentence endings: i. Scientists warn that continued emissions will... ii. International agreements aim to...",
+        options: ["i-B, ii-A", "i-A, ii-C", "i-C, ii-B", "i-B, ii-C"],
+        correctAnswer: "i-B, ii-A",
+        explanation: "Continued emissions are linked to irreversible ecosystem damage, while agreements aim to limit warming to 1.5°C.",
+        evidence: ["Scientists warn that continued greenhouse gas emissions will lead to irreversible damage to ecosystems.", "International agreements aim to limit warming to 1.5 degrees Celsius, but progress remains slow."]
       }
     ]
   },
   {
-    id: "card-6",
-    title: "Exercise and Brain Health",
-    difficulty: "Medium",
-    passage: "Regular physical exercise has been shown to have significant benefits for brain health. Aerobic activities such as running and swimming increase blood flow to the brain, which promotes the growth of new neurons. Exercise also boosts the production of neurotransmitters like serotonin and dopamine, improving mood and reducing anxiety. Studies suggest that physically active individuals have a lower risk of developing neurodegenerative diseases. Even moderate exercise, such as brisk walking, can improve cognitive function over time.",
-    questions: [
-      {
-        id: "q6-1",
-        type: "multiple_choice",
-        text: "Which neurotransmitter is boosted by exercise?",
-        options: ["A) Insulin", "B) Serotonin", "C) Adrenaline", "D) Melatonin"],
-        correctAnswer: "B) Serotonin",
-        explanation: "Exercise boosts neurotransmitters like serotonin and dopamine.",
-        evidence: ["Exercise also boosts the production of neurotransmitters like serotonin and dopamine, improving mood and reducing anxiety."]
-      },
-      {
-        id: "q6-2",
-        type: "true_false_not_given",
-        text: "Only intense exercise has cognitive benefits.",
-        options: ["True", "False", "Not Given"],
-        correctAnswer: "False",
-        explanation: "The text states that 'Even moderate exercise, such as brisk walking, can improve cognitive function'.",
-        evidence: ["Even moderate exercise, such as brisk walking, can improve cognitive function over time."]
-      },
-      {
-        id: "q6-3",
-        type: "matching",
-        text: "Match: i. Aerobic exercise",
-        options: ["A) have a lower risk of brain diseases", "B) increases blood flow to the brain"],
-        correctAnswer: "B) increases blood flow to the brain",
-        explanation: "Aerobic activities increase blood flow to the brain.",
-        evidence: ["Aerobic activities such as running and swimming increase blood flow to the brain, which promotes the growth of new neurons."]
-      }
-    ]
-  },
-  {
-    id: "card-7",
-    title: "Artificial Intelligence in Healthcare",
+    id: "environment-climate-change-2",
+    title: "Deforestation in the Amazon",
     difficulty: "Hard",
-    passage: "Artificial intelligence is revolutionizing the healthcare industry. AI-powered tools can analyze medical images with high accuracy, often detecting diseases earlier than human doctors. Machine learning algorithms are being used to predict patient outcomes and personalize treatment plans. However, concerns about data privacy and the ethical use of AI in medicine remain significant. The integration of AI into healthcare requires careful regulation and transparent decision-making processes.",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Deforestation in the Amazon rainforest continues at an alarming rate despite global awareness campaigns. This loss of trees reduces the planet’s capacity to absorb carbon dioxide. Indigenous communities are particularly affected as their traditional lands disappear. Governments have introduced new laws to protect remaining forests, yet enforcement is often weak. Sustainable logging practices are being promoted as a possible solution.",
     questions: [
       {
-        id: "q7-1",
-        type: "multiple_choice",
-        text: "What can AI tools do in healthcare?",
-        options: ["A) Replace all doctors", "B) Analyze medical images accurately", "C) Eliminate all diseases", "D) Reduce hospital costs to zero"],
-        correctAnswer: "B) Analyze medical images accurately",
-        explanation: "AI-powered tools can analyze medical images with high accuracy.",
-        evidence: ["AI-powered tools can analyze medical images with high accuracy, often detecting diseases earlier than human doctors."]
-      },
-      {
-        id: "q7-2",
+        id: "env-2-q1",
         type: "true_false_not_given",
-        text: "There are no concerns about using AI in healthcare.",
+        text: "Deforestation in the Amazon has completely stopped.",
         options: ["True", "False", "Not Given"],
         correctAnswer: "False",
-        explanation: "The passage mentions 'concerns about data privacy and the ethical use of AI'.",
-        evidence: ["However, concerns about data privacy and the ethical use of AI in medicine remain significant."]
+        explanation: "The passage states that deforestation continues at an alarming rate.",
+        evidence: ["Deforestation in the Amazon rainforest continues at an alarming rate despite global awareness campaigns."]
       },
       {
-        id: "q7-3",
-        type: "matching",
-        text: "Match: i. Machine learning",
-        options: ["A) requires careful regulation", "B) predicts patient outcomes"],
-        correctAnswer: "B) predicts patient outcomes",
-        explanation: "Algorithms are being used to predict patient outcomes.",
-        evidence: ["Machine learning algorithms are being used to predict patient outcomes and personalize treatment plans."]
+        id: "env-2-q2",
+        type: "multiple_choice",
+        text: "Why is deforestation in the Amazon harmful?",
+        options: ["A) It increases carbon absorption", "B) It reduces the planet’s carbon absorption capacity", "C) It has no effect on indigenous people", "D) It strengthens government enforcement"],
+        correctAnswer: "B) It reduces the planet’s carbon absorption capacity",
+        explanation: "The loss of trees reduces the planet’s capacity to absorb carbon dioxide.",
+        evidence: ["This loss of trees reduces the planet’s capacity to absorb carbon dioxide."]
+      },
+      {
+        id: "env-2-q3",
+        type: "sentence_completion",
+        text: "Sustainable logging practices are being promoted as a ...",
+        correctAnswer: "possible solution",
+        explanation: "The final sentence identifies sustainable logging practices as a possible solution.",
+        evidence: ["Sustainable logging practices are being promoted as a possible solution."]
       }
     ]
   },
   {
-    id: "card-8",
-    title: "The Benefits of Reading Fiction",
-    difficulty: "Easy",
-    passage: "Reading fiction offers more than just entertainment — it enhances empathy and emotional intelligence. Studies show that readers of literary fiction are better at understanding others' emotions and perspectives. Fiction also stimulates the imagination and improves vocabulary and language skills. Regular reading has been associated with reduced stress and improved mental well-being. Despite these benefits, the habit of reading fiction is declining in many countries due to digital distractions.",
+    id: "environment-climate-change-3",
+    title: "Plastic Pollution in Oceans",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Plastic pollution in oceans has reached critical levels in recent decades. Marine animals often mistake plastic debris for food, leading to injury or death. Microplastics have now entered the human food chain through seafood consumption. Some countries have banned single-use plastics to reduce ocean waste. However, global cooperation is still required for meaningful change.",
     questions: [
       {
-        id: "q8-1",
+        id: "env-3-q1",
         type: "multiple_choice",
-        text: "What does reading fiction improve?",
-        options: ["A) Physical strength", "B) Empathy and emotional intelligence", "C) Mathematical skills", "D) Cooking ability"],
-        correctAnswer: "B) Empathy and emotional intelligence",
-        explanation: "Reading fiction enhances empathy and emotional intelligence.",
-        evidence: ["Reading fiction offers more than just entertainment — it enhances empathy and emotional intelligence."]
+        text: "What do marine animals often mistake plastic for?",
+        options: ["A) Natural predators", "B) Food", "C) Shelter", "D) Breeding grounds"],
+        correctAnswer: "B) Food",
+        explanation: "Marine animals often mistake plastic debris for food.",
+        evidence: ["Marine animals often mistake plastic debris for food, leading to injury or death."]
       },
       {
-        id: "q8-2",
+        id: "env-3-q2",
         type: "true_false_not_given",
-        text: "Reading fiction is becoming more popular worldwide.",
+        text: "Microplastics have not yet affected humans.",
         options: ["True", "False", "Not Given"],
         correctAnswer: "False",
-        explanation: "The passage says the habit of reading fiction is 'declining in many countries'.",
-        evidence: ["Despite these benefits, the habit of reading fiction is declining in many countries due to digital distractions."]
+        explanation: "The passage says microplastics have entered the human food chain through seafood consumption.",
+        evidence: ["Microplastics have now entered the human food chain through seafood consumption."]
       },
       {
-        id: "q8-3",
+        id: "env-3-q3",
         type: "matching",
-        text: "Match: i. Literary fiction",
-        options: ["A) contribute to declining reading habits", "B) helps understand others' emotions"],
-        correctAnswer: "B) helps understand others' emotions",
-        explanation: "Readers of literary fiction are better at understanding others' emotions.",
-        evidence: ["Studies show that readers of literary fiction are better at understanding others' emotions and perspectives."]
+        text: "Countries have banned single-use plastics to ...",
+        options: ["A) increase ocean waste", "B) reduce ocean waste"],
+        correctAnswer: "B) reduce ocean waste",
+        explanation: "The passage states that some countries banned single-use plastics to reduce ocean waste.",
+        evidence: ["Some countries have banned single-use plastics to reduce ocean waste."]
       }
     ]
   },
   {
-    id: "card-9",
-    title: "Sustainable Agriculture",
-    difficulty: "Medium",
-    passage: "Sustainable agriculture aims to meet society's food needs without compromising the ability of future generations to do the same. Techniques such as crop rotation, organic farming, and precision agriculture help reduce environmental impact. These methods can improve soil health and decrease reliance on chemical pesticides. However, the transition from conventional to sustainable farming requires significant investment and education. Supporting local food systems and reducing food waste are also critical components of a sustainable food future.",
+    id: "environment-climate-change-4",
+    title: "Renewable Energy Expansion",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Renewable energy sources are expanding rapidly as countries seek to reduce fossil fuel dependence. Solar and wind power now account for a growing share of electricity generation. Battery storage technology is improving to address the intermittent nature of these sources. Nevertheless, initial investment costs remain high for many developing nations. International funding programs are helping to bridge this financial gap.",
     questions: [
       {
-        id: "q9-1",
-        type: "multiple_choice",
-        text: "What is a goal of sustainable agriculture?",
-        options: ["A) Increasing pesticide use", "B) Meeting food needs without harming the future", "C) Reducing crop variety", "D) Eliminating all farming technology"],
-        correctAnswer: "B) Meeting food needs without harming the future",
-        explanation: "It aims to meet food needs without compromising future generations.",
-        evidence: ["Sustainable agriculture aims to meet society's food needs without compromising the ability of future generations to do the same."]
-      },
-      {
-        id: "q9-2",
+        id: "env-4-q1",
         type: "true_false_not_given",
-        text: "Switching to sustainable farming is easy and cheap.",
+        text: "Renewable energy has completely replaced fossil fuels.",
         options: ["True", "False", "Not Given"],
         correctAnswer: "False",
-        explanation: "The transition requires 'significant investment and education'.",
-        evidence: ["However, the transition from conventional to sustainable farming requires significant investment and education."]
+        explanation: "The passage says renewable energy is expanding to reduce fossil fuel dependence, not that it has completely replaced fossil fuels.",
+        evidence: ["Renewable energy sources are expanding rapidly as countries seek to reduce fossil fuel dependence."]
       },
       {
-        id: "q9-3",
-        type: "matching",
-        text: "Match: i. Crop rotation",
-        options: ["A) support a sustainable food future", "B) helps reduce environmental impact"],
-        correctAnswer: "B) helps reduce environmental impact",
-        explanation: "Techniques like crop rotation help reduce environmental impact.",
-        evidence: ["Techniques such as crop rotation, organic farming, and precision agriculture help reduce environmental impact."]
+        id: "env-4-q2",
+        type: "multiple_choice",
+        text: "What challenge do solar and wind power still face?",
+        options: ["A) They are always available", "B) Intermittent supply", "C) Low investment costs", "D) No need for storage"],
+        correctAnswer: "B) Intermittent supply",
+        explanation: "Battery storage is improving to address the intermittent nature of solar and wind power.",
+        evidence: ["Battery storage technology is improving to address the intermittent nature of these sources."]
+      },
+      {
+        id: "env-4-q3",
+        type: "sentence_completion",
+        text: "International funding programs are helping to ...",
+        correctAnswer: "bridge this financial gap",
+        explanation: "The final sentence states that international funding programs are helping to bridge this financial gap.",
+        evidence: ["International funding programs are helping to bridge this financial gap."]
       }
     ]
   },
   {
-    id: "card-10",
-    title: "Space Tourism",
-    difficulty: "Medium",
-    passage: "Space tourism is no longer a distant dream — it has become a reality for a select few. Companies like SpaceX and Blue Origin have successfully launched civilians into space, sparking public interest in commercial space travel. While the experience is currently limited to the ultra-wealthy, experts predict that costs will decrease over time. Space tourism raises questions about its environmental impact, particularly the carbon emissions produced by rocket launches. Balancing innovation with sustainability will be a key challenge for the industry.",
+    id: "environment-climate-change-5",
+    title: "Urban Green Spaces",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Urban green spaces provide essential cooling effects in densely populated cities. Trees and parks absorb heat and release moisture into the air. Studies link access to greenery with lower rates of respiratory illnesses. However, many city planners still prioritise commercial buildings over green areas. Community campaigns are increasingly pushing for more parks in urban centres.",
     questions: [
       {
-        id: "q10-1",
+        id: "env-5-q1",
         type: "multiple_choice",
-        text: "Who has primarily accessed space tourism so far?",
-        options: ["A) School students", "B) Government officials", "C) Ultra-wealthy individuals", "D) Professional astronauts"],
-        correctAnswer: "C) Ultra-wealthy individuals",
-        explanation: "The experience is currently limited to the ultra-wealthy.",
-        evidence: ["While the experience is currently limited to the ultra-wealthy, experts predict that costs will decrease over time."]
+        text: "What benefit do urban green spaces offer according to studies?",
+        options: ["A) Higher respiratory illness rates", "B) Lower respiratory illness rates", "C) Increased commercial space", "D) Reduced community campaigns"],
+        correctAnswer: "B) Lower respiratory illness rates",
+        explanation: "Studies link access to greenery with lower rates of respiratory illnesses.",
+        evidence: ["Studies link access to greenery with lower rates of respiratory illnesses."]
       },
       {
-        id: "q10-2",
+        id: "env-5-q2",
         type: "true_false_not_given",
-        text: "Rocket launches produce zero carbon emissions.",
+        text: "All city planners now prioritise green spaces.",
         options: ["True", "False", "Not Given"],
         correctAnswer: "False",
-        explanation: "The passage explicitly mentions 'carbon emissions produced by rocket launches'.",
-        evidence: ["Space tourism raises questions about its environmental impact, particularly the carbon emissions produced by rocket launches."]
+        explanation: "The passage says many city planners still prioritise commercial buildings over green areas.",
+        evidence: ["However, many city planners still prioritise commercial buildings over green areas."]
       },
       {
-        id: "q10-3",
+        id: "env-5-q3",
         type: "matching",
-        text: "Match: i. Commercial space travel",
-        options: ["A) are expected to decrease", "B) has sparked public interest"],
-        correctAnswer: "B) has sparked public interest",
-        explanation: "Launching civilians has sparked public interest in commercial space travel.",
-        evidence: ["Companies like SpaceX and Blue Origin have successfully launched civilians into space, sparking public interest in commercial space travel."]
+        text: "Match the sentence endings: i. Trees and parks ... ii. Community campaigns ...",
+        options: ["i-A, ii-B", "i-B, ii-A", "i-A, ii-A", "i-B, ii-B"],
+        correctAnswer: "i-A, ii-B",
+        explanation: "Trees and parks absorb heat and release moisture; community campaigns are pushing for more parks.",
+        evidence: ["Trees and parks absorb heat and release moisture into the air.", "Community campaigns are increasingly pushing for more parks in urban centres."]
+      }
+    ]
+  },
+  {
+    id: "environment-climate-change-6",
+    title: "Coral Reefs and Acidification",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Coral reefs are dying at an unprecedented rate due to ocean acidification. Rising sea temperatures cause coral bleaching, which weakens reef structures. These ecosystems support millions of marine species and coastal economies. Conservationists are experimenting with coral gardening techniques to restore damaged areas. Success depends on immediate reductions in global carbon emissions.",
+    questions: [
+      {
+        id: "env-6-q1",
+        type: "true_false_not_given",
+        text: "Coral bleaching has no impact on marine species.",
+        options: ["True", "False", "Not Given"],
+        correctAnswer: "False",
+        explanation: "The passage says coral bleaching weakens reef structures, and reefs support millions of marine species.",
+        evidence: ["Rising sea temperatures cause coral bleaching, which weakens reef structures.", "These ecosystems support millions of marine species and coastal economies."]
+      },
+      {
+        id: "env-6-q2",
+        type: "multiple_choice",
+        text: "What technique are conservationists using to restore reefs?",
+        options: ["A) Coral gardening", "B) Increased fishing", "C) Ocean acidification", "D) Higher temperatures"],
+        correctAnswer: "A) Coral gardening",
+        explanation: "Conservationists are experimenting with coral gardening techniques to restore damaged areas.",
+        evidence: ["Conservationists are experimenting with coral gardening techniques to restore damaged areas."]
+      },
+      {
+        id: "env-6-q3",
+        type: "sentence_completion",
+        text: "Success depends on immediate reductions in ...",
+        correctAnswer: "global carbon emissions",
+        explanation: "The final sentence states that success depends on immediate reductions in global carbon emissions.",
+        evidence: ["Success depends on immediate reductions in global carbon emissions."]
+      }
+    ]
+  },
+  {
+    id: "environment-climate-change-7",
+    title: "Electric Vehicles",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Electric vehicles are becoming more popular as battery technology improves. They produce zero tailpipe emissions and help combat urban air pollution. Charging infrastructure is still limited in many rural areas. Governments offer subsidies to encourage consumers to switch from petrol cars. Long-term savings on fuel costs make electric vehicles attractive to many buyers.",
+    questions: [
+      {
+        id: "env-7-q1",
+        type: "multiple_choice",
+        text: "What advantage do electric vehicles have over petrol cars?",
+        options: ["A) Higher emissions", "B) Zero tailpipe emissions", "C) Limited battery life", "D) More expensive fuel"],
+        correctAnswer: "B) Zero tailpipe emissions",
+        explanation: "Electric vehicles produce zero tailpipe emissions.",
+        evidence: ["They produce zero tailpipe emissions and help combat urban air pollution."]
+      },
+      {
+        id: "env-7-q2",
+        type: "true_false_not_given",
+        text: "Charging stations are widespread in all rural areas.",
+        options: ["True", "False", "Not Given"],
+        correctAnswer: "False",
+        explanation: "The passage says charging infrastructure is still limited in many rural areas.",
+        evidence: ["Charging infrastructure is still limited in many rural areas."]
+      },
+      {
+        id: "env-7-q3",
+        type: "matching",
+        text: "Governments offer subsidies to ...",
+        options: ["A) discourage electric vehicles", "B) encourage consumers to switch"],
+        correctAnswer: "B) encourage consumers to switch",
+        explanation: "Governments offer subsidies to encourage consumers to switch from petrol cars.",
+        evidence: ["Governments offer subsidies to encourage consumers to switch from petrol cars."]
+      }
+    ]
+  },
+  {
+    id: "environment-climate-change-8",
+    title: "Wildfires and Droughts",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Wildfires have increased in frequency and intensity due to prolonged droughts. These fires destroy vast areas of forest and release stored carbon into the atmosphere. Local wildlife populations suffer massive losses during each event. Firefighting agencies are adopting new technologies for early detection. Climate change is widely accepted as the main driver of this trend.",
+    questions: [
+      {
+        id: "env-8-q1",
+        type: "true_false_not_given",
+        text: "Wildfires are decreasing in frequency.",
+        options: ["True", "False", "Not Given"],
+        correctAnswer: "False",
+        explanation: "The passage states that wildfires have increased in frequency and intensity.",
+        evidence: ["Wildfires have increased in frequency and intensity due to prolonged droughts."]
+      },
+      {
+        id: "env-8-q2",
+        type: "multiple_choice",
+        text: "What is the main driver of increased wildfires?",
+        options: ["A) Early detection technology", "B) Climate change", "C) Reduced carbon release", "D) Wildlife protection"],
+        correctAnswer: "B) Climate change",
+        explanation: "Climate change is widely accepted as the main driver of this trend.",
+        evidence: ["Climate change is widely accepted as the main driver of this trend."]
+      },
+      {
+        id: "env-8-q3",
+        type: "sentence_completion",
+        text: "Firefighting agencies are adopting new technologies for ...",
+        correctAnswer: "early detection",
+        explanation: "The passage says firefighting agencies are adopting new technologies for early detection.",
+        evidence: ["Firefighting agencies are adopting new technologies for early detection."]
+      }
+    ]
+  },
+  {
+    id: "environment-climate-change-9",
+    title: "Waste Recycling Rates",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Waste recycling rates vary greatly between developed and developing countries. Many nations struggle with contamination of recyclable materials. Public education campaigns have proven effective in improving sorting habits. Advanced sorting machines are now being installed in large recycling plants. Global trade in recycled materials faces new restrictions in some regions.",
+    questions: [
+      {
+        id: "env-9-q1",
+        type: "multiple_choice",
+        text: "What has proven effective in improving recycling?",
+        options: ["A) Contamination of materials", "B) Public education campaigns", "C) Trade restrictions", "D) Reduced sorting habits"],
+        correctAnswer: "B) Public education campaigns",
+        explanation: "Public education campaigns have proven effective in improving sorting habits.",
+        evidence: ["Public education campaigns have proven effective in improving sorting habits."]
+      },
+      {
+        id: "env-9-q2",
+        type: "true_false_not_given",
+        text: "All countries have high recycling rates.",
+        options: ["True", "False", "Not Given"],
+        correctAnswer: "False",
+        explanation: "The passage says recycling rates vary greatly between developed and developing countries.",
+        evidence: ["Waste recycling rates vary greatly between developed and developing countries."]
+      },
+      {
+        id: "env-9-q3",
+        type: "matching",
+        text: "Match the sentence endings: i. Advanced sorting machines ... ii. Global trade ...",
+        options: ["i-A, ii-B", "i-B, ii-A", "i-A, ii-A", "i-B, ii-B"],
+        correctAnswer: "i-A, ii-B",
+        explanation: "Advanced sorting machines are being installed in plants, while global trade faces new restrictions.",
+        evidence: ["Advanced sorting machines are now being installed in large recycling plants.", "Global trade in recycled materials faces new restrictions in some regions."]
+      }
+    ]
+  },
+  {
+    id: "environment-climate-change-10",
+    title: "Biodiversity Loss",
+    difficulty: "Hard",
+    topic: "Environment and Climate Change",
+    band: "7.0–7.5",
+    passage: "Biodiversity loss threatens the stability of entire ecosystems worldwide. Species extinction rates are currently higher than at any time in human history. Protected areas play a crucial role in preserving endangered animals. However, illegal poaching continues to undermine conservation efforts. International treaties aim to strengthen protection for vulnerable species.",
+    questions: [
+      {
+        id: "env-10-q1",
+        type: "true_false_not_given",
+        text: "Biodiversity loss has slowed in recent years.",
+        options: ["True", "False", "Not Given"],
+        correctAnswer: "False",
+        explanation: "The passage says species extinction rates are currently higher than at any time in human history.",
+        evidence: ["Species extinction rates are currently higher than at any time in human history."]
+      },
+      {
+        id: "env-10-q2",
+        type: "multiple_choice",
+        text: "What undermines conservation efforts?",
+        options: ["A) Protected areas", "B) Illegal poaching", "C) International treaties", "D) Species preservation"],
+        correctAnswer: "B) Illegal poaching",
+        explanation: "The passage states that illegal poaching continues to undermine conservation efforts.",
+        evidence: ["However, illegal poaching continues to undermine conservation efforts."]
+      },
+      {
+        id: "env-10-q3",
+        type: "sentence_completion",
+        text: "Protected areas play a crucial role in ...",
+        correctAnswer: "preserving endangered animals",
+        explanation: "The passage says protected areas play a crucial role in preserving endangered animals.",
+        evidence: ["Protected areas play a crucial role in preserving endangered animals."]
+      }
+    ]
+  },
+  {
+    id: "education-learning-1",
+    title: "Online Learning Platforms",
+    difficulty: "Hard",
+    topic: "Education and Learning",
+    band: "7.0–7.5",
+    passage: "Online learning platforms have revolutionised access to higher education globally. Students in remote areas can now attend lectures from prestigious universities. Interactive tools and recorded sessions allow flexible study schedules. However, many learners report feeling isolated without face-to-face interaction. Universities are developing hybrid models to combine both approaches.",
+    questions: [
+      {
+        id: "edu-1-q1",
+        type: "multiple_choice",
+        text: "What advantage does online learning offer remote students?",
+        options: ["A) Mandatory relocation", "B) Access to prestigious universities", "C) Less flexible schedules", "D) No recorded sessions"],
+        correctAnswer: "B) Access to prestigious universities",
+        explanation: "Remote students can now attend lectures from prestigious universities.",
+        evidence: ["Students in remote areas can now attend lectures from prestigious universities."]
+      },
+      {
+        id: "edu-1-q2",
+        type: "true_false_not_given",
+        text: "All students prefer online learning over traditional classes.",
+        options: ["True", "False", "Not Given"],
+        correctAnswer: "Not Given",
+        explanation: "The passage says many learners feel isolated, but it does not state what all students prefer.",
+        evidence: ["However, many learners report feeling isolated without face-to-face interaction."]
+      },
+      {
+        id: "edu-1-q3",
+        type: "matching",
+        text: "Match the sentence endings: i. Interactive tools allow ... ii. Many learners report ...",
+        options: ["i-A, ii-B", "i-B, ii-A", "i-A, ii-A", "i-B, ii-B"],
+        correctAnswer: "i-A, ii-B",
+        explanation: "Interactive tools allow flexible schedules, while many learners report feeling isolated.",
+        evidence: ["Interactive tools and recorded sessions allow flexible study schedules.", "However, many learners report feeling isolated without face-to-face interaction."]
       }
     ]
   }
 ];
+
+export const readingCards = readingMaterialDatabase;
+
+export function getRandomReadingCards(count: number): ReadingCard[] {
+  if (readingMaterialDatabase.length === 0) {
+    return [];
+  }
+
+  const shuffled = [...readingMaterialDatabase];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  if (count <= shuffled.length) {
+    return shuffled.slice(0, count);
+  }
+
+  return Array.from({ length: count }, (_, index) => shuffled[index % shuffled.length]);
+}

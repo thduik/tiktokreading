@@ -9,9 +9,19 @@ interface ReadingCardProps {
   isActive: boolean;
 }
 
+function normalizeAnswer(answer: string) {
+  return answer.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function isAnswerCorrect(answer: string | undefined, correctAnswer: string) {
+  if (!answer) return false;
+  return normalizeAnswer(answer) === normalizeAnswer(correctAnswer);
+}
+
 export default function ReadingCardComponent({ card, isActive }: ReadingCardProps) {
   const { savedCardIds, toggleSaveCard, updateStats } = useAppState();
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [inputAnswers, setInputAnswers] = useState<Record<string, string>>({});
   const [scoreCalculated, setScoreCalculated] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -26,7 +36,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       .flatMap((question) =>
         question.evidence.map((text) => ({
           text,
-          isCorrect: answers[question.id] === question.correctAnswer,
+          isCorrect: isAnswerCorrect(answers[question.id], question.correctAnswer),
           questionId: question.id,
         })),
       );
@@ -127,7 +137,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
     if (Object.keys(newAnswers).length === card.questions.length) {
       let correct = 0;
       card.questions.forEach(q => {
-        if (newAnswers[q.id] === q.correctAnswer) correct++;
+        if (isAnswerCorrect(newAnswers[q.id], q.correctAnswer)) correct++;
       });
       
       setScoreCalculated(true);
@@ -138,6 +148,12 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
         setTimeout(() => setShowConfetti(false), 3000);
       }
     }
+  };
+
+  const handleSentenceSubmit = (questionId: string) => {
+    const answer = inputAnswers[questionId]?.trim();
+    if (!answer) return;
+    handleAnswer(questionId, answer);
   };
 
   const handleShare = async () => {
@@ -155,7 +171,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
   };
 
   const correctAnswersCount = card.questions.reduce((acc, q) => {
-    return acc + (answers[q.id] === q.correctAnswer ? 1 : 0);
+    return acc + (isAnswerCorrect(answers[q.id], q.correctAnswer) ? 1 : 0);
   }, 0);
 
   return (
@@ -218,6 +234,9 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
             <span className="text-[10px] font-bold uppercase tracking-wider text-white/60 border border-white/20 px-2 py-1 rounded">
               {card.difficulty}
             </span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-white/60 border border-white/20 px-2 py-1 rounded">
+              Band {card.band}
+            </span>
           </div>
           <button 
             onClick={toggleSpeech}
@@ -261,10 +280,57 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
               </p>
               
               <div className="grid grid-cols-1 gap-2">
-                {q.options?.map((opt) => {
+                {q.type === "sentence_completion" ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={inputAnswers[q.id] ?? ""}
+                        disabled={!!answers[q.id]}
+                        onChange={(event) =>
+                          setInputAnswers((prev) => ({
+                            ...prev,
+                            [q.id]: event.target.value,
+                          }))
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            handleSentenceSubmit(q.id);
+                          }
+                        }}
+                        placeholder="Type the missing words"
+                        className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary"
+                        data-testid={`input-answer-${q.id}`}
+                      />
+                      <button
+                        disabled={!!answers[q.id] || !inputAnswers[q.id]?.trim()}
+                        onClick={() => handleSentenceSubmit(q.id)}
+                        className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        data-testid={`btn-submit-${q.id}`}
+                      >
+                        Check
+                      </button>
+                    </div>
+                    {answers[q.id] && (
+                      <div
+                        className={`rounded-xl border px-3 py-2 text-sm ${
+                          isAnswerCorrect(answers[q.id], q.correctAnswer)
+                            ? "border-success/50 bg-success/15 text-white"
+                            : "border-destructive/50 bg-destructive/15 text-white"
+                        }`}
+                      >
+                        <span className="font-semibold">
+                          {isAnswerCorrect(answers[q.id], q.correctAnswer)
+                            ? "Correct:"
+                            : "Correct answer:"}
+                        </span>{" "}
+                        {q.correctAnswer}
+                      </div>
+                    )}
+                  </div>
+                ) : q.options?.map((opt) => {
                   const isAnswered = !!answers[q.id];
                   const isSelected = answers[q.id] === opt;
-                  const isCorrect = opt === q.correctAnswer;
+                  const isCorrect = isAnswerCorrect(opt, q.correctAnswer);
                   
                   let btnClass = "bg-white/10 text-white hover:bg-white/20 border-transparent";
                   if (isAnswered) {
