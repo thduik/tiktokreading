@@ -1,0 +1,115 @@
+Here's a **complete, ready-to-paste description** you can feed directly into **Replit's AI Agent** (or use as a project prompt when creating a new Repl).
+
+Copy everything below and paste it as the main instruction when you start a new Replit project (choose **React + Vite + Tailwind** template if available, or let the AI create it).
+
+---
+
+**Project Goal:**  
+Build a **Minimum Viable Product (MVP)** of **ReadTok** — a TikTok-style IELTS Reading Practice web app (Progressive Web App). Users swipe vertically through short reading cards. Each card has one 5-sentence passage + exactly 3 IELTS-style questions. Instant feedback after answering. Dark modern design, highly mobile-friendly.
+
+**Tech Stack (use these exactly):**  
+- React 18 + Vite  
+- Tailwind CSS (for fast styling)  
+- TypeScript (recommended) or plain JavaScript  
+- React Hooks only (no heavy external UI libraries in MVP)  
+- Local state + JSON data (no backend/database needed for MVP)  
+- Make it a **Progressive Web App** (add manifest and basic service worker so it can be installed on mobile)
+
+**Core UI / UX Requirements (TikTok-like vertical feed):**
+- Full-screen vertical scrolling feed (100vh per card).
+- Snap to each card like TikTok/Reels (use CSS scroll-snap or a simple swipe-friendly implementation).
+- Dark theme by default (black/gray background, white text, green for correct, red for wrong).
+- No top navigation bar on the main feed — clean immersive experience.
+- Bottom navigation bar with 3 tabs: Home (Feed), Saved, Profile.
+- Swipe up = next card instantly.
+- Progress bar at the very top of each card that fills slowly while on the card.
+
+**Each Reading Card Layout (full height):**
+- **Top 60%**: Passage area  
+  - Title: Short topic name  
+  - Difficulty badge (Medium)  
+  - 5-sentence passage (readable font size, line height 1.6)  
+  - Small "IELTS Reading Practice" label
+
+- **Bottom 40%**: Questions area  
+  - 3 questions displayed one after another (or stacked)  
+  - Large touch-friendly answer buttons  
+  - After choosing an answer → immediate feedback (green/red + short 1-sentence explanation)  
+  - Show current score for the card (e.g., 2/3)  
+  - Buttons: Heart (save), Share, Next (or auto-advance on swipe)
+
+**Data:**  
+Include these **10 pre-loaded cards** exactly as provided below. Store them in a JavaScript array inside the app.
+
+**Card Data (copy all 10 passages + questions):**
+
+1. **Urban Greenery**  
+Passage: Urban green spaces play a vital role in improving city life. Trees and parks help reduce air pollution by absorbing carbon dioxide and releasing oxygen. They also lower temperatures during heatwaves through shade and evapotranspiration. Moreover, access to greenery has been linked to better mental health and reduced stress levels among residents. However, many rapidly growing cities still prioritize concrete development over planting new parks.  
+
+Questions:  
+1. Multiple Choice: What is one benefit of urban trees mentioned? A) They increase traffic speed B) They absorb carbon dioxide C) They raise city temperatures D) They reduce the need for buildings  
+2. True/False/Not Given: Residents in cities with many parks always report perfect mental health.  
+3. Matching: i. Urban green spaces … ii. Many growing cities … (A) still focus mainly on construction. (B) help combat rising temperatures. (C) have no effect on pollution.
+
+(Correct answers for feedback: 1-B, 2-False, 3-i-B ii-A)
+
+(Repeat the same format for cards 2–10 using the exact passages and questions from our previous conversation. Include correct answers + short explanations for each.)
+
+**Full list of 10 cards to include (use the detailed content I gave earlier):**  
+- Card 1: Urban Greenery  
+- Card 2: Renewable Energy  
+- Card 3: Sleep and Productivity  
+- Card 4: Plastic Pollution  
+- Card 5: Online Education  
+- Card 6: Exercise and Brain Health  
+- Card 7: Artificial Intelligence in Healthcare  
+- Card 8: The Benefits of Reading Fiction  
+- Card 9: Sustainable Agriculture  
+- Card 10: Space Tourism  
+
+(For each card, store: id, topic, difficulty: "Medium", passage text, array of 3 questions with options, correctAnswers object, explanations.)
+
+**Key Features to Implement:**
+- Infinite-feel feed: loop the 10 cards or show them in random/shuffled order first, then repeat.
+- Answer tracking: count correct answers per card and total session score.
+- Save to "Saved" tab (use localStorage).
+- Profile tab: show total passages practiced, accuracy %, current streak (fake it with localStorage).
+- Simple onboarding screen on first visit.
+- Text-to-speech button on passage (use Web Speech API).
+- Mobile-first: ensure it feels native on phones (big buttons, no hover states).
+
+**Styling & Polish:**
+- Very clean, modern, minimal UI.
+- Smooth transitions when swiping or showing feedback.
+- Vibrant accent colors for feedback.
+- Make the whole app feel addictive and fast.
+
+**PWA Setup:**
+- Add web app manifest (name: ReadTok, short_name: ReadTok, display: standalone, theme_color: dark).
+- Basic service worker for offline caching of the 10 cards.
+
+**Extra Nice-to-Haves (if time allows):**
+- Shuffle button for random order.
+- Difficulty filter (but keep simple for MVP).
+- Confetti animation on getting 3/3 correct.
+
+Start by creating the Vite React project, set up Tailwind, then build the main feed component with vertical snap scrolling. Use an array of card objects. Implement answer logic with state. Make it installable as PWA.
+
+Let me know when the basic structure is ready so we can refine card rendering or add more features.
+
+---
+
+**How to use this in Replit:**
+
+1. Go to Replit → Create new Repl.
+2. Choose **React** or **Vite** template (or blank and let AI handle).
+3. Paste the entire prompt above into the AI Agent chat / description box.
+4. Tell the Agent: “Build the full app based on this detailed specification. Start with the project setup and main feed.”
+
+Once the basic version runs, you can ask the Agent to:
+- Fix swipe behavior
+- Improve mobile responsiveness
+- Add the 10 cards properly
+- Make it installable as PWA
+
+Would you like me to also give you a shorter version of this prompt, or add sample JSON structure for the 10 cards to make it even easier for the AI? Just say the word!

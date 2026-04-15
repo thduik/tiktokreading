@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "ReadTok"
+version = "1.0.0"
+id = "artifacts/readtok"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24769
+
+[services.development]
+run = "pnpm --filter @workspace/readtok run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/readtok", "run", "build" ]
+publicDir = "artifacts/readtok/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24769"
+BASE_PATH = "/"

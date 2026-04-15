@@ -1,8 +1,8 @@
-# Workspace
+# ReadTok — IELTS Reading Practice PWA
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+ReadTok is a TikTok-style IELTS Reading Practice Progressive Web App. Users swipe vertically through full-screen reading cards, each containing a 5-sentence passage and 3 IELTS-style questions with instant feedback.
 
 ## Stack
 
@@ -10,18 +10,31 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Frontend**: React 18 + Vite + Tailwind CSS
+- **Routing**: wouter
+- **Animations**: framer-motion
+- **Icons**: lucide-react
+- **State**: React hooks + localStorage (no backend)
+- **PWA**: manifest.json + service worker
+
+## Architecture
+
+Frontend-only app — no backend/database needed. All 10 IELTS reading cards are embedded in `artifacts/readtok/src/lib/data.ts`. User progress, saved passages, and stats are persisted in localStorage via `artifacts/readtok/src/hooks/use-app-state.ts`.
+
+## Key Files
+
+- `artifacts/readtok/src/App.tsx` — Main app with routing (/, /saved, /profile)
+- `artifacts/readtok/src/lib/data.ts` — 10 pre-loaded IELTS reading cards
+- `artifacts/readtok/src/pages/home.tsx` — TikTok-style vertical feed
+- `artifacts/readtok/src/components/reading-card.tsx` — Individual card with passage + questions
+- `artifacts/readtok/src/components/bottom-nav.tsx` — Bottom navigation (Home, Saved, Profile)
+- `artifacts/readtok/src/components/onboarding.tsx` — First-visit welcome screen
+- `artifacts/readtok/src/hooks/use-app-state.ts` — localStorage-based state management
+- `artifacts/readtok/public/manifest.json` — PWA manifest
+- `artifacts/readtok/public/sw.js` — Service worker for offline caching
 
 ## Key Commands
 
+- `pnpm --filter @workspace/readtok run dev` — run ReadTok locally
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
-
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
