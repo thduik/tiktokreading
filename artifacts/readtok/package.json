@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "vite build --config vite.config.ts",
-    "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
+    "dev": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite --config vite.config.ts --host 0.0.0.0",
+    "build": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite build --config vite.config.ts",
+    "serve": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
@@ -46,6 +46,7 @@
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
+    "@clerk/react": "^6.3.0",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",

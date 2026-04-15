@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { ReadingCard, Question } from "@/lib/data";
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { ReadingCard } from "@/lib/data";
 import { Heart, Volume2, SquareTerminal, Share2, CheckCircle2, XCircle } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 
 interface ReadingCardProps {
   card: ReadingCard;
@@ -20,6 +19,68 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
   
   const isSaved = savedCardIds.includes(card.id);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const renderPassageWithEvidence = () => {
+    const activeEvidence = card.questions
+      .filter((question) => answers[question.id])
+      .flatMap((question) =>
+        question.evidence.map((text) => ({
+          text,
+          isCorrect: answers[question.id] === question.correctAnswer,
+          questionId: question.id,
+        })),
+      );
+
+    if (activeEvidence.length === 0) {
+      return card.passage;
+    }
+
+    const matches = activeEvidence
+      .map((evidence) => ({
+        ...evidence,
+        start: card.passage.indexOf(evidence.text),
+      }))
+      .filter((match) => match.start >= 0)
+      .map((match) => ({
+        ...match,
+        end: match.start + match.text.length,
+      }))
+      .sort((a, b) => a.start - b.start);
+
+    if (matches.length === 0) {
+      return card.passage;
+    }
+
+    const nodes: ReactNode[] = [];
+    let cursor = 0;
+
+    matches.forEach((match, index) => {
+      if (match.start < cursor) return;
+      if (match.start > cursor) {
+        nodes.push(card.passage.slice(cursor, match.start));
+      }
+      nodes.push(
+        <mark
+          key={`${match.questionId}-${index}`}
+          className={`rounded-md px-1 py-0.5 text-white transition-colors ${
+            match.isCorrect
+              ? "bg-emerald-500/35 ring-1 ring-emerald-300/40"
+              : "bg-red-500/35 ring-1 ring-red-300/40"
+          }`}
+          data-testid={`highlight-evidence-${match.questionId}`}
+        >
+          {match.text}
+        </mark>,
+      );
+      cursor = match.end;
+    });
+
+    if (cursor < card.passage.length) {
+      nodes.push(card.passage.slice(cursor));
+    }
+
+    return nodes;
+  };
 
   // Auto-progress bar while viewing card
   useEffect(() => {
@@ -169,8 +230,8 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
         
         <h2 className="text-2xl font-bold mb-4 leading-tight shadow-sm">{card.title}</h2>
         
-        <p className="text-base text-white/90 leading-[1.65] font-serif font-medium tracking-wide pb-4">
-          {card.passage}
+        <p className="text-base text-white/90 leading-[1.65] font-serif font-medium tracking-wide pb-4" data-testid={`passage-${card.id}`}>
+          {renderPassageWithEvidence()}
         </p>
       </div>
 
