@@ -167,3 +167,32 @@
   height: 100dvh;
   width: 100%;
 }
+
+.cl-card,
+.cl-footer,
+.cl-cardBox {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.cl-socialButtonsBlockButton,
+.cl-socialButtonsBlockButtonText,
+.cl-formFieldLabel,
+.cl-dividerText,
+.cl-footerActionText {
+  color: hsl(var(--foreground)) !important;
+}
+
+.cl-footerActionLink {
+  color: hsl(var(--primary)) !important;
+}
+
+.cl-dividerLine,
+.cl-socialButtonsBlockButton {
+  border-color: hsl(var(--border)) !important;
+}
+
+.cl-formFieldInput {
+  background: #ffffff !important;
+  color: #09090b !important;
+}
