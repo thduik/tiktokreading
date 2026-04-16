@@ -1,0 +1,1567 @@
+{
+  "bundleTitle": "ReadTok 40 Cards Bundle",
+  "totalCards": 40,
+  "description": "Randomized topics from your 30-topic list • Fresh content only",
+  "cards": [
+    {
+      "id": 1,
+      "band": "6.0",
+      "topic": "Environment and Climate Change",
+      "title": "Cleaner Energy Adoption",
+      "passage": "Many countries are trying to reduce pollution by using cleaner forms of energy. Solar power and wind power are becoming more popular every year. However, some people still prefer traditional fuels because they are cheaper in the short term. Governments offer money to help families install solar panels on their roofs. Scientists believe these changes can help protect the planet for future generations.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do governments provide to encourage the use of solar energy?",
+          "options": {
+            "A": "Free electricity for households that continue using traditional fuels",
+            "B": "Financial support for families to install solar panels",
+            "C": "Lower prices for traditional fuels to keep them competitive",
+            "D": "Immediate guarantees that the planet will be fully protected"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All countries have completely stopped using traditional fuels.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Solar power and wind power are becoming more ________ every year.",
+          "correctAnswer": "popular"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do scientists believe these energy changes can help protect?",
+          "correctAnswer": "the planet"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "band": "6.0",
+      "topic": "Education and Learning",
+      "title": "The Growth of Online Education",
+      "passage": "Online courses allow students to study from home at any time. Many universities now offer recorded lectures and interactive quizzes. Some learners still prefer classroom lessons because they enjoy talking with teachers. Schools sometimes give extra help to students who study online. Good internet connection is important for successful online learning.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why do some students prefer classroom lessons?",
+          "options": {
+            "A": "They dislike recorded lectures and interactive quizzes",
+            "B": "They enjoy direct interaction with teachers",
+            "C": "They find online courses always easier than classroom ones",
+            "D": "They never need extra help when studying online"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All universities offer recorded lectures for every course.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Good internet connection is important for successful online ________.",
+          "correctAnswer": "learning"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do many universities now offer?",
+          "correctAnswer": "recorded lectures"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "band": "6.0",
+      "topic": "Technology and Innovation",
+      "title": "Smartphones and Social Connection",
+      "passage": "Smartphones help people stay connected with family and friends. Many apps allow users to share photos and messages instantly. Some older people find new technology difficult to learn. Companies regularly update their apps to make them easier to use. Young people often spend many hours on their phones every day.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why do companies regularly update their apps?",
+          "options": {
+            "A": "To make them more difficult for older people",
+            "B": "To make them easier to use",
+            "C": "To reduce the number of hours people spend on phones",
+            "D": "To stop users from sharing photos and messages"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All older people find new technology easy to learn.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Smartphones help people stay connected with family and ________.",
+          "correctAnswer": "friends"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do many apps allow users to share instantly?",
+          "correctAnswer": "photos (or messages)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "band": "6.0",
+      "topic": "Health and Medicine",
+      "title": "Benefits of Regular Physical Activity",
+      "passage": "Regular exercise is important for keeping the body strong and healthy. It can also help people feel happier and less stressed. Some people exercise at home while others prefer going to a gym. Doctors often recommend thirty minutes of activity most days. Eating fruit and vegetables is also good for overall health.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What benefit does regular exercise provide besides physical health?",
+          "options": {
+            "A": "It always increases stress levels",
+            "B": "It can help people feel happier and less stressed",
+            "C": "It guarantees perfect health without any other changes",
+            "D": "It replaces the need to eat fruit and vegetables"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All doctors recommend exactly thirty minutes of exercise every day.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Regular exercise is important for keeping the body strong and ________.",
+          "correctAnswer": "healthy"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do doctors often recommend?",
+          "correctAnswer": "thirty minutes of activity"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "band": "6.0",
+      "topic": "Society and Culture",
+      "title": "The Impact of Social Media",
+      "passage": "Social media allows people to share ideas with friends around the world. Many users post photos and videos every day. Some people worry that too much social media can cause stress. Families sometimes spend more time on phones than talking to each other. Governments are now creating rules about online safety for children.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What concern do some people have about social media?",
+          "options": {
+            "A": "It completely prevents sharing ideas with friends",
+            "B": "Too much use can cause stress",
+            "C": "It always improves family conversations",
+            "D": "It has no effect on children’s safety"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All families spend more time on phones than talking.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Social media allows people to share ideas with friends around the ________.",
+          "correctAnswer": "world"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What are governments creating rules about?",
+          "correctAnswer": "online safety"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "band": "7.0",
+      "topic": "Economy and Globalization",
+      "title": "Global Trade and Local Businesses",
+      "passage": "Global trade has increased rapidly because of better transportation and communication. Companies can now sell products to customers in many different countries. However, some local businesses struggle to compete with large international companies. Governments sometimes introduce taxes to protect local industries. Economists continue to study the effects of globalization on employment.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What challenge do some local businesses face?",
+          "options": {
+            "A": "Complete protection from all international competition",
+            "B": "Difficulty competing with large international companies",
+            "C": "Guaranteed growth due to better transportation",
+            "D": "Automatic tax benefits for every local industry"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All governments introduce taxes to protect local industries.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Economists continue to study the effects of globalization on ________.",
+          "correctAnswer": "employment"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has increased rapidly because of better transportation?",
+          "correctAnswer": "global trade"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "band": "7.0",
+      "topic": "Science and Research",
+      "title": "New Developments in Medical Treatments",
+      "passage": "Scientists are developing new medicines to treat diseases that were difficult to cure in the past. Clinical trials are necessary to ensure these medicines are safe for patients. Some new treatments use advanced technology such as gene editing. However, these treatments are often very expensive. Researchers hope that costs will decrease as technology improves.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why are clinical trials necessary for new medicines?",
+          "options": {
+            "A": "To make the treatments more expensive for patients",
+            "B": "To ensure the medicines are safe for patients",
+            "C": "To completely avoid the use of gene editing",
+            "D": "To guarantee that costs will never decrease"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All new treatments using gene editing are already affordable.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Researchers hope that costs will decrease as technology ________.",
+          "correctAnswer": "improves"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What are scientists developing to treat difficult diseases?",
+          "correctAnswer": "new medicines"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "band": "7.0",
+      "topic": "Urban Development and Cities",
+      "title": "Green Spaces in Urban Areas",
+      "passage": "Many large cities are building more parks and green spaces to improve air quality. These areas also provide places for residents to relax and exercise. However, high land prices make it difficult to create new parks in central areas. City planners are now designing vertical gardens on building walls. Local communities often help maintain these green spaces.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What challenge do city planners face when creating new parks?",
+          "options": {
+            "A": "Complete absence of any land price issues",
+            "B": "High land prices in central areas",
+            "C": "Guaranteed automatic maintenance by all residents",
+            "D": "Reduced need for vertical gardens on buildings"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All large cities have successfully built enough parks.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "City planners are designing vertical gardens on building ________.",
+          "correctAnswer": "walls"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do many large cities build to improve air quality?",
+          "correctAnswer": "more parks and green spaces"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "band": "7.5",
+      "topic": "Renewable Energy",
+      "title": "Challenges of Renewable Energy Transition",
+      "passage": "The transition to renewable energy sources continues to face technical and economic challenges despite significant investment. While solar and wind capacity has grown substantially, the intermittent nature of these sources still requires advanced storage solutions. Some analysts suggest that current policy incentives may not sufficiently address grid stability concerns. Long-term decarbonisation targets depend on both technological breakthroughs and consistent political support.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some analysts suggest about current policy incentives?",
+          "options": {
+            "A": "They have fully resolved all grid stability concerns",
+            "B": "They may not sufficiently address grid stability concerns",
+            "C": "They guarantee immediate technological breakthroughs",
+            "D": "They eliminate the need for any political support"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Policy incentives have already ensured long-term grid stability for all renewable sources.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Long-term decarbonisation targets depend on both technological breakthroughs and consistent ________ support.",
+          "correctAnswer": "political"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What continues to face technical and economic challenges?",
+          "correctAnswer": "the transition to renewable energy sources"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "band": "7.5",
+      "topic": "Artificial Intelligence and Robotics",
+      "title": "Artificial Intelligence in Decision-Making",
+      "passage": "The rapid integration of artificial intelligence into workplace decision-making processes has raised questions about accountability when algorithmic recommendations lead to unintended consequences. Although many organisations claim that regular audits can minimise bias, critics argue that underlying training data often reflects historical inequalities. Achieving genuine fairness may require more than technical adjustments. Public trust in these systems remains fragile despite growing adoption.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do critics argue about the training data used in AI systems?",
+          "options": {
+            "A": "It is always completely free from historical inequalities",
+            "B": "It often reflects historical inequalities",
+            "C": "It eliminates the need for any accountability measures",
+            "D": "It guarantees perfect fairness in all recommendations"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Regular audits have fully resolved all bias issues in workplace AI systems.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Achieving genuine fairness may require more than technical ________.",
+          "correctAnswer": "adjustments"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has raised questions about accountability in workplace AI?",
+          "correctAnswer": "unintended consequences"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "band": "7.5",
+      "topic": "Mental Health and Wellbeing",
+      "title": "Workplace Mental Health Initiatives",
+      "passage": "Workplace mental health initiatives have gained prominence as organisations recognise their link to long-term productivity. However, many employees still hesitate to seek support due to perceived career risks associated with disclosure. Flexible working arrangements have helped some staff, yet persistent cultural stigma continues to limit uptake. Comprehensive policy reform is widely regarded as essential for meaningful progress.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What continues to limit employee uptake of mental health support?",
+          "options": {
+            "A": "Complete absence of any perceived career risks",
+            "B": "Persistent cultural stigma surrounding disclosure",
+            "C": "Guaranteed career benefits from seeking support",
+            "D": "Automatic removal of all flexible working options"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Flexible working arrangements have eliminated all barriers to mental health support.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Many employees still hesitate to seek support due to perceived career ________ associated with disclosure.",
+          "correctAnswer": "risks"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What have workplace mental health initiatives gained?",
+          "correctAnswer": "prominence"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "band": "8.0+",
+      "topic": "Biodiversity and Conservation",
+      "title": "Biodiversity Loss in Tropical Regions",
+      "passage": "Accelerating biodiversity loss in tropical ecosystems is now understood to involve complex feedback loops that amplify the effects of habitat fragmentation. While some conservation programmes report localised recovery, the overall trajectory suggests that many species face extinction risks that exceed previous modelling estimates. Economists increasingly highlight the undervaluation of ecosystem services in national accounting systems. Global funding mechanisms have expanded, yet disbursement efficiency remains a persistent challenge.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do economists increasingly highlight regarding ecosystem services?",
+          "options": {
+            "A": "Their full and accurate valuation in all national accounting systems",
+            "B": "Their undervaluation in national accounting systems",
+            "C": "Their complete irrelevance to biodiversity loss",
+            "D": "Their automatic protection through all conservation programmes"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Global funding mechanisms have achieved optimal disbursement efficiency across all projects.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The overall trajectory suggests that many species face extinction risks that exceed previous modelling ________.",
+          "correctAnswer": "estimates"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What is now understood to involve complex feedback loops?",
+          "correctAnswer": "accelerating biodiversity loss"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "band": "8.0+",
+      "topic": "Sustainable Development",
+      "title": "Sustainable Development Challenges",
+      "passage": "The pursuit of sustainable development goals has revealed significant tensions between economic growth targets and environmental protection priorities in many developing nations. Although international frameworks emphasise integrated approaches, implementation often prioritises short-term economic gains over long-term ecological stability. Some reports suggest that current progress indicators may understate the true extent of environmental degradation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some reports suggest about current progress indicators?",
+          "options": {
+            "A": "They fully capture the true extent of environmental degradation",
+            "B": "They may understate the true extent of environmental degradation",
+            "C": "They have no connection to economic growth targets",
+            "D": "They guarantee long-term ecological stability in all nations"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "International frameworks have resolved all tensions between economic growth and environmental protection.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Implementation often prioritises short-term economic gains over long-term ecological ________.",
+          "correctAnswer": "stability"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has revealed significant tensions in many developing nations?",
+          "correctAnswer": "the pursuit of sustainable development goals"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "band": "8.0+",
+      "topic": "Transportation and Infrastructure",
+      "title": "High-Speed Rail Development",
+      "passage": "High-speed rail networks are increasingly viewed as essential components of sustainable urban mobility strategies. However, the substantial upfront capital costs and long construction timelines continue to deter many governments from full commitment. Some studies claim that the economic returns may take decades to materialise, particularly in regions with lower population density. Public-private partnership models are frequently proposed as a solution, yet their long-term viability remains debated.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some studies claim about the economic returns of high-speed rail?",
+          "options": {
+            "A": "They materialise immediately in all regions",
+            "B": "They may take decades to materialise, especially in lower-density areas",
+            "C": "They eliminate the need for any public-private partnerships",
+            "D": "They have no relation to population density"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Public-private partnership models have proven fully viable for all high-speed rail projects.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The substantial upfront capital costs and long construction timelines continue to deter many governments from full ________.",
+          "correctAnswer": "commitment"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What are high-speed rail networks increasingly viewed as?",
+          "correctAnswer": "essential components of sustainable urban mobility strategies"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "band": "8.0+",
+      "topic": "Food and Agriculture",
+      "title": "Precision Agriculture Technologies",
+      "passage": "Precision agriculture technologies promise to optimise resource use while maintaining or increasing crop yields. Nevertheless, the high initial investment and technical expertise required often limit adoption among small-scale farmers in developing regions. Some research indicates that the environmental benefits may be partially offset by increased energy consumption from advanced equipment. Global food security strategies increasingly incorporate these technologies, yet equitable access remains a critical unresolved issue.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What does some research indicate about the environmental benefits of precision agriculture?",
+          "options": {
+            "A": "They are always fully realised without any drawbacks",
+            "B": "They may be partially offset by increased energy consumption",
+            "C": "They eliminate the need for any technical expertise",
+            "D": "They guarantee immediate adoption by all small-scale farmers"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Precision agriculture technologies have resolved equitable access issues worldwide.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Global food security strategies increasingly incorporate these technologies, yet equitable ________ remains a critical unresolved issue.",
+          "correctAnswer": "access"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do precision agriculture technologies promise to optimise?",
+          "correctAnswer": "resource use"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "band": "6.0",
+      "topic": "Media and Communication",
+      "title": "Television versus Streaming Services",
+      "passage": "Television remains a popular source of news and entertainment for many families. People can watch programmes from different countries on their televisions. Some families prefer streaming services because they can choose what to watch. Advertisements on television help companies sell their products. News channels provide information about events happening around the world.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why do some families prefer streaming services?",
+          "options": {
+            "A": "They dislike watching programmes from different countries",
+            "B": "They can choose what to watch",
+            "C": "They enjoy advertisements more than news",
+            "D": "They never watch television with their families"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All families prefer streaming services over traditional television.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Advertisements on television help companies sell their ________.",
+          "correctAnswer": "products"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do news channels provide?",
+          "correctAnswer": "information about events"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "band": "6.0",
+      "topic": "Aging Population and Demographics",
+      "title": "Managing an Aging Population",
+      "passage": "Many countries now have more older people than in the past. This change creates more demand for healthcare services. Some older people continue working because they enjoy their jobs. Governments are planning new policies to support aging populations. Families often help care for their elderly relatives at home.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why do some older people continue working?",
+          "options": {
+            "A": "They dislike spending time with their families",
+            "B": "They enjoy their jobs",
+            "C": "They want to avoid all healthcare services",
+            "D": "They have no interest in government policies"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All older people require full-time care from their families.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "This change creates more demand for healthcare ________.",
+          "correctAnswer": "services"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What are governments planning?",
+          "correctAnswer": "new policies"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "band": "7.0",
+      "topic": "Space Exploration",
+      "title": "Space Tourism by Private Companies",
+      "passage": "Private companies are now sending tourists into space for short periods. These trips offer passengers amazing views of Earth from above. However, the high cost means only wealthy individuals can participate. Scientists hope that space tourism will lead to new discoveries. International rules are being developed to manage increasing space traffic.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What limits participation in space tourism?",
+          "options": {
+            "A": "The complete absence of any amazing views",
+            "B": "The high cost that only wealthy individuals can afford",
+            "C": "Guaranteed free trips for all scientists",
+            "D": "Automatic development of international rules without cost issues"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All private companies have developed international rules for space traffic.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Scientists hope that space tourism will lead to new ________.",
+          "correctAnswer": "discoveries"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do these trips offer passengers?",
+          "correctAnswer": "amazing views of Earth"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "band": "7.0",
+      "topic": "Cultural Heritage and Traditions",
+      "title": "Preserving Cultural Traditions",
+      "passage": "Many countries work hard to preserve their traditional festivals and customs. Young people sometimes prefer modern entertainment to old cultural events. Governments provide funding to help maintain historical buildings and sites. Tourists often visit these places to learn about local history. Communities organise special events to pass traditions to the next generation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why do governments provide funding?",
+          "options": {
+            "A": "To replace all traditional festivals with modern entertainment",
+            "B": "To help maintain historical buildings and sites",
+            "C": "To stop tourists from visiting cultural places",
+            "D": "To prevent young people from learning traditions"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All young people prefer modern entertainment to traditional events.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Communities organise special events to pass traditions to the next ________.",
+          "correctAnswer": "generation"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do tourists often visit?",
+          "correctAnswer": "historical buildings and sites"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "band": "7.0",
+      "topic": "Pollution and Waste Management",
+      "title": "Improving Waste Management through Recycling",
+      "passage": "Recycling programmes help reduce the amount of waste sent to landfills. Many cities now have separate bins for different types of rubbish. However, some people still mix everything together by mistake. Companies are developing new technology to sort waste more efficiently. Public education campaigns encourage everyone to recycle more.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What problem do some people cause with recycling?",
+          "options": {
+            "A": "They always use separate bins correctly",
+            "B": "They mix different types of rubbish together by mistake",
+            "C": "They develop new sorting technology for companies",
+            "D": "They completely stop all public education campaigns"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All cities have perfect recycling programmes with no mistakes.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Companies are developing new technology to sort waste more ________.",
+          "correctAnswer": "efficiently"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do recycling programmes help reduce?",
+          "correctAnswer": "the amount of waste sent to landfills"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "band": "7.5",
+      "topic": "Sports, Fitness and Leisure",
+      "title": "Data Analytics in Professional Sports",
+      "passage": "Professional athletes increasingly rely on data analytics to optimise training regimes and reduce injury risk. While these tools provide valuable insights, some coaches argue that over-dependence on metrics may diminish the role of intuitive coaching decisions. The long-term impact on athlete motivation remains a subject of ongoing study.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What concern do some coaches express about data analytics?",
+          "options": {
+            "A": "They completely replace the need for any training",
+            "B": "Over-dependence may diminish intuitive coaching decisions",
+            "C": "They guarantee perfect injury prevention in every case",
+            "D": "They have no effect on athlete motivation"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Data analytics have fully resolved all concerns about athlete motivation.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Professional athletes increasingly rely on data analytics to optimise training regimes and reduce injury ________.",
+          "correctAnswer": "risk"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do these tools provide?",
+          "correctAnswer": "valuable insights"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "band": "7.5",
+      "topic": "Crime and Law Enforcement",
+      "title": "Predictive Policing Algorithms",
+      "passage": "The adoption of predictive policing algorithms has sparked debate about potential bias in law enforcement practices. Although proponents claim improved efficiency, critics highlight that historical crime data used for training may perpetuate existing inequalities. Regulatory oversight is essential to ensure these systems do not undermine public trust.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do critics highlight about the training data?",
+          "options": {
+            "A": "It is always free from any historical inequalities",
+            "B": "It may perpetuate existing inequalities",
+            "C": "It eliminates the need for regulatory oversight",
+            "D": "It guarantees perfect public trust in all cases"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Predictive policing algorithms have completely removed bias from law enforcement.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Regulatory oversight is essential to ensure these systems do not undermine public ________.",
+          "correctAnswer": "trust"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has sparked debate about potential bias?",
+          "correctAnswer": "the adoption of predictive policing algorithms"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "band": "7.5",
+      "topic": "International Relations and Diplomacy",
+      "title": "Climate Diplomacy Negotiations",
+      "passage": "Climate diplomacy negotiations often reveal deep divisions between developed and developing nations regarding responsibility and funding. While some agreements claim significant progress, implementation frequently falls short of stated commitments. Analysts suggest that geopolitical tensions continue to influence the pace of global environmental cooperation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do analysts suggest about geopolitical tensions?",
+          "options": {
+            "A": "They have no influence on environmental cooperation",
+            "B": "They continue to influence the pace of global environmental cooperation",
+            "C": "They guarantee full implementation of all agreements",
+            "D": "They eliminate all divisions between nations"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All climate agreements have achieved full implementation of stated commitments.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Climate diplomacy negotiations often reveal deep divisions between developed and developing nations regarding responsibility and ________.",
+          "correctAnswer": "funding"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do some agreements claim?",
+          "correctAnswer": "significant progress"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "band": "8.0+",
+      "topic": "Psychology and Human Behavior",
+      "title": "Digital Media and Human Behavior",
+      "passage": "The digital transformation of social interaction has been linked to measurable changes in attention spans and emotional regulation among younger generations. While some researchers suggest that these shifts are primarily adaptive, others contend that prolonged screen exposure may contribute to heightened anxiety levels. The causal relationship remains difficult to isolate amid numerous confounding variables.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some researchers suggest about the shifts in attention and emotional regulation?",
+          "options": {
+            "A": "They are entirely maladaptive with no positive aspects",
+            "B": "They are primarily adaptive",
+            "C": "They have no connection to screen exposure",
+            "D": "They eliminate all confounding variables in studies"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Prolonged screen exposure has been proven to cause anxiety in all younger generations.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The causal relationship remains difficult to isolate amid numerous confounding ________.",
+          "correctAnswer": "variables"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has the digital transformation of social interaction been linked to?",
+          "correctAnswer": "measurable changes in attention spans and emotional regulation"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "band": "8.0+",
+      "topic": "History and Archaeology",
+      "title": "Recent Archaeological Discoveries",
+      "passage": "Recent archaeological discoveries have challenged long-held assumptions about the technological capabilities of ancient civilisations in remote regions. While some findings suggest advanced engineering knowledge, others indicate that these achievements may have been more localised than previously thought. The interpretation of such evidence continues to evolve with new excavation techniques.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some findings suggest about ancient engineering knowledge?",
+          "options": {
+            "A": "It was completely absent in all remote regions",
+            "B": "It was advanced but possibly more localised than previously thought",
+            "C": "It has been fully explained by all excavation techniques",
+            "D": "It challenges no long-held assumptions whatsoever"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All recent discoveries have confirmed previous assumptions about ancient civilisations.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The interpretation of such evidence continues to evolve with new excavation ________.",
+          "correctAnswer": "techniques"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What have recent archaeological discoveries challenged?",
+          "correctAnswer": "long-held assumptions about the technological capabilities of ancient civilisations"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "band": "8.0+",
+      "topic": "Animal Rights and Welfare",
+      "title": "Alternatives to Animal Testing",
+      "passage": "The ethical debate surrounding animal testing in medical research has intensified with the development of sophisticated alternative testing methods. Although some scientists claim that these alternatives can fully replace animal models, others maintain that certain complex biological responses still require living organisms. Regulatory bodies are gradually incorporating stricter welfare standards, yet consensus on complete replacement remains elusive.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some scientists claim about alternative testing methods?",
+          "options": {
+            "A": "They have no relevance to complex biological responses",
+            "B": "They can fully replace animal models",
+            "C": "They eliminate the need for any regulatory standards",
+            "D": "They guarantee immediate consensus on complete replacement"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Alternative methods have already replaced all animal testing worldwide.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Regulatory bodies are gradually incorporating stricter welfare ________.",
+          "correctAnswer": "standards"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has intensified the ethical debate?",
+          "correctAnswer": "the development of sophisticated alternative testing methods"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "band": "8.0+",
+      "topic": "Fashion, Consumerism and Advertising",
+      "title": "The Fast Fashion Industry",
+      "passage": "Fast fashion business models have been criticised for contributing to excessive textile waste and exploitative labour practices. While some brands have introduced sustainability initiatives, critics argue that these measures often serve primarily as marketing tools rather than fundamental operational changes. Consumer awareness campaigns have increased pressure on the industry, yet overall consumption patterns show little sign of decline.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do critics argue about sustainability initiatives in fast fashion?",
+          "options": {
+            "A": "They represent fundamental operational changes in every case",
+            "B": "They often serve primarily as marketing tools",
+            "C": "They have eliminated all textile waste globally",
+            "D": "They have no connection to consumer awareness campaigns"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Consumer awareness campaigns have led to a significant decline in overall fast fashion consumption.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Fast fashion business models have been criticised for contributing to excessive textile waste and exploitative labour ________.",
+          "correctAnswer": "practices"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What have consumer awareness campaigns increased?",
+          "correctAnswer": "pressure on the industry"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "band": "8.0+",
+      "topic": "Natural Disasters and Risk Management",
+      "title": "Early Warning Systems for Natural Disasters",
+      "passage": "Advances in early warning systems for natural disasters have significantly improved evacuation success rates in many vulnerable regions. However, the effectiveness of these systems often depends on community preparedness and trust in official communications. Some studies suggest that socioeconomic factors continue to influence response times despite technological improvements.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some studies suggest about socioeconomic factors?",
+          "options": {
+            "A": "They have no influence on disaster response times",
+            "B": "They continue to influence response times despite technological improvements",
+            "C": "They guarantee perfect community preparedness in all regions",
+            "D": "They eliminate the need for trust in official communications"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Early warning systems have achieved perfect evacuation success in every vulnerable region.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The effectiveness of these systems often depends on community preparedness and trust in official ________.",
+          "correctAnswer": "communications"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What have advances in early warning systems significantly improved?",
+          "correctAnswer": "evacuation success rates"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "band": "8.0+",
+      "topic": "Work and Employment",
+      "title": "The Rise of the Gig Economy",
+      "passage": "The gig economy has transformed traditional employment relationships by offering greater flexibility for workers while reducing long-term job security. Although many participants report higher autonomy, studies indicate that income volatility and lack of benefits remain significant concerns. Policymakers are exploring new regulatory frameworks to address these imbalances without stifling innovation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do studies indicate about gig economy workers?",
+          "options": {
+            "A": "They experience no income volatility or lack of benefits",
+            "B": "Income volatility and lack of benefits remain significant concerns",
+            "C": "They have complete long-term job security in all cases",
+            "D": "They report lower autonomy than traditional employees"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "New regulatory frameworks have already resolved all imbalances in the gig economy.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The gig economy has transformed traditional employment relationships by offering greater flexibility for workers while reducing long-term job ________.",
+          "correctAnswer": "security"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What have policymakers exploring?",
+          "correctAnswer": "new regulatory frameworks"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "band": "8.0+",
+      "topic": "Psychology and Human Behavior",
+      "title": "Social Media Algorithms and Polarisation",
+      "passage": "Social media algorithms are designed to maximise user engagement through personalised content recommendations. While this approach increases time spent on platforms, it may also contribute to the formation of echo chambers that reinforce existing beliefs. Researchers suggest that the cumulative effect on societal polarisation requires further longitudinal investigation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What may social media algorithms contribute to?",
+          "options": {
+            "A": "The complete elimination of echo chambers",
+            "B": "The formation of echo chambers that reinforce existing beliefs",
+            "C": "Guaranteed reduction in time spent on platforms",
+            "D": "Automatic resolution of societal polarisation"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Longitudinal studies have already confirmed the exact cumulative effect on societal polarisation.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Researchers suggest that the cumulative effect on societal polarisation requires further longitudinal ________.",
+          "correctAnswer": "investigation"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What are social media algorithms designed to maximise?",
+          "correctAnswer": "user engagement"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "band": "6.0",
+      "topic": "Sports, Fitness and Leisure",
+      "title": "Children and Team Sports",
+      "passage": "Playing team sports helps children learn important social skills. They learn to work together and support their teammates. Some children prefer individual sports like swimming or running. Regular exercise is good for both physical and mental health. Schools often organise sports days to encourage participation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do children learn from playing team sports?",
+          "options": {
+            "A": "To avoid working with others completely",
+            "B": "Important social skills like teamwork",
+            "C": "That individual sports are always better",
+            "D": "That exercise is bad for mental health"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All children prefer team sports to individual sports.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Regular exercise is good for both physical and mental ________.",
+          "correctAnswer": "health"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do schools often organise?",
+          "correctAnswer": "sports days"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "band": "6.0",
+      "topic": "Crime and Law Enforcement",
+      "title": "Community Crime Prevention",
+      "passage": "Police officers work hard to keep communities safe from crime. They patrol streets and investigate reported incidents. Some neighbourhoods have community watch programmes to help the police. Cameras in public places can help prevent crime. Young people are sometimes taught about laws in school programmes.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do community watch programmes do?",
+          "options": {
+            "A": "Replace the police completely",
+            "B": "Help the police by watching neighbourhoods",
+            "C": "Encourage more crime in public places",
+            "D": "Remove all cameras from streets"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All young people learn about laws in school.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Police officers work hard to keep communities safe from ________.",
+          "correctAnswer": "crime"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What can cameras in public places help do?",
+          "correctAnswer": "prevent crime"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "band": "7.0",
+      "topic": "International Relations and Diplomacy",
+      "title": "International Trade Agreements",
+      "passage": "International trade agreements aim to reduce barriers between countries. These agreements can help businesses expand into new markets. However, some countries worry about losing control over their local industries. Negotiators work hard to find solutions that benefit all parties. The success of these agreements depends on mutual trust and cooperation.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some countries worry about in trade agreements?",
+          "options": {
+            "A": "Complete control over every local industry",
+            "B": "Losing control over their local industries",
+            "C": "Guaranteed failure of all negotiations",
+            "D": "No benefits for any businesses"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All international trade agreements are successful.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Negotiators work hard to find solutions that benefit all ________.",
+          "correctAnswer": "parties"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do international trade agreements aim to reduce?",
+          "correctAnswer": "barriers between countries"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "band": "7.0",
+      "topic": "History and Archaeology",
+      "title": "Understanding Ancient Civilisations",
+      "passage": "Archaeologists have discovered many ancient artefacts in different parts of the world. These objects help us understand how people lived in the past. Some discoveries change our ideas about ancient civilisations. Museums display these artefacts so that the public can learn from them. Experts use modern technology to study old objects without damaging them.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "Why do museums display ancient artefacts?",
+          "options": {
+            "A": "To hide them from the public",
+            "B": "So that the public can learn from them",
+            "C": "To prevent experts from studying them",
+            "D": "To make all ideas about history incorrect"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All archaeological discoveries change our ideas about ancient civilisations.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Experts use modern technology to study old objects without damaging ________.",
+          "correctAnswer": "them"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do archaeologists discover?",
+          "correctAnswer": "many ancient artefacts"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "band": "7.0",
+      "topic": "Animal Rights and Welfare",
+      "title": "Campaigns for Animal Welfare",
+      "passage": "Many organisations work to protect animals from cruel treatment. They campaign against testing cosmetics on animals. Some countries have laws that ban certain practices. People can support these causes by choosing products that are cruelty-free. Education programmes help raise awareness about animal welfare.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do some countries have to protect animals?",
+          "options": {
+            "A": "Laws that encourage cruel treatment",
+            "B": "Laws that ban certain practices",
+            "C": "No interest in animal welfare",
+            "D": "Complete freedom for all testing"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All people choose cruelty-free products.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Education programmes help raise awareness about animal ________.",
+          "correctAnswer": "welfare"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do many organisations work to protect?",
+          "correctAnswer": "animals"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "band": "7.5",
+      "topic": "Fashion, Consumerism and Advertising",
+      "title": "The Environmental Cost of Fast Fashion",
+      "passage": "The rise of fast fashion has significantly increased textile waste and pressure on natural resources. While brands promote sustainability collections, many continue to rely on high-volume production models that prioritise profit margins. Consumer behaviour studies show that price sensitivity often outweighs environmental concerns in purchasing decisions.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do consumer behaviour studies show?",
+          "options": {
+            "A": "Price sensitivity is always secondary to environmental concerns",
+            "B": "Price sensitivity often outweighs environmental concerns",
+            "C": "All brands have abandoned high-volume production",
+            "D": "Sustainability collections have eliminated textile waste"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All fast fashion brands have fully transitioned to sustainable production models.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The rise of fast fashion has significantly increased textile waste and pressure on natural ________.",
+          "correctAnswer": "resources"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do brands promote?",
+          "correctAnswer": "sustainability collections"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "band": "7.5",
+      "topic": "Natural Disasters and Risk Management",
+      "title": "Forecasting Extreme Weather",
+      "passage": "Improved meteorological forecasting has enhanced preparedness for extreme weather events in many coastal regions. Nevertheless, the gap between scientific warnings and community response times persists due to varying levels of trust in official channels. Some local authorities have introduced community-based early warning systems to bridge this divide.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What persists despite improved forecasting?",
+          "options": {
+            "A": "Perfect alignment between warnings and community response times",
+            "B": "A gap between scientific warnings and community response times",
+            "C": "Complete trust in all official channels everywhere",
+            "D": "Elimination of the need for community-based systems"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All local authorities have introduced community-based early warning systems.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Some local authorities have introduced community-based early warning systems to bridge this ________.",
+          "correctAnswer": "divide"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What has improved preparedness for extreme weather events?",
+          "correctAnswer": "meteorological forecasting"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "band": "8.0+",
+      "topic": "Psychology and Human Behavior",
+      "title": "Social Media and Adolescent Self-Perception",
+      "passage": "The pervasive use of social media has been associated with altered patterns of self-perception among adolescents, particularly through the mechanism of social comparison. Although platforms claim to foster connectivity, empirical studies suggest that curated content may exacerbate feelings of inadequacy. Longitudinal research is needed to determine whether these effects are temporary or enduring.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do empirical studies suggest about curated content?",
+          "options": {
+            "A": "It has no effect on self-perception or feelings of inadequacy",
+            "B": "It may exacerbate feelings of inadequacy",
+            "C": "It guarantees perfect connectivity without any drawbacks",
+            "D": "It eliminates the need for longitudinal research"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All effects of social media on self-perception are temporary.",
+          "correctAnswer": "Not Given"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The pervasive use of social media has been associated with altered patterns of self-perception among adolescents, particularly through the mechanism of social ________.",
+          "correctAnswer": "comparison"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What do platforms claim to foster?",
+          "correctAnswer": "connectivity"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "band": "8.0+",
+      "topic": "History and Archaeology",
+      "title": "Ancient Human Migration Patterns",
+      "passage": "Recent excavations in previously unexplored regions have yielded artefacts that challenge established chronologies of human migration patterns. While radiocarbon dating provides preliminary timelines, the contextual analysis of associated tools suggests more complex cultural exchanges than previously documented. The implications for our understanding of early human societies continue to generate scholarly debate.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What does contextual analysis of associated tools suggest?",
+          "options": {
+            "A": "Completely simple cultural exchanges with no complexity",
+            "B": "More complex cultural exchanges than previously documented",
+            "C": "No implications for our understanding of early human societies",
+            "D": "Final resolution of all scholarly debate"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "Radiocarbon dating has provided definitive final timelines for all migration patterns.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "Recent excavations in previously unexplored regions have yielded artefacts that challenge established chronologies of human migration ________.",
+          "correctAnswer": "patterns"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What continue to generate scholarly debate?",
+          "correctAnswer": "the implications for our understanding of early human societies"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "band": "8.0+",
+      "topic": "Animal Rights and Welfare",
+      "title": "Ethics in Laboratory Animal Research",
+      "passage": "The ethical framework governing laboratory animal research is undergoing scrutiny as alternative in-vitro and computational models demonstrate increasing predictive accuracy. Although some regulatory bodies advocate for the 3Rs principle (replacement, reduction, refinement), full transition remains constrained by validation requirements for regulatory approval. Critics maintain that current practices may not adequately reflect evolving societal values regarding animal sentience.",
+      "questions": [
+        {
+          "number": 1,
+          "type": "multiple_choice",
+          "question": "What do critics maintain about current practices?",
+          "options": {
+            "A": "They fully reflect evolving societal values regarding animal sentience",
+            "B": "They may not adequately reflect evolving societal values regarding animal sentience",
+            "C": "They have achieved complete validation for all alternative models",
+            "D": "They eliminate the need for the 3Rs principle"
+          },
+          "correctAnswer": "B"
+        },
+        {
+          "number": 2,
+          "type": "true_false_not_given",
+          "question": "All regulatory bodies have fully transitioned to alternative models without any constraints.",
+          "correctAnswer": "False"
+        },
+        {
+          "number": 3,
+          "type": "sentence_completion",
+          "question": "The ethical framework governing laboratory animal research is undergoing scrutiny as alternative in-vitro and computational models demonstrate increasing predictive ________.",
+          "correctAnswer": "accuracy"
+        },
+        {
+          "number": 4,
+          "type": "short_answer",
+          "question": "What principle do some regulatory bodies advocate?",
+          "correctAnswer": "the 3Rs principle"
+        }
+      ]
+    }
+  ]
+}
