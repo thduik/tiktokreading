@@ -2,7 +2,7 @@
 
 ## Overview
 
-ReadTok is a TikTok-style IELTS Reading Practice Progressive Web App. Users swipe vertically through full-screen reading cards, each containing a 5-sentence passage and 3 IELTS-style questions with instant feedback.
+ReadTok is a TikTok-style IELTS Reading Practice Progressive Web App. Users swipe vertically through full-screen reading cards, each containing a 5-sentence passage and IELTS-style questions with instant feedback.
 
 ## Stack
 
@@ -20,20 +20,23 @@ ReadTok is a TikTok-style IELTS Reading Practice Progressive Web App. Users swip
 
 ## Architecture
 
-Frontend-first app with an embedded reading-material database and localStorage-backed practice state. Authentication is available for user identity and profile display, while practice progress remains local-first in the MVP.
+Frontend-first app with a lightweight static reading-material database and localStorage-backed practice state. Authentication is available for user identity and profile display, while practice progress remains local-first in the MVP.
 
-IELTS reading cards are stored in `artifacts/readtok/src/lib/data.ts` as `readingMaterialDatabase`. The feed pulls randomized batches from this database on initial load and whenever users scroll near the end. Each question includes exact evidence text that is highlighted in the passage after the learner answers. Multiple-choice, true/false/not-given, matching, and sentence-completion questions are supported. User progress, saved passages, and stats are persisted in localStorage via `artifacts/readtok/src/hooks/use-app-state.ts`.
+The reading source is `artifacts/readtok/src/lib/reading-material-db.json`, currently loaded from the uploaded ReadTok 40 Cards Bundle. `artifacts/readtok/src/lib/data.ts` is a small adapter that converts that JSON into app-ready cards, adds stable IDs, formats multiple-choice options, maps band level to difficulty, creates accepted answers, and derives evidence sentences for feedback highlighting. The old hardcoded passage database has been removed from `data.ts`.
+
+The feed pulls randomized batches from this static database on initial load and whenever users scroll near the end. Multiple-choice, true/false/not-given, sentence-completion, and short-answer questions are supported. User progress, saved passages, and stats are persisted in localStorage via `artifacts/readtok/src/hooks/use-app-state.ts`.
 
 The shared API server includes Clerk proxy middleware for production auth support.
 
 ## Key Files
 
 - `artifacts/readtok/src/App.tsx` — Main app with routing (/, /saved, /profile, /sign-in, /sign-up) and auth provider setup
-- `artifacts/readtok/src/lib/data.ts` — Embedded reading-material database with randomized feed helper
+- `artifacts/readtok/src/lib/reading-material-db.json` — Static 40-card reading-material database
+- `artifacts/readtok/src/lib/data.ts` — Adapter that transforms the static JSON database into app-ready reading cards
 - `artifacts/readtok/src/pages/home.tsx` — TikTok-style vertical feed that appends random cards while scrolling
-- `artifacts/readtok/src/components/reading-card.tsx` — Individual card with passage, questions, feedback, sentence completion, and evidence highlighting
+- `artifacts/readtok/src/components/reading-card.tsx` — Individual card with passage, questions, feedback, text answers, and evidence highlighting
 - `artifacts/readtok/src/pages/profile.tsx` — Stats plus signed-in/signed-out account panel
-- `artifacts/readtok/src/components/bottom-nav.tsx` — Bottom navigation (Home, Saved, Profile)
+- `artifacts/readtok/src/components/bottom-nav.tsx` — Black bottom navigation (Feed, Saved, Profile)
 - `artifacts/readtok/src/components/onboarding.tsx` — First-visit welcome screen for the feed route
 - `artifacts/readtok/src/hooks/use-app-state.ts` — localStorage-based state management
 - `artifacts/readtok/public/manifest.json` — PWA manifest

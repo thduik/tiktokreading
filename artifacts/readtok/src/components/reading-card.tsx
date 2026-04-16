@@ -13,9 +13,15 @@ function normalizeAnswer(answer: string) {
   return answer.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function isAnswerCorrect(answer: string | undefined, correctAnswer: string) {
+function isAnswerCorrect(
+  answer: string | undefined,
+  correctAnswer: string,
+  acceptedAnswers: string[] = [],
+) {
   if (!answer) return false;
-  return normalizeAnswer(answer) === normalizeAnswer(correctAnswer);
+  return [correctAnswer, ...acceptedAnswers].some(
+    (acceptedAnswer) => normalizeAnswer(answer) === normalizeAnswer(acceptedAnswer),
+  );
 }
 
 export default function ReadingCardComponent({ card, isActive }: ReadingCardProps) {
@@ -36,7 +42,11 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       .flatMap((question) =>
         question.evidence.map((text) => ({
           text,
-          isCorrect: isAnswerCorrect(answers[question.id], question.correctAnswer),
+          isCorrect: isAnswerCorrect(
+            answers[question.id],
+            question.correctAnswer,
+            question.acceptedAnswers,
+          ),
           questionId: question.id,
         })),
       );
@@ -137,7 +147,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
     if (Object.keys(newAnswers).length === card.questions.length) {
       let correct = 0;
       card.questions.forEach(q => {
-        if (isAnswerCorrect(newAnswers[q.id], q.correctAnswer)) correct++;
+        if (isAnswerCorrect(newAnswers[q.id], q.correctAnswer, q.acceptedAnswers)) correct++;
       });
       
       setScoreCalculated(true);
@@ -171,7 +181,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
   };
 
   const correctAnswersCount = card.questions.reduce((acc, q) => {
-    return acc + (isAnswerCorrect(answers[q.id], q.correctAnswer) ? 1 : 0);
+    return acc + (isAnswerCorrect(answers[q.id], q.correctAnswer, q.acceptedAnswers) ? 1 : 0);
   }, 0);
 
   return (
@@ -280,7 +290,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
               </p>
               
               <div className="grid grid-cols-1 gap-2">
-                {q.type === "sentence_completion" ? (
+                {q.type === "sentence_completion" || q.type === "short_answer" ? (
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <input
@@ -313,13 +323,13 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
                     {answers[q.id] && (
                       <div
                         className={`rounded-xl border px-3 py-2 text-sm ${
-                          isAnswerCorrect(answers[q.id], q.correctAnswer)
+                          isAnswerCorrect(answers[q.id], q.correctAnswer, q.acceptedAnswers)
                             ? "border-success/50 bg-success/15 text-white"
                             : "border-destructive/50 bg-destructive/15 text-white"
                         }`}
                       >
                         <span className="font-semibold">
-                          {isAnswerCorrect(answers[q.id], q.correctAnswer)
+                          {isAnswerCorrect(answers[q.id], q.correctAnswer, q.acceptedAnswers)
                             ? "Correct:"
                             : "Correct answer:"}
                         </span>{" "}
@@ -330,7 +340,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
                 ) : q.options?.map((opt) => {
                   const isAnswered = !!answers[q.id];
                   const isSelected = answers[q.id] === opt;
-                  const isCorrect = isAnswerCorrect(opt, q.correctAnswer);
+                  const isCorrect = isAnswerCorrect(opt, q.correctAnswer, q.acceptedAnswers);
                   
                   let btnClass = "bg-white/10 text-white hover:bg-white/20 border-transparent";
                   if (isAnswered) {
@@ -381,7 +391,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       </div>
 
       {/* Floating Action Buttons on Right Side */}
-      <div className="absolute right-4 bottom-32 flex flex-col gap-4 z-40">
+      <div className="absolute right-4 bottom-24 flex flex-col gap-4 z-40">
         <button 
           onClick={() => toggleSaveCard(card.id)}
           className="flex flex-col items-center justify-center group"
