@@ -379,8 +379,10 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
                     className="overflow-hidden"
                   >
                     <div className="text-xs bg-white/5 border border-white/10 p-3 rounded-lg mt-2 text-white/80 border-l-2 border-l-primary">
+                      <span className="font-bold block mb-1">Correct answer:</span>
+                      <span className="block mb-2 text-white">{q.correctAnswer}</span>
                       <span className="font-bold block mb-1">Explanation:</span>
-                      {q.explanation}
+                      <span>{q.explanation}</span>
                     </div>
                   </motion.div>
                 )}
