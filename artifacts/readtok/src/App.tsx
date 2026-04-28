@@ -1,18 +1,17 @@
-import { useEffect, useRef } from "react";
-import { SignIn, SignUp, ClerkProvider, useClerk } from "@clerk/react";
+import { useEffect } from "react";
+import { SignIn, SignUp, ClerkProvider } from "@clerk/react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Saved from "@/pages/saved";
 import Profile from "@/pages/profile";
+import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
 import Onboarding from "@/components/onboarding";
-import { useAppState } from "@/hooks/use-app-state";
+import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
 
-const queryClient = new QueryClient();
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -54,8 +53,19 @@ function stripBase(path: string): string {
 }
 
 function SignInPage() {
-  // To update login providers, app branding, or OAuth settings use the Auth
-  // pane in the workspace toolbar. More information can be found in the Replit docs.
+  if (!clerkPubKey) {
+    return (
+      <div className="min-h-[100dvh] w-full bg-background px-4 py-10 flex items-start justify-center">
+        <div className="w-full max-w-[400px] rounded-3xl border border-border bg-card p-6 text-center">
+          <h1 className="text-2xl font-bold text-foreground">Authentication is optional in local mode</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Add `VITE_CLERK_PUBLISHABLE_KEY` if you want sign-in enabled outside Replit.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] w-full bg-background px-4 py-10 flex items-start justify-center" data-testid="page-sign-in">
       <div className="w-full max-w-[400px] space-y-5">
@@ -79,8 +89,19 @@ function SignInPage() {
 }
 
 function SignUpPage() {
-  // To update login providers, app branding, or OAuth settings use the Auth
-  // pane in the workspace toolbar. More information can be found in the Replit docs.
+  if (!clerkPubKey) {
+    return (
+      <div className="min-h-[100dvh] w-full bg-background px-4 py-10 flex items-start justify-center">
+        <div className="w-full max-w-[400px] rounded-3xl border border-border bg-card p-6 text-center">
+          <h1 className="text-2xl font-bold text-foreground">Authentication is optional in local mode</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Add `VITE_CLERK_PUBLISHABLE_KEY` if you want account creation enabled outside Replit.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] w-full bg-background px-4 py-10 flex items-start justify-center" data-testid="page-sign-up">
       <div className="w-full max-w-[400px] space-y-5">
@@ -103,28 +124,6 @@ function SignUpPage() {
   );
 }
 
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const queryClient = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
-        queryClient.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, queryClient]);
-
-  return null;
-}
-
 interface RouterProps {
   hasCompletedOnboarding: boolean;
   completeOnboarding: () => void;
@@ -141,10 +140,11 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-background overflow-hidden relative">
-      <main className={`flex-1 w-full overflow-hidden ${isFeed || isAuthPage ? "" : "pb-[72px]"}`}>
+    <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
+      <main className={`min-h-0 flex-1 w-full overflow-y-auto ${isFeed || isAuthPage ? "" : "pb-[72px]"}`}>
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/passages/:id" component={PassageDetailPage} />
           <Route path="/saved" component={Saved} />
           <Route path="/profile" component={Profile} />
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -175,55 +175,78 @@ function ClerkProviderWithRoutes({
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
-        <TooltipProvider>
-          <Router
-            hasCompletedOnboarding={hasCompletedOnboarding}
-            completeOnboarding={completeOnboarding}
-          />
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
+      <TooltipProvider>
+        <Router
+          hasCompletedOnboarding={hasCompletedOnboarding}
+          completeOnboarding={completeOnboarding}
+        />
+        <Toaster />
+      </TooltipProvider>
     </ClerkProvider>
   );
 }
 
-function App() {
+function AppRoutes({
+  hasCompletedOnboarding,
+  completeOnboarding,
+}: ClerkProviderWithRoutesProps) {
+  return (
+    <TooltipProvider>
+      <Router
+        hasCompletedOnboarding={hasCompletedOnboarding}
+        completeOnboarding={completeOnboarding}
+      />
+      <Toaster />
+    </TooltipProvider>
+  );
+}
+
+function AppContent() {
   const { isLoaded, hasCompletedOnboarding, completeOnboarding } = useAppState();
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-          console.error('ServiceWorker registration failed: ', err);
-        });
-      });
+    if (!("serviceWorker" in navigator)) {
+      return;
     }
+
+    const registerServiceWorker = () => {
+      navigator.serviceWorker
+        .register(`${import.meta.env.BASE_URL}sw.js`)
+        .catch((err) => {
+          console.error("ServiceWorker registration failed: ", err);
+        });
+    };
+
+    window.addEventListener("load", registerServiceWorker);
+    return () => window.removeEventListener("load", registerServiceWorker);
   }, []);
 
   if (!isLoaded) {
     return <div className="h-[100dvh] bg-background flex items-center justify-center" />;
   }
 
-  if (!clerkPubKey) {
-    return (
-      <div className="h-[100dvh] bg-background text-foreground flex items-center justify-center px-6 text-center">
-        <div className="max-w-sm">
-          <h1 className="text-2xl font-bold mb-3">Authentication is still being prepared</h1>
-          <p className="text-muted-foreground">Restart the app once setup finishes, then sign in from your profile.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes
-        hasCompletedOnboarding={hasCompletedOnboarding}
-        completeOnboarding={completeOnboarding}
-      />
+      {clerkPubKey ? (
+        <ClerkProviderWithRoutes
+          hasCompletedOnboarding={hasCompletedOnboarding}
+          completeOnboarding={completeOnboarding}
+        />
+      ) : (
+        <AppRoutes
+          hasCompletedOnboarding={hasCompletedOnboarding}
+          completeOnboarding={completeOnboarding}
+        />
+      )}
     </WouterRouter>
+  );
+}
+
+function App() {
+  return (
+    <AppStateProvider>
+      <AppContent />
+    </AppStateProvider>
   );
 }
 
