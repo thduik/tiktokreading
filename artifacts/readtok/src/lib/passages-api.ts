@@ -110,6 +110,13 @@ export interface PassageListFilters {
   offset?: number;
 }
 
+export type PassageReportType =
+  | "wrong_answer_key"
+  | "question_unclear"
+  | "passage_text_issue"
+  | "formatting_issue"
+  | "other";
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(
   /\/$/,
   "",
@@ -122,6 +129,16 @@ interface PassageListResponse {
     offset: number;
     count: number;
   };
+}
+
+export interface SubmitPassageReportResponse {
+  ok: boolean;
+  passage_id: string;
+  report_type: PassageReportType;
+  aggregates: Array<{
+    report_type: PassageReportType;
+    count: number;
+  }>;
 }
 
 const PASSAGE_CACHE_VERSION = "2026-05-03-v2";
@@ -300,4 +317,26 @@ export async function fetchPassageDetail(id: string, includeAnswerKey = true) {
   detailMemoryCache.set(cacheKey, response);
   writeCachedValue(storageKey, response);
   return response;
+}
+
+export async function submitPassageReport(
+  passageId: string,
+  reportType: PassageReportType,
+) {
+  const response = await fetch(`${API_BASE}/passages/${encodeURIComponent(passageId)}/report`, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ reportType }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Request failed (${response.status}): ${body}`);
+  }
+
+  return (await response.json()) as SubmitPassageReportResponse;
 }

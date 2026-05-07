@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type WheelEvent } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import {
+  AlertTriangle,
   Bookmark,
   BookmarkCheck,
   CheckCircle2,
@@ -18,7 +19,9 @@ import {
   type PassageQuestion,
   type PassageSentence,
   type PassageVocabItem,
+  type PassageReportType,
   type QuestionPayload,
+  submitPassageReport,
 } from "@/lib/passages-api";
 import {
   Dialog,
@@ -54,6 +57,22 @@ type FeedRuntimeSession = {
 };
 
 let feedRuntimeSession: FeedRuntimeSession | null = null;
+
+const PASSAGE_REPORT_SESSION_KEY_PREFIX = "readtok_reported_passage:";
+const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
+  value: PassageReportType;
+  label: string;
+}> = [
+  { value: "wrong_answer_key", label: "Wrong answer key" },
+  { value: "question_unclear", label: "Question unclear" },
+  { value: "passage_text_issue", label: "Passage text issue" },
+  { value: "formatting_issue", label: "Formatting issue" },
+  { value: "other", label: "Other" },
+];
+
+function passageReportSessionKey(passageId: string) {
+  return `${PASSAGE_REPORT_SESSION_KEY_PREFIX}${passageId}`;
+}
 
 function extractInstructionLabel(payload: QuestionPayload): string | null {
   const instruction = payload.instruction_label;
@@ -475,6 +494,76 @@ function VocabMeaningDialog({
   );
 }
 
+function PassageReportDialog({
+  open,
+  reportType,
+  isSubmitting,
+  error,
+  onOpenChange,
+  onReportTypeChange,
+  onSubmit,
+}: {
+  open: boolean;
+  reportType: PassageReportType;
+  isSubmitting: boolean;
+  error: string | null;
+  onOpenChange: (open: boolean) => void;
+  onReportTypeChange: (nextType: PassageReportType) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-2xl border border-white/12 bg-[#090a0a] p-4 text-white">
+        <div className="space-y-3 pr-7">
+          <DialogTitle className="text-xl font-semibold leading-tight text-white">
+            Report Passage
+          </DialogTitle>
+          <DialogDescription className="text-sm text-white/75">
+            Help us improve quality by reporting the main issue.
+          </DialogDescription>
+
+          <label className="space-y-1.5 text-sm">
+            <span className="text-white/82">Issue type</span>
+            <select
+              value={reportType}
+              onChange={(event) =>
+                onReportTypeChange(event.target.value as PassageReportType)
+              }
+              disabled={isSubmitting}
+              className="h-11 w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 text-sm text-white outline-none transition-colors focus:border-primary/50"
+            >
+              {PASSAGE_REPORT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-[#101112]">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {error ? (
+            <p className="rounded-xl border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isSubmitting}
+            className={`h-11 w-full rounded-xl border text-sm font-semibold transition-colors ${
+              isSubmitting
+                ? "cursor-not-allowed border-white/12 bg-white/[0.03] text-white/45"
+                : "border-primary/45 bg-primary/14 text-primary hover:bg-primary/22"
+            }`}
+          >
+            {isSubmitting ? "Submitting..." : "Submit report"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function QuestionTypeBadge({ label }: { label: string }) {
   return (
     <span className="question-pill-text rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-primary">
@@ -645,10 +734,14 @@ function ReviewExplanationBlock({
 
 function FloatingActionButtons({
   saved,
+  reportDisabled,
   onSaveToggle,
+  onReportClick,
 }: {
   saved: boolean;
+  reportDisabled: boolean;
   onSaveToggle: () => void;
+  onReportClick: () => void;
 }) {
   return (
     <div className="fixed right-4 top-[78%] z-40 flex -translate-y-1/2 flex-col gap-3">
@@ -663,6 +756,19 @@ function FloatingActionButtons({
         ) : (
           <Bookmark className="h-6 w-6" />
         )}
+      </button>
+      <button
+        type="button"
+        className={`flex h-14 w-14 items-center justify-center rounded-full border text-white ${
+          reportDisabled
+            ? "cursor-not-allowed border-white/12 bg-black/40 text-white/35"
+            : "border-amber-300/35 bg-amber-500/10 hover:bg-amber-500/18"
+        }`}
+        onClick={onReportClick}
+        disabled={reportDisabled}
+        aria-label="Report passage issue"
+      >
+        <AlertTriangle className="h-6 w-6 text-amber-300/90" />
       </button>
     </div>
   );
@@ -840,6 +946,12 @@ export default function PassageDetailPage() {
   const [listOffset, setListOffset] = useState(0);
   const [isAppending, setIsAppending] = useState(false);
   const [isArrowTapCooldown, setIsArrowTapCooldown] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [selectedReportType, setSelectedReportType] =
+    useState<PassageReportType>("wrong_answer_key");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportedPassageIds, setReportedPassageIds] = useState<Record<string, true>>({});
   const feedContainerRef = useRef<HTMLDivElement | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const hasMountedInitialScrollRef = useRef(false);
@@ -848,6 +960,23 @@ export default function PassageDetailPage() {
   const desktopWheelLockUntilRef = useRef(0);
   const pendingFeedScrollLeftRef = useRef<number | null>(null);
   const arrowTapCooldownTimeoutRef = useRef<number | null>(null);
+
+  function hasReportedPassageInSession(passageId: string) {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.sessionStorage.getItem(passageReportSessionKey(passageId)) === "true";
+  }
+
+  function markPassageReportedInSession(passageId: string) {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(passageReportSessionKey(passageId), "true");
+    }
+    setReportedPassageIds((currentState) => ({
+      ...currentState,
+      [passageId]: true,
+    }));
+  }
 
   function uniqueIds(ids: string[]) {
     const seen = new Set<string>();
@@ -1277,6 +1406,33 @@ export default function PassageDetailPage() {
   const isSaved = activePassage ? isCardSaved(activePassage.id) : false;
   const hasPrevPassage = currentIndex > 0;
   const hasNextPassage = currentIndex < passages.length - 1;
+  const isReportDisabled = activePassage
+    ? Boolean(reportedPassageIds[activePassage.id])
+    : true;
+
+  useEffect(() => {
+    if (!activePassage) {
+      return;
+    }
+    if (!hasReportedPassageInSession(activePassage.id)) {
+      return;
+    }
+    setReportedPassageIds((currentState) => {
+      if (currentState[activePassage.id]) {
+        return currentState;
+      }
+      return {
+        ...currentState,
+        [activePassage.id]: true,
+      };
+    });
+  }, [activePassage]);
+
+  useEffect(() => {
+    setIsReportDialogOpen(false);
+    setReportError(null);
+    setIsSubmittingReport(false);
+  }, [activePassage?.id]);
 
   useEffect(() => {
     if (passages.length === 0) {
@@ -1521,6 +1677,32 @@ export default function PassageDetailPage() {
     setIsSpeaking(true);
   }
 
+  function openReportDialog() {
+    if (!activePassage || isReportDisabled) {
+      return;
+    }
+    setReportError(null);
+    setIsReportDialogOpen(true);
+  }
+
+  async function handleSubmitPassageReport() {
+    if (!activePassage || isReportDisabled || isSubmittingReport) {
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    setReportError(null);
+    try {
+      await submitPassageReport(activePassage.id, selectedReportType);
+      markPassageReportedInSession(activePassage.id);
+      setIsReportDialogOpen(false);
+    } catch {
+      setReportError("Could not submit report. Please try again.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }
+
   if (isLoading && passages.length === 0) {
     return (
       <div className="min-h-full w-full px-4 pb-24 pt-6">
@@ -1606,7 +1788,9 @@ export default function PassageDetailPage() {
 
         <FloatingActionButtons
           saved={isSaved}
+          reportDisabled={isReportDisabled}
           onSaveToggle={() => toggleSaveCard(activePassage.id)}
+          onReportClick={openReportDialog}
         />
 
         <div className="pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center pl-2">
@@ -1647,6 +1831,18 @@ export default function PassageDetailPage() {
             if (!open) {
               setSelectedVocab(null);
             }
+          }}
+        />
+
+        <PassageReportDialog
+          open={isReportDialogOpen}
+          reportType={selectedReportType}
+          isSubmitting={isSubmittingReport}
+          error={reportError}
+          onOpenChange={setIsReportDialogOpen}
+          onReportTypeChange={setSelectedReportType}
+          onSubmit={() => {
+            void handleSubmitPassageReport();
           }}
         />
       </div>
@@ -1783,7 +1979,9 @@ export default function PassageDetailPage() {
       {activePassage && (
         <FloatingActionButtons
           saved={isCardSaved(activePassage.id)}
+          reportDisabled={isReportDisabled}
           onSaveToggle={() => toggleSaveCard(activePassage.id)}
+          onReportClick={openReportDialog}
         />
       )}
 
@@ -1793,6 +1991,18 @@ export default function PassageDetailPage() {
           if (!open) {
             setSelectedVocab(null);
           }
+        }}
+      />
+
+      <PassageReportDialog
+        open={isReportDialogOpen}
+        reportType={selectedReportType}
+        isSubmitting={isSubmittingReport}
+        error={reportError}
+        onOpenChange={setIsReportDialogOpen}
+        onReportTypeChange={setSelectedReportType}
+        onSubmit={() => {
+          void handleSubmitPassageReport();
         }}
       />
     </div>

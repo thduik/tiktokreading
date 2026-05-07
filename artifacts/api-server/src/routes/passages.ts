@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, sql } from "drizzle-orm";
 import {
   QUESTION_TYPE_VALUES,
   QUESTION_SET_TYPE_VALUES,
   answerKeys,
   db,
+  passageReportCounts,
   passages,
   questions,
 } from "@workspace/db";
@@ -22,6 +23,14 @@ const router: IRouter = Router();
 
 const questionSetTypeSet: Set<string> = new Set(QUESTION_SET_TYPE_VALUES);
 const questionTypeSet: Set<string> = new Set(QUESTION_TYPE_VALUES);
+const REPORT_TYPE_VALUES = [
+  "wrong_answer_key",
+  "question_unclear",
+  "passage_text_issue",
+  "formatting_issue",
+  "other",
+] as const;
+const reportTypeSet = new Set<string>(REPORT_TYPE_VALUES);
 
 function firstValue(value: unknown): string | undefined {
   if (Array.isArray(value)) {
@@ -566,6 +575,68 @@ router.get("/passages/:id", async (req, res) => {
     key: detailCacheKey,
     value: detailResponse,
     ttlSeconds: passageCacheTtls.detailSeconds,
+  });
+});
+
+router.post("/passages/:id/report", async (req, res) => {
+  const passageId = req.params.id?.trim();
+  if (!passageId) {
+    res.status(400).json({ error: "Invalid passage id" });
+    return;
+  }
+
+  const reportTypeRaw =
+    typeof req.body?.reportType === "string" ? req.body.reportType.trim() : "";
+
+  if (!reportTypeSet.has(reportTypeRaw)) {
+    res.status(400).json({
+      error: `reportType must be one of: ${REPORT_TYPE_VALUES.join(", ")}`,
+    });
+    return;
+  }
+
+  try {
+    await db
+      .insert(passageReportCounts)
+      .values({
+        passageId,
+        reportType: reportTypeRaw,
+        count: 1,
+      })
+      .onConflictDoUpdate({
+        target: [passageReportCounts.passageId, passageReportCounts.reportType],
+        set: {
+          count: sql`${passageReportCounts.count} + 1`,
+          updatedAt: sql`now()`,
+        },
+      });
+  } catch (error) {
+    const maybePgError = error as { code?: string } | undefined;
+    if (maybePgError?.code === "23503") {
+      res.status(404).json({ error: "Passage not found" });
+      return;
+    }
+    res.status(500).json({ error: "Failed to submit report" });
+    return;
+  }
+
+  const counts = await db
+    .select({
+      reportType: passageReportCounts.reportType,
+      count: passageReportCounts.count,
+    })
+    .from(passageReportCounts)
+    .where(eq(passageReportCounts.passageId, passageId))
+    .orderBy(asc(passageReportCounts.reportType));
+
+  res.status(201).json({
+    ok: true,
+    passage_id: passageId,
+    report_type: reportTypeRaw,
+    aggregates: counts.map((item) => ({
+      report_type: item.reportType,
+      count: item.count,
+    })),
   });
 });
 

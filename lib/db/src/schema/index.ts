@@ -155,6 +155,28 @@ export const passages = pgTable(
   ],
 );
 
+export const passageReportCounts = pgTable(
+  "passage_report_counts",
+  {
+    passageId: text("passage_id")
+      .notNull()
+      .references(() => passages.id, { onDelete: "cascade" }),
+    reportType: text("report_type").notNull(),
+    count: integer("count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("passage_report_counts_passage_type_uidx").on(
+      table.passageId,
+      table.reportType,
+    ),
+    index("passage_report_counts_passage_idx").on(table.passageId),
+    check("passage_report_counts_nonnegative_chk", sql`${table.count} >= 0`),
+  ],
+);
+
 export const questions = pgTable(
   "questions",
   {
