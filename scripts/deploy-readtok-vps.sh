@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Deploy ReadTok frontend by building on VPS and publishing to Nginx web root.
+# Expected remote layout:
+#   repo:     /opt/readtok
+#   web root: /var/www/readtok
+#
+# Usage:
+#   scripts/deploy-readtok-vps.sh
+#   VPS_HOST=debian@34.143.183.246 scripts/deploy-readtok-vps.sh
+
+VPS_HOST="${VPS_HOST:-debian@34.143.183.246}"
+REPO_DIR="${REPO_DIR:-/opt/readtok}"
+WEBROOT_DIR="${WEBROOT_DIR:-/var/www/readtok}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_rsa}"
+
+echo "[deploy] target host: ${VPS_HOST}"
+echo "[deploy] repo dir:    ${REPO_DIR}"
+echo "[deploy] webroot dir: ${WEBROOT_DIR}"
+echo "[deploy] ssh key:     ${SSH_KEY_PATH}"
+
+ssh -F /dev/null -o IdentityAgent=none -o IdentitiesOnly=yes -o PreferredAuthentications=publickey -i "${SSH_KEY_PATH}" "${VPS_HOST}" "bash -lc '
+  set -euo pipefail
+  cd \"${REPO_DIR}\"
+  if [ -f .env.production ]; then
+    set -a
+    . ./.env.production
+    set +a
+  fi
+  git pull --ff-only
+  corepack pnpm install
+  if [ -z \"\${VITE_CLERK_PUBLISHABLE_KEY:-}\" ] && [ -z \"\${CLERK_PUBLISHABLE_KEY:-}\" ]; then
+    echo \"[deploy] missing Clerk publishable key; refusing to build frontend in local mode\"
+    exit 1
+  fi
+
+  CLERK_PUBLISHABLE_KEY_RUNTIME=\"\${VITE_CLERK_PUBLISHABLE_KEY:-\${CLERK_PUBLISHABLE_KEY:-}}\"
+  CLERK_PROXY_URL_RUNTIME=\"\${VITE_CLERK_PROXY_URL:-\${CLERK_PROXY_URL:-}}\"
+
+  corepack pnpm --filter @workspace/readtok run build
+
+  cat > \"${REPO_DIR}/artifacts/readtok/dist/public/runtime-config.js\" <<EOF
+window.__READTOK_CONFIG = Object.assign({}, window.__READTOK_CONFIG, {
+  clerkPublishableKey: \"\${CLERK_PUBLISHABLE_KEY_RUNTIME}\",
+  clerkProxyUrl: \"\${CLERK_PROXY_URL_RUNTIME}\"
+});
+EOF
+
+  rsync -avc --delete \"${REPO_DIR}/artifacts/readtok/dist/public/\" \"${WEBROOT_DIR}/\"
+  echo \"[deploy] published bundle:\"
+  head -n 20 \"${WEBROOT_DIR}/index.html\"
+'"
+
+echo "[deploy] live check:"
+curl -fsSL "https://ieltstok.online" | sed -n '1,20p'
+
+echo "[deploy] done"

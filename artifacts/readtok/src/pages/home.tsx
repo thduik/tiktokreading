@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ChevronRight } from "lucide-react";
-import { fetchPassageList, type PassageListItem, type QuestionSetTypeIndex } from "@/lib/passages-api";
+import {
+  fetchPassageList,
+  type PassageListItem,
+  type QuestionTypeIndex,
+} from "@/lib/passages-api";
 
 const bandFilterOptions = [
   { key: "all", label: "All", band: null as number | null },
@@ -12,9 +16,9 @@ const bandFilterOptions = [
 ];
 
 const typeFilterOptions: Array<{
-  key: "all" | QuestionSetTypeIndex;
+  key: "all" | QuestionTypeIndex;
   label: string;
-  type: QuestionSetTypeIndex | null;
+  type: QuestionTypeIndex | null;
 }> = [
   { key: "all", label: "All", type: null },
   { key: "tfng", label: "TFNG", type: "tfng" },
@@ -25,37 +29,170 @@ const typeFilterOptions: Array<{
     type: "sentence_completion",
   },
   { key: "short_answer", label: "Short Answer", type: "short_answer" },
-  { key: "mixed", label: "Mixed", type: "mixed" },
 ];
 
 type FilterMode = "band" | "question_type";
+const PAGE_SIZE = 30;
+const RANDOM_POOL_FETCH_LIMIT = 500;
+const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v1:";
+
+function shuffleItems<T>(items: T[]) {
+  const next = [...items];
+
+  function randomIndex(maxExclusive: number) {
+    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+      const buffer = new Uint32Array(1);
+      window.crypto.getRandomValues(buffer);
+      return buffer[0] % maxExclusive;
+    }
+    return Math.floor(Math.random() * maxExclusive);
+  }
+
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    const temp = next[index];
+    next[index] = next[swapIndex];
+    next[swapIndex] = temp;
+  }
+  return next;
+}
+
+function readInitialFilters() {
+  if (typeof window === "undefined") {
+    return {
+      filterMode: "band" as FilterMode,
+      activeBand: null as number | null,
+      activeType: null as QuestionTypeIndex | null,
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const rawMode = params.get("filterMode");
+  const mode: FilterMode = rawMode === "question_type" ? "question_type" : "band";
+
+  const rawBand = params.get("band");
+  const parsedBand =
+    rawBand !== null && rawBand.trim().length > 0 && Number.isFinite(Number(rawBand))
+      ? Number(rawBand)
+      : null;
+
+  const rawType = params.get("questionType");
+  const allowedTypes: QuestionTypeIndex[] = [
+    "tfng",
+    "mcq",
+    "sentence_completion",
+    "short_answer",
+  ];
+  const parsedType =
+    rawType && allowedTypes.includes(rawType as QuestionTypeIndex)
+      ? (rawType as QuestionTypeIndex)
+      : null;
+
+  return {
+    filterMode: mode,
+    activeBand: parsedBand,
+    activeType: parsedType,
+  };
+}
+
+function readSessionItems(cacheKey: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.sessionStorage.getItem(`${SESSION_LIST_KEY_PREFIX}${cacheKey}`);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as PassageListItem[];
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionItems(cacheKey: string, items: PassageListItem[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(
+    `${SESSION_LIST_KEY_PREFIX}${cacheKey}`,
+    JSON.stringify(items),
+  );
+}
 
 export default function Home() {
-  const [filterMode, setFilterMode] = useState<FilterMode>("band");
-  const [activeBand, setActiveBand] = useState<number | null>(null);
-  const [activeType, setActiveType] = useState<QuestionSetTypeIndex | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>(() => readInitialFilters().filterMode);
+  const [activeBand, setActiveBand] = useState<number | null>(
+    () => readInitialFilters().activeBand,
+  );
+  const [activeType, setActiveType] = useState<QuestionTypeIndex | null>(
+    () => readInitialFilters().activeType,
+  );
   const [items, setItems] = useState<PassageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [nextOffset, setNextOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const queryKeyRef = useRef<string>("");
+
+  const queryKey = useMemo(
+    () => `${filterMode}|${activeBand ?? "all"}|${activeType ?? "all"}`,
+    [filterMode, activeBand, activeType],
+  );
+
+  useEffect(() => {
+    queryKeyRef.current = queryKey;
+  }, [queryKey]);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
+    setIsLoadingMore(false);
     setError(null);
+    setItems([]);
+    setHasMore(true);
+    setNextOffset(0);
 
     async function loadPassages() {
       try {
+        const sessionItems = readSessionItems(queryKey);
+        if (sessionItems && sessionItems.length > 0) {
+          if (!cancelled && queryKeyRef.current === queryKey) {
+            setItems(sessionItems);
+            setNextOffset(sessionItems.length);
+            setHasMore(false);
+          }
+          return;
+        }
+
         const response = await fetchPassageList({
           status: "active",
           band_index:
             filterMode === "band" ? (activeBand ?? undefined) : undefined,
-          question_set_type_index:
+          question_type_index:
             filterMode === "question_type" ? (activeType ?? undefined) : undefined,
-          limit: 200,
+          limit: RANDOM_POOL_FETCH_LIMIT,
+          offset: 0,
         });
+        const randomizedItems = shuffleItems(response.items).slice(0, PAGE_SIZE);
 
         if (!cancelled) {
-          setItems(response.items);
+          if (queryKeyRef.current !== queryKey) {
+            return;
+          }
+          setItems(randomizedItems);
+          setNextOffset(randomizedItems.length);
+          setHasMore(false);
+          writeSessionItems(queryKey, randomizedItems);
         }
       } catch (fetchError) {
         if (!cancelled) {
@@ -78,19 +215,102 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [activeBand, activeType, filterMode]);
+  }, [activeBand, activeType, filterMode, queryKey]);
+
+  useEffect(() => {
+    if (isLoading || isLoadingMore || !hasMore || !loadMoreRef.current) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+        if (!firstEntry?.isIntersecting) {
+          return;
+        }
+
+        setIsLoadingMore(true);
+        setError(null);
+        const requestKey = queryKeyRef.current;
+
+        fetchPassageList({
+          status: "active",
+          band_index:
+            filterMode === "band" ? (activeBand ?? undefined) : undefined,
+          question_type_index:
+            filterMode === "question_type" ? (activeType ?? undefined) : undefined,
+          limit: PAGE_SIZE,
+          offset: nextOffset,
+        })
+          .then((response) => {
+            if (queryKeyRef.current !== requestKey) {
+              return;
+            }
+            setItems((currentItems) => {
+              const seen = new Set(currentItems.map((item) => item.id));
+              const merged = [...currentItems];
+              for (const item of response.items) {
+                if (!seen.has(item.id)) {
+                  merged.push(item);
+                  seen.add(item.id);
+                }
+              }
+              return merged;
+            });
+            setNextOffset((currentOffset) => currentOffset + response.items.length);
+            setHasMore(response.items.length === PAGE_SIZE);
+          })
+          .catch((fetchError) => {
+            const message =
+              fetchError instanceof Error
+                ? fetchError.message
+                : "Failed to load passages.";
+            setError(message);
+          })
+          .finally(() => {
+            setIsLoadingMore(false);
+          });
+      },
+      {
+        root: null,
+        rootMargin: "200px 0px",
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    nextOffset,
+    filterMode,
+    activeBand,
+    activeType,
+    queryKey,
+  ]);
 
   const selectedBandValue = activeBand === null ? "all" : String(activeBand);
   const selectedTypeValue = activeType ?? "all";
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const ids = items.map((item) => item.id);
+    window.sessionStorage.setItem("readtok_feed_ids", JSON.stringify(ids));
+  }, [items]);
+
   return (
-    <div className="min-h-full w-full px-4 pb-24 pt-6" data-testid="page-feed">
+    <div className="min-h-full w-full px-4 pb-24 pt-6" data-testid="page-list">
       <header className="mb-5">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/90">
           IELTS Reading
         </p>
         <h1 className="mt-2 text-3xl font-bold text-white tracking-tight">
-          Practice Feed
+          Passage List
         </h1>
       </header>
 
@@ -98,25 +318,19 @@ export default function Home() {
         className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
         aria-label="filters"
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">
-              Filter Group
-            </span>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
             <select
               value={filterMode}
               onChange={(event) => setFilterMode(event.target.value as FilterMode)}
-              className="h-11 rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
+              className="h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
             >
               <option value="band">Band score</option>
               <option value="question_type">Question type</option>
             </select>
-          </label>
+          </div>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">
-              {filterMode === "band" ? "Band Value" : "Question Type"}
-            </span>
+          <div className="min-w-0 flex-1">
             {filterMode === "band" ? (
               <select
                 value={selectedBandValue}
@@ -124,7 +338,7 @@ export default function Home() {
                   const value = event.target.value;
                   setActiveBand(value === "all" ? null : Number(value));
                 }}
-                className="h-11 rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
+                className="h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
               >
                 {bandFilterOptions.map((option) => (
                   <option key={option.key} value={option.key}>
@@ -137,9 +351,9 @@ export default function Home() {
                 value={selectedTypeValue}
                 onChange={(event) => {
                   const value = event.target.value;
-                  setActiveType(value === "all" ? null : (value as QuestionSetTypeIndex));
+                  setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
                 }}
-                className="h-11 rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
+                className="h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
               >
                 {typeFilterOptions.map((option) => (
                   <option key={option.key} value={option.key}>
@@ -148,7 +362,7 @@ export default function Home() {
                 ))}
               </select>
             )}
-          </label>
+          </div>
         </div>
       </section>
 
@@ -180,7 +394,7 @@ export default function Home() {
           {items.map((item) => (
             <Link
               key={item.id}
-              href={`/passages/${item.id}`}
+              href={`/?start=${encodeURIComponent(item.id)}`}
               className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 transition-colors hover:border-primary/40"
               data-testid={`card-passage-${item.id}`}
             >
@@ -207,6 +421,12 @@ export default function Home() {
               </div>
             </Link>
           ))}
+          <div ref={loadMoreRef} className="h-2 w-full" />
+          {isLoadingMore && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-white/65">
+              Loading more passages...
+            </div>
+          )}
         </div>
       )}
     </div>

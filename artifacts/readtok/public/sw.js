@@ -1,27 +1,24 @@
-const CACHE_NAME = 'readtok-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/favicon.svg',
-];
-
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
-  );
+self.addEventListener("install", () => {
+  self.skipWaiting();
 });
 
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((cacheKey) => caches.delete(cacheKey)));
+      await self.registration.unregister();
+
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      for (const client of clients) {
+        if ("navigate" in client) {
+          client.navigate(client.url);
         }
-        return fetch(event.request);
-      })
+      }
+    })(),
   );
 });

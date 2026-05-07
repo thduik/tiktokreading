@@ -184,16 +184,22 @@ export const readingMaterialDatabase: ReadingCard[] = bundle.cards.map((card) =>
 
 export const readingCards = readingMaterialDatabase;
 
-export function getRandomReadingCards(count: number): ReadingCard[] {
-  if (readingMaterialDatabase.length === 0) {
-    return [];
-  }
-
+export function getShuffledReadingCards(): ReadingCard[] {
   const shuffled = [...readingMaterialDatabase];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+
+  return shuffled;
+}
+
+export function getRandomReadingCards(count: number): ReadingCard[] {
+  if (readingMaterialDatabase.length === 0) {
+    return [];
+  }
+
+  const shuffled = getShuffledReadingCards();
 
   if (count <= shuffled.length) {
     return shuffled.slice(0, count);

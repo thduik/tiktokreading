@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { ReadingCard } from "@/lib/data";
-import { Heart, Volume2, SquareTerminal, Share2, CheckCircle2, XCircle } from "lucide-react";
+import { Heart, Volume2, SquareTerminal, CheckCircle2, XCircle } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -35,6 +35,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
   
   const isSaved = savedCardIds.includes(card.id);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const confettiTimeoutRef = useRef<number | null>(null);
 
   const renderPassageWithEvidence = () => {
     const activeEvidence = card.questions
@@ -112,6 +113,8 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       }
       return;
     }
+
+    setProgress(0);
     
     const duration = 30000; // 30 seconds to fill
     const interval = 100;
@@ -122,9 +125,25 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
     }, interval);
     
     return () => clearInterval(timer);
-  }, [isActive, isSpeaking]);
+  }, [card.id, isActive, isSpeaking]);
+
+  useEffect(() => {
+    return () => {
+      if (confettiTimeoutRef.current !== null) {
+        window.clearTimeout(confettiTimeoutRef.current);
+      }
+
+      if (synthRef.current) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const toggleSpeech = useCallback(() => {
+    if (!("speechSynthesis" in window)) {
+      return;
+    }
+
     if (isSpeaking) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
@@ -132,6 +151,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       window.speechSynthesis.cancel(); // clear queue
       const utterance = new SpeechSynthesisUtterance(card.passage);
       utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
       synthRef.current = utterance;
       window.speechSynthesis.speak(utterance);
       setIsSpeaking(true);
@@ -155,7 +175,13 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       
       if (correct === card.questions.length) {
         setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
+        if (confettiTimeoutRef.current !== null) {
+          window.clearTimeout(confettiTimeoutRef.current);
+        }
+        confettiTimeoutRef.current = window.setTimeout(() => {
+          setShowConfetti(false);
+          confettiTimeoutRef.current = null;
+        }, 3000);
       }
     }
   };
@@ -164,20 +190,6 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
     const answer = inputAnswers[questionId]?.trim();
     if (!answer) return;
     handleAnswer(questionId, answer);
-  };
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `ReadTok - ${card.title}`,
-          text: `Check out this IELTS practice passage: ${card.title}`,
-          url: window.location.href,
-        });
-      }
-    } catch (err) {
-      console.log("Share failed", err);
-    }
   };
 
   const correctAnswersCount = card.questions.reduce((acc, q) => {
@@ -393,7 +405,7 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
       </div>
 
       {/* Floating Action Buttons on Right Side */}
-      <div className="absolute right-4 bottom-24 flex flex-col gap-4 z-40">
+      <div className="absolute right-4 bottom-16 flex flex-col gap-4 z-40">
         <button 
           onClick={() => toggleSaveCard(card.id)}
           className="flex flex-col items-center justify-center group"
@@ -410,16 +422,6 @@ export default function ReadingCardComponent({ card, isActive }: ReadingCardProp
           </span>
         </button>
 
-        <button 
-          onClick={handleShare}
-          className="flex flex-col items-center justify-center group"
-          data-testid={`btn-share-${card.id}`}
-        >
-          <div className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/20 transition-all active:scale-90">
-            <Share2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-[10px] font-medium mt-1 text-white shadow-black drop-shadow-md">Share</span>
-        </button>
       </div>
 
     </div>

@@ -48,5 +48,25 @@ The shared API server includes Clerk proxy middleware for production auth suppor
 
 - `pnpm --filter @workspace/readtok run dev` — run ReadTok locally
 - `pnpm --filter @workspace/api-server run dev` — run API/auth proxy server locally
+- `pnpm --filter @workspace/db run migrate` — apply SQL migrations to PostgreSQL
+- `pnpm --filter @workspace/db run import:sample` — import v2 sample passages JSON into PostgreSQL
+- `pnpm --filter @workspace/db run backfill:vocab` — generate/normalize `vocab[]` entries on v2 JSON source files
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
+- `pnpm run deploy:readtok:vps` — build ReadTok on VPS and publish frontend to `/var/www/readtok`
+
+## PostgreSQL-Backed Reading Mode (v2)
+
+The app now supports a PostgreSQL-backed IELTS Reading model for:
+
+- passage list filtering (`band_index`, `question_set_type_index`, `topic_index`, `status`)
+- passage detail retrieval with ordered mixed/single question sets
+- answer review mode using `answer_key` explanations
+
+Canonical sample source:
+
+- `artifacts/readtok/src/lib/reading-material-db.v2.json`
+
+Core docs:
+
+- `docs/ielts-reading-postgres.md`

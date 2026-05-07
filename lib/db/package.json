@@ -5,9 +5,19 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./ranking": "./src/ranking/index.ts"
   },
   "scripts": {
+    "migrate": "tsx ./src/scripts/migrate.ts",
+    "import:sample": "tsx ./src/scripts/import-passages.ts",
+    "backfill:vocab": "tsx ./src/scripts/backfill-passage-vocab.ts",
+    "parse:mixed-batch": "tsx ./src/scripts/parse-mixed-batch.ts",
+    "redo:vocab-vi": "tsx ./src/scripts/redo-vocab-vietnamese.ts",
+    "enrich:vocab-learning": "tsx ./src/scripts/enrich-vocab-learning-fields.ts",
+    "scramble:mcq": "tsx ./src/scripts/scramble-mcq-answers.ts",
+    "audit:answer-keys": "tsx ./src/scripts/audit-answer-key-anomalies.ts",
+    "test:ranking": "tsx --test ./src/ranking/ranking.test.ts",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
   },
@@ -20,6 +30,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.18.0",
-    "drizzle-kit": "^0.31.9"
+    "drizzle-kit": "^0.31.9",
+    "tsx": "catalog:"
   }
 }

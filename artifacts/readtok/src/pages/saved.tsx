@@ -1,71 +1,150 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
+import { BookmarkX } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { BookmarkX, Play, SquareTerminal } from "lucide-react";
-import { useState, useCallback } from "react";
+import { fetchPassageList, type PassageListItem } from "@/lib/passages-api";
 
 export default function Saved() {
-  const { savedCards, toggleSaveCard } = useAppState();
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  const { savedCardIds, toggleSaveCard } = useAppState();
+  const [savedPassages, setSavedPassages] = useState<PassageListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleSpeech = useCallback((id: string, text: string) => {
-    if (playingId === id) {
-      window.speechSynthesis.cancel();
-      setPlayingId(null);
-    } else {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.onend = () => setPlayingId(null);
-      window.speechSynthesis.speak(utterance);
-      setPlayingId(id);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSavedPassages() {
+      if (savedCardIds.length === 0) {
+        setSavedPassages([]);
+        setError(null);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetchPassageList({
+          ids: savedCardIds,
+          status: "active",
+          limit: 200,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const sortOrder = new Map(savedCardIds.map((id, index) => [id, index]));
+        const sortedItems = [...response.items].sort(
+          (a, b) => (sortOrder.get(a.id) ?? 0) - (sortOrder.get(b.id) ?? 0),
+        );
+
+        setSavedPassages(sortedItems);
+      } catch (fetchError) {
+        if (!cancelled) {
+          const message =
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to load saved passages.";
+          setError(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     }
-  }, [playingId]);
+
+    loadSavedPassages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [savedCardIds]);
+
+  const emptyState = useMemo(
+    () => savedCardIds.length === 0 && !isLoading,
+    [isLoading, savedCardIds.length],
+  );
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 space-y-4 pt-10" data-testid="page-saved">
-      <h1 className="text-2xl font-bold mb-6 text-foreground tracking-tight" data-testid="text-saved-title">Saved Passages</h1>
-      
-      {savedCards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground text-center" data-testid="empty-saved">
-          <BookmarkX className="w-12 h-12 mb-4 opacity-50" />
-          <p className="text-lg font-medium">No saved passages yet</p>
-          <p className="text-sm">Tap the heart icon on any card to save it here for later review.</p>
+    <div className="min-h-full w-full overflow-y-auto px-4 pb-24 pt-6" data-testid="page-saved">
+      <header className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/90">
+          Your Library
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+          Saved Passages
+        </h1>
+      </header>
+
+      {error && (
+        <div className="mb-3 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          {error}
         </div>
-      ) : (
-        <div className="space-y-4 pb-20">
-          {savedCards.map(card => (
-            <Card key={card.id} className="border-border bg-card overflow-hidden" data-testid={`card-saved-${card.id}`}>
-              <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-start justify-between space-y-0">
-                <div>
-                  <Badge variant="outline" className="mb-2 bg-secondary text-secondary-foreground border-transparent">
-                    {card.difficulty}
-                  </Badge>
-                  <CardTitle className="text-lg leading-tight">{card.title}</CardTitle>
-                </div>
-                <button 
-                  onClick={() => toggleSaveCard(card.id)}
-                  className="text-destructive p-2 rounded-full bg-secondary/50 active:scale-95 transition-transform"
-                  data-testid={`button-unsave-${card.id}`}
+      )}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-28 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+            />
+          ))}
+        </div>
+      )}
+
+      {emptyState && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-white/70">
+          <BookmarkX className="mx-auto mb-3 h-10 w-10 opacity-70" />
+          <p className="text-base font-semibold text-white/90">
+            No saved passages yet
+          </p>
+          <p className="mt-1 text-sm">Tap save on any passage to keep it here.</p>
+        </div>
+      )}
+
+      {!isLoading && savedPassages.length > 0 && (
+        <div className="space-y-3">
+          {savedPassages.map((passage) => (
+            <div
+              key={passage.id}
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <Link
+                  href={`/?start=${encodeURIComponent(passage.id)}`}
+                  className="block min-w-0 flex-1"
+                  data-testid={`saved-link-${passage.id}`}
                 >
-                  <BookmarkX className="w-5 h-5" />
+                  <h2 className="text-lg font-semibold leading-tight text-white">
+                    {passage.title}
+                  </h2>
+                  <p className="mt-1 text-sm text-white/60">{passage.topic_label}</p>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => toggleSaveCard(passage.id)}
+                  className="rounded-full border border-white/20 p-2 text-white/80 transition-colors hover:border-white/35 hover:text-white"
+                  aria-label="Remove from saved"
+                >
+                  <BookmarkX className="h-4 w-4" />
                 </button>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="relative">
-                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                    {card.passage}
-                  </p>
-                  <button 
-                    onClick={() => toggleSpeech(card.id, card.passage)}
-                    className="absolute bottom-0 right-0 bg-card/90 backdrop-blur-sm p-1 rounded-md text-primary flex items-center gap-1 text-xs font-semibold"
-                    data-testid={`button-tts-${card.id}`}
-                  >
-                    {playingId === card.id ? <SquareTerminal className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                    {playingId === card.id ? "Stop" : "Listen"}
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-semibold text-primary">
+                  Band {passage.band_label}
+                </span>
+                <span className="rounded-full border border-white/20 bg-white/[0.03] px-2.5 py-1 text-white/75">
+                  {passage.question_set_type_label}
+                </span>
+                <span className="rounded-full border border-white/20 bg-white/[0.03] px-2.5 py-1 text-white/70">
+                  {passage.question_count} Questions
+                </span>
+              </div>
+            </div>
           ))}
         </div>
       )}

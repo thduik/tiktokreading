@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import { SignIn, SignUp, ClerkProvider } from "@clerk/react";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useEffect, useRef, useState } from "react";
+import { SignIn, SignUp, ClerkProvider, useUser } from "@clerk/react";
+import { Switch, Route, Router as WouterRouter, useLocation, useRoute } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -11,36 +11,76 @@ import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
 import Onboarding from "@/components/onboarding";
 import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
+import { fetchPassageList } from "@/lib/passages-api";
+import { bootstrapMyProfile } from "@/lib/profile-api";
+import { authEnabled, clerkProxyUrl, clerkPublishableKey } from "@/lib/runtime-config";
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const pendingDisplayNameStorageKey = "readtok_pending_display_name";
 const authAppearance = {
+  theme: "simple",
   variables: {
-    colorPrimary: "#14d8c8",
-    colorBackground: "#111111",
+    colorPrimary: "#2dd4bf",
+    colorBackground: "#0b0f14",
     colorText: "#f8fafc",
-    colorTextSecondary: "#a1a1aa",
-    colorInputBackground: "#171717",
-    colorInputText: "#f8fafc",
+    colorTextSecondary: "#94a3b8",
+    colorInputBackground: "#f8fafc",
+    colorInputText: "#0f172a",
     borderRadius: "0.9rem",
+  },
+  options: {
+    socialButtonsVariant: "blockButton" as const,
+  },
+  layout: {
+    socialButtonsVariant: "blockButton" as const,
   },
   elements: {
     headerTitle: "hidden",
     headerSubtitle: "hidden",
-    cardBox: "shadow-none",
-    card: "bg-card border border-border shadow-2xl",
-    footer: "bg-card border-border",
+    cardBox: {
+      boxShadow: "none",
+    },
+    card: {
+      backgroundColor: "#0f131a",
+      border: "1px solid #1f2937",
+      boxShadow: "0 20px 50px rgba(0,0,0,0.45)",
+      color: "#f8fafc",
+    },
+    footer: {
+      backgroundColor: "#0f131a",
+      borderColor: "#1f2937",
+    },
     footerActionText: "text-muted-foreground",
     footerActionLink: "text-primary hover:text-primary/90",
-    formFieldLabel: "text-foreground",
-    formFieldInput:
-      "bg-white text-zinc-950 border-white/20 placeholder:text-zinc-500",
+    formFieldLabel: {
+      color: "#e2e8f0",
+    },
+    formFieldInput: {
+      backgroundColor: "#f8fafc",
+      color: "#0f172a",
+      borderColor: "#cbd5e1",
+    },
     dividerLine: "bg-border",
     dividerText: "text-muted-foreground",
-    socialButtonsBlockButton:
-      "bg-white/5 border-border text-foreground hover:bg-white/10",
-    socialButtonsBlockButtonText: "text-foreground",
+    socialButtonsBlockButton: {
+      backgroundColor: "#f8fafc",
+      color: "#0f172a",
+      border: "1px solid #cbd5e1",
+      boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+    },
+    socialButtonsIconButton: {
+      backgroundColor: "#f8fafc",
+      color: "#0f172a",
+      border: "1px solid #cbd5e1",
+      boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+    },
+    socialButtonsBlockButtonText: {
+      color: "#0f172a",
+      fontWeight: "600",
+    },
+    socialButtonsProviderIcon: {
+      opacity: "1",
+    },
     formButtonPrimary:
       "bg-primary text-primary-foreground hover:bg-primary/90",
   },
@@ -52,8 +92,30 @@ function stripBase(path: string): string {
     : path;
 }
 
+function persistPendingDisplayName(value: string) {
+  const normalized = value.trim();
+  if (normalized.length > 0) {
+    window.sessionStorage.setItem(pendingDisplayNameStorageKey, normalized);
+    return;
+  }
+  window.sessionStorage.removeItem(pendingDisplayNameStorageKey);
+}
+
+function readPendingDisplayName() {
+  const value = window.sessionStorage.getItem(pendingDisplayNameStorageKey);
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function clearPendingDisplayName() {
+  window.sessionStorage.removeItem(pendingDisplayNameStorageKey);
+}
+
 function SignInPage() {
-  if (!clerkPubKey) {
+  if (!authEnabled) {
     return (
       <div className="min-h-[100dvh] w-full bg-background px-4 py-10 flex items-start justify-center">
         <div className="w-full max-w-[400px] rounded-3xl border border-border bg-card p-6 text-center">
@@ -89,7 +151,9 @@ function SignInPage() {
 }
 
 function SignUpPage() {
-  if (!clerkPubKey) {
+  const [pendingDisplayName, setPendingDisplayName] = useState("");
+
+  if (!authEnabled) {
     return (
       <div className="min-h-[100dvh] w-full bg-background px-4 py-10 flex items-start justify-center">
         <div className="w-full max-w-[400px] rounded-3xl border border-border bg-card p-6 text-center">
@@ -112,6 +176,30 @@ function SignUpPage() {
             Start a personal IELTS practice profile in seconds.
           </p>
         </div>
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-foreground"
+            htmlFor="display-name-optional"
+          >
+            Display name (optional)
+          </label>
+          <input
+            id="display-name-optional"
+            type="text"
+            value={pendingDisplayName}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setPendingDisplayName(nextValue);
+              persistPendingDisplayName(nextValue);
+            }}
+            placeholder="What should we call you?"
+            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground"
+            data-testid="input-signup-display-name"
+          />
+          <p className="text-xs text-muted-foreground">
+            We will save this after your account is created.
+          </p>
+        </div>
         <SignUp
           routing="path"
           path={`${basePath}/sign-up`}
@@ -124,27 +212,128 @@ function SignUpPage() {
   );
 }
 
+function AuthProfileBootstrapper() {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const bootstrappedUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) {
+      return;
+    }
+
+    const currentUser = user;
+
+    if (bootstrappedUserIdRef.current === currentUser.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function bootstrap() {
+      try {
+        const pendingDisplayName = readPendingDisplayName();
+        await bootstrapMyProfile({
+          email: currentUser.primaryEmailAddress?.emailAddress,
+          displayName: pendingDisplayName,
+        });
+        if (pendingDisplayName) {
+          clearPendingDisplayName();
+        }
+        if (!cancelled) {
+          bootstrappedUserIdRef.current = currentUser.id;
+        }
+      } catch (error) {
+        console.error("Profile bootstrap failed", error);
+      }
+    }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, user]);
+
+  return null;
+}
+
 interface RouterProps {
   hasCompletedOnboarding: boolean;
   completeOnboarding: () => void;
 }
 
+function LegacyPassageRouteRedirect() {
+  const [, setLocation] = useLocation();
+  const [, params] = useRoute("/passages/:id");
+  const legacyPassageId = params?.id ?? "";
+
+  useEffect(() => {
+    if (!legacyPassageId) {
+      setLocation("/", { replace: true });
+      return;
+    }
+    const nextPath = `/?start=${encodeURIComponent(legacyPassageId)}`;
+    setLocation(nextPath, { replace: true });
+  }, [legacyPassageId, setLocation]);
+
+  return null;
+}
+
 function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const [isLaunchingFromOnboarding, setIsLaunchingFromOnboarding] = useState(false);
   const isFeed = location === "/";
+  const isList = location === "/list";
+  const isPassage = location.startsWith("/passages/");
+  const isFeedExperience = isFeed || isPassage;
   const isAuthPage = location.startsWith("/sign-in") || location.startsWith("/sign-up");
   const isOnboarding = isFeed && !hasCompletedOnboarding;
 
+  async function completeOnboardingAndOpenRandomPassage() {
+    if (isLaunchingFromOnboarding) {
+      return;
+    }
+
+    setIsLaunchingFromOnboarding(true);
+    let nextPath = "/";
+    try {
+      const response = await fetchPassageList({
+        status: "active",
+        limit: 500,
+        offset: 0,
+      });
+      if (response.items.length > 0) {
+        const randomIndex = Math.floor(Math.random() * response.items.length);
+        const randomPassage = response.items[randomIndex];
+        if (randomPassage) {
+          nextPath = `/?start=${encodeURIComponent(randomPassage.id)}`;
+        }
+      }
+    } catch {
+      nextPath = "/";
+    } finally {
+      completeOnboarding();
+      setLocation(nextPath);
+      setIsLaunchingFromOnboarding(false);
+    }
+  }
+
   if (isOnboarding) {
-    return <Onboarding onComplete={completeOnboarding} />;
+    return <Onboarding onComplete={completeOnboardingAndOpenRandomPassage} />;
   }
 
   return (
     <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
-      <main className={`min-h-0 flex-1 w-full overflow-y-auto ${isFeed || isAuthPage ? "" : "pb-[72px]"}`}>
+      {authEnabled && <AuthProfileBootstrapper />}
+      <main
+        className={`min-h-0 flex-1 w-full ${
+          isFeedExperience ? "overflow-hidden" : "overflow-y-auto"
+        } ${isFeedExperience || isList || isAuthPage ? "" : "pb-[60px]"}`}
+      >
         <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/passages/:id" component={PassageDetailPage} />
+          <Route path="/" component={PassageDetailPage} />
+          <Route path="/list" component={Home} />
+          <Route path="/passages/:id" component={LegacyPassageRouteRedirect} />
           <Route path="/saved" component={Saved} />
           <Route path="/profile" component={Profile} />
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -170,7 +359,7 @@ function ClerkProviderWithRoutes({
 
   return (
     <ClerkProvider
-      publishableKey={clerkPubKey}
+      publishableKey={clerkPublishableKey}
       proxyUrl={clerkProxyUrl || undefined}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
@@ -209,16 +398,21 @@ function AppContent() {
       return;
     }
 
-    const registerServiceWorker = () => {
-      navigator.serviceWorker
-        .register(`${import.meta.env.BASE_URL}sw.js`)
-        .catch((err) => {
-          console.error("ServiceWorker registration failed: ", err);
-        });
+    const unregisterServiceWorkers = async () => {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+        }
+      } catch (err) {
+        console.error("ServiceWorker cleanup failed: ", err);
+      }
     };
 
-    window.addEventListener("load", registerServiceWorker);
-    return () => window.removeEventListener("load", registerServiceWorker);
+    void unregisterServiceWorkers();
   }, []);
 
   if (!isLoaded) {
@@ -227,7 +421,7 @@ function AppContent() {
 
   return (
     <WouterRouter base={basePath}>
-      {clerkPubKey ? (
+      {authEnabled ? (
         <ClerkProviderWithRoutes
           hasCompletedOnboarding={hasCompletedOnboarding}
           completeOnboarding={completeOnboarding}

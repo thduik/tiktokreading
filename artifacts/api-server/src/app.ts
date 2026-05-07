@@ -10,6 +10,8 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+const clerkPublishableKey =
+  process.env.CLERK_PUBLISHABLE_KEY ?? process.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 app.use(
   pinoHttp({
@@ -34,7 +36,9 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(clerkMiddleware());
+if (clerkPublishableKey) {
+  app.use(clerkMiddleware());
+}
 
 app.use("/api", router);
 
