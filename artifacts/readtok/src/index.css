@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -64,80 +65,90 @@
 }
 
 :root {
-  --app-font-sans: 'Inter', sans-serif;
-  --app-font-serif: Georgia, serif;
+  --app-font-sans: 'Inter', 'Hanken Grotesk', sans-serif;
+  --app-font-serif: 'Source Serif 4', Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem; /* 8px */
 
-  --background: 0 0% 4%; /* very deep black/gray */
-  --foreground: 0 0% 98%;
+  --background: 0 0% 7.5%;
+  --foreground: 20 7% 89%;
 
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 0 0% 15%;
+  --card: 0 2% 11%;
+  --card-foreground: 20 7% 89%;
+  --card-border: 236 9% 30%;
 
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 0 0% 15%;
+  --popover: 0 0% 12.5%;
+  --popover-foreground: 20 7% 89%;
+  --popover-border: 236 9% 30%;
 
-  /* Electric Teal */
-  --primary: 175 100% 40%;
-  --primary-foreground: 0 0% 0%;
+  --primary: 230 100% 86%;
+  --primary-foreground: 228 100% 25%;
+  --primary-border: hsl(230 100% 86% / 0.55);
 
-  /* Subtle dark gray */
-  --secondary: 0 0% 12%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 173 73% 58%;
+  --secondary-foreground: 178 100% 8%;
+  --secondary-border: hsl(173 73% 58% / 0.45);
 
-  --muted: 0 0% 12%;
-  --muted-foreground: 0 0% 65%;
+  --muted: 0 0% 16.5%;
+  --muted-foreground: 240 18% 80%;
+  --muted-border: hsl(236 9% 30%);
 
-  --accent: 175 100% 40%;
-  --accent-foreground: 0 0% 0%;
+  --accent: 31 100% 73%;
+  --accent-foreground: 24 75% 11%;
+  --accent-border: hsl(31 100% 73% / 0.45);
 
-  --destructive: 350 100% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 4 100% 84%;
+  --destructive-foreground: 0 73% 13%;
+  --destructive-border: hsl(4 100% 84% / 0.45);
 
-  --success: 145 100% 45%;
-  --success-foreground: 0 0% 0%;
+  --success: 173 73% 58%;
+  --success-foreground: 178 100% 8%;
 
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 175 100% 40%;
+  --border: 236 9% 30%;
+  --input: 236 9% 30%;
+  --ring: 230 100% 86%;
+  --button-outline: hsl(236 9% 30%);
 }
 
 .dark {
-  --background: 0 0% 4%;
-  --foreground: 0 0% 98%;
+  --background: 0 0% 7.5%;
+  --foreground: 20 7% 89%;
 
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 0 0% 15%;
+  --card: 0 2% 11%;
+  --card-foreground: 20 7% 89%;
+  --card-border: 236 9% 30%;
 
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 0 0% 15%;
+  --popover: 0 0% 12.5%;
+  --popover-foreground: 20 7% 89%;
+  --popover-border: 236 9% 30%;
 
-  --primary: 175 100% 40%;
-  --primary-foreground: 0 0% 0%;
+  --primary: 230 100% 86%;
+  --primary-foreground: 228 100% 25%;
+  --primary-border: hsl(230 100% 86% / 0.55);
 
-  --secondary: 0 0% 12%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 173 73% 58%;
+  --secondary-foreground: 178 100% 8%;
+  --secondary-border: hsl(173 73% 58% / 0.45);
 
-  --muted: 0 0% 12%;
-  --muted-foreground: 0 0% 65%;
+  --muted: 0 0% 16.5%;
+  --muted-foreground: 240 18% 80%;
+  --muted-border: hsl(236 9% 30%);
 
-  --accent: 175 100% 40%;
-  --accent-foreground: 0 0% 0%;
+  --accent: 31 100% 73%;
+  --accent-foreground: 24 75% 11%;
+  --accent-border: hsl(31 100% 73% / 0.45);
 
-  --destructive: 350 100% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 4 100% 84%;
+  --destructive-foreground: 0 73% 13%;
+  --destructive-border: hsl(4 100% 84% / 0.45);
 
-  --success: 145 100% 45%;
-  --success-foreground: 0 0% 0%;
+  --success: 173 73% 58%;
+  --success-foreground: 178 100% 8%;
 
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 175 100% 40%;
+  --border: 236 9% 30%;
+  --input: 236 9% 30%;
+  --ring: 230 100% 86%;
+  --button-outline: hsl(236 9% 30%);
 }
 
 @layer base {
@@ -153,6 +164,29 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+}
+
+@keyframes answer-reaction-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.04);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0.92;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.answer-reaction-pop {
+  animation: answer-reaction-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Snap scrolling container */
@@ -177,7 +211,7 @@
 .cl-card,
 .cl-footer,
 .cl-cardBox {
-  background: #0f131a !important;
+  background: #1c1b1b !important;
   color: hsl(var(--foreground)) !important;
 }
 
@@ -196,9 +230,9 @@
 }
 
 .cl-formFieldInput {
-  background: #f8fafc !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  background: #201f1f !important;
+  color: #e5e2e1 !important;
+  border-color: #454653 !important;
 }
 
 /* Force clear contrast for Clerk social login/signup buttons */
@@ -206,10 +240,10 @@
 .cl-socialButtonsIconButton,
 .clerk-social-button,
 .clerk-social-icon-button {
-  background: #f8fafc !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #0f172a !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+  background: #e5e2e1 !important;
+  border: 1px solid #8f8f9f !important;
+  color: #131313 !important;
+  box-shadow: none !important;
 }
 
 .cl-socialButtonsBlockButton:hover,
@@ -217,11 +251,11 @@
 .clerk-social-button:hover,
 .clerk-social-icon-button:hover {
   background: #ffffff !important;
-  border-color: #94a3b8 !important;
+  border-color: #bac3ff !important;
 }
 
 .cl-socialButtonsBlockButtonText {
-  color: #0f172a !important;
+  color: #131313 !important;
   font-weight: 600 !important;
 }
 

@@ -15,7 +15,7 @@ export default function BottomNav() {
   return (
     <nav 
       className={`fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around h-[60px] pb-safe px-1.5
-        bg-black border-t border-white/10 text-white/70`}
+        border-t border-border bg-card/95 text-muted-foreground backdrop-blur-xl`}
       data-testid="bottom-nav"
     >
       {navItems.map((item) => {
@@ -27,17 +27,17 @@ export default function BottomNav() {
           <Link 
             key={item.href} 
             href={item.href}
-            className={`flex flex-col items-center justify-center w-full h-full space-y-0.5 transition-colors active:scale-95
-              ${isActive ? "text-primary" : "hover:text-white"}`}
+            className={`flex h-full w-full flex-col items-center justify-center space-y-0.5 transition-colors active:scale-95
+              ${isActive ? "text-primary" : "hover:text-foreground"}`}
             data-testid={`nav-link-${item.label.toLowerCase()}`}
           >
-            <div className={`p-1 rounded-full transition-all ${isActive ? "bg-primary/10" : ""}`}>
+            <div className={`rounded-lg p-1.5 transition-all ${isActive ? "bg-primary text-primary-foreground" : ""}`}>
               <Icon 
-                className={`w-5 h-5 transition-all ${isActive ? "scale-105" : "scale-100"}`} 
+                className={`h-5 w-5 transition-all ${isActive ? "scale-105" : "scale-100"}`} 
                 strokeWidth={isActive ? 2.5 : 2} 
               />
             </div>
-            <span className={`text-[9px] font-medium ${isActive ? "opacity-100" : "opacity-70"}`}>
+            <span className={`text-[9px] font-semibold ${isActive ? "opacity-100" : "opacity-80"}`}>
               {item.label}
             </span>
           </Link>

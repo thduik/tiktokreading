@@ -73,13 +73,13 @@ export default function Saved() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/90">
           Your Library
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
           Saved Passages
         </h1>
       </header>
 
       {error && (
-        <div className="mb-3 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+        <div className="mb-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -89,16 +89,16 @@ export default function Saved() {
           {Array.from({ length: 3 }).map((_, index) => (
             <div
               key={index}
-              className="h-28 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+              className="h-28 animate-pulse rounded-lg border border-border bg-card"
             />
           ))}
         </div>
       )}
 
       {emptyState && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-white/70">
+        <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">
           <BookmarkX className="mx-auto mb-3 h-10 w-10 opacity-70" />
-          <p className="text-base font-semibold text-white/90">
+          <p className="text-base font-semibold text-foreground">
             No saved passages yet
           </p>
           <p className="mt-1 text-sm">Tap save on any passage to keep it here.</p>
@@ -110,7 +110,7 @@ export default function Saved() {
           {savedPassages.map((passage) => (
             <div
               key={passage.id}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4"
+              className="rounded-lg border border-border bg-card px-4 py-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <Link
@@ -118,15 +118,15 @@ export default function Saved() {
                   className="block min-w-0 flex-1"
                   data-testid={`saved-link-${passage.id}`}
                 >
-                  <h2 className="text-lg font-semibold leading-tight text-white">
+                  <h2 className="text-lg font-semibold leading-tight text-foreground">
                     {passage.title}
                   </h2>
-                  <p className="mt-1 text-sm text-white/60">{passage.topic_label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{passage.topic_label}</p>
                 </Link>
                 <button
                   type="button"
                   onClick={() => toggleSaveCard(passage.id)}
-                  className="rounded-full border border-white/20 p-2 text-white/80 transition-colors hover:border-white/35 hover:text-white"
+                  className="rounded-lg border border-border bg-muted p-2 text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
                   aria-label="Remove from saved"
                 >
                   <BookmarkX className="h-4 w-4" />
@@ -134,13 +134,13 @@ export default function Saved() {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-semibold text-primary">
+                <span className="rounded-md border border-primary/50 bg-primary/15 px-2.5 py-1 font-semibold text-primary">
                   Band {passage.band_label}
                 </span>
-                <span className="rounded-full border border-white/20 bg-white/[0.03] px-2.5 py-1 text-white/75">
+                <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
                   {passage.question_set_type_label}
                 </span>
-                <span className="rounded-full border border-white/20 bg-white/[0.03] px-2.5 py-1 text-white/70">
+                <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
                   {passage.question_count} Questions
                 </span>
               </div>

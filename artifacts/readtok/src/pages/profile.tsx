@@ -12,9 +12,17 @@ import {
   UserRound,
   Trophy,
 } from "lucide-react";
+import { RankPlate } from "@/components/rank-plate";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Switch as Toggle } from "@/components/ui/switch";
+import {
+  DAILY_QUESTION_GOAL,
+  formatLocalDayKey,
+  getDailyGoalProgress,
+} from "@/lib/daily-goal";
+import { ACHIEVEMENTS } from "@/lib/achievements";
 import {
   bootstrapMyProfile,
   fetchMyProfile,
@@ -23,23 +31,15 @@ import {
   updateMyProfile,
   type UserProfile,
 } from "@/lib/profile-api";
+import {
+  DEFAULT_RANK_TIERS,
+  getRankPlateData,
+  normalizeRankTiers,
+} from "@/lib/rank-visual";
 import { authEnabled } from "@/lib/runtime-config";
 
-const DEFAULT_RANK_TIERS: RankTierThreshold[] = [
-  { key: "bronze", label: "Bronze", min_points: 0, sort_order: 0 },
-  { key: "silver", label: "Silver", min_points: 200, sort_order: 1 },
-  { key: "gold", label: "Gold", min_points: 500, sort_order: 2 },
-  { key: "platinum", label: "Platinum", min_points: 900, sort_order: 3 },
-  { key: "diamond", label: "Diamond", min_points: 1400, sort_order: 4 },
-  { key: "master", label: "Master", min_points: 2000, sort_order: 5 },
-  { key: "challenger", label: "Challenger", min_points: 2800, sort_order: 6 },
-];
-
 function formatDayKey(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatLocalDayKey(date);
 }
 
 function addDays(date: Date, dayDelta: number) {
@@ -74,10 +74,36 @@ function ProfileStats() {
   const lifetimeAccuracy = percent(stats.totalCorrect, stats.totalQuestionsCompleted);
   const last7Accuracy = percent(last7Correct, last7Attempted);
   const todayAccuracy = percent(todayStats.correct, todayStats.attempted);
+  const dailyGoal = getDailyGoalProgress(todayStats.attempted, DAILY_QUESTION_GOAL);
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Card className="bg-card border-border overflow-hidden relative" data-testid="stat-streak">
+    <div className="grid grid-cols-2 gap-3">
+      <Card className="relative col-span-2 overflow-hidden rounded-lg border-primary/35 bg-card" data-testid="stat-daily-goal">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Daily Goal</p>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {dailyGoal.attemptedToday}/{dailyGoal.goal}
+                <span className="ml-1 text-sm font-medium text-muted-foreground">questions</span>
+              </p>
+            </div>
+            <div className="rounded-lg border border-primary/45 bg-primary/15 px-3 py-2 text-right">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+                {dailyGoal.isComplete ? "Done" : `${dailyGoal.remaining} left`}
+              </p>
+            </div>
+          </div>
+          <Progress value={dailyGoal.progressPercent} className="mt-3 h-2 bg-background" />
+          <p className="mt-2 text-xs text-muted-foreground">
+            {dailyGoal.isComplete
+              ? "Goal complete for today."
+              : "Answer 20 questions today to complete the goal."}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="relative overflow-hidden rounded-lg border-border bg-card" data-testid="stat-streak">
         <div className="absolute top-0 right-0 p-2 opacity-10">
           <TrendingUp className="w-12 h-12" />
         </div>
@@ -88,12 +114,12 @@ function ProfileStats() {
             <span className="text-sm text-muted-foreground">days</span>
           </div>
           {stats.streak > 0 && (
-            <p className="text-xs text-primary mt-2 font-medium">You're on fire!</p>
+            <p className="mt-2 text-xs font-medium text-secondary">Keep the line alive</p>
           )}
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border overflow-hidden relative col-span-2" data-testid="stat-accuracy">
+      <Card className="relative col-span-2 overflow-hidden rounded-lg border-border bg-card" data-testid="stat-accuracy">
         <div className="absolute top-0 right-0 p-2 opacity-10">
           <Target className="w-12 h-12" />
         </div>
@@ -128,7 +154,7 @@ function ProfileStats() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border overflow-hidden relative" data-testid="stat-questions-completed">
+      <Card className="relative overflow-hidden rounded-lg border-border bg-card" data-testid="stat-questions-completed">
         <div className="absolute top-0 right-0 p-4 opacity-10">
           <BookOpenCheck className="w-16 h-16" />
         </div>
@@ -144,7 +170,140 @@ function ProfileStats() {
   );
 }
 
+function ProfileFeedbackSettings() {
+  const { feedbackPreferences, updateFeedbackPreferences } = useAppState();
+
+  return (
+    <Card
+      className="relative mt-3 overflow-hidden rounded-lg border-border bg-card"
+      data-testid="card-feedback-settings"
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              Feedback
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">
+              Sound and haptics
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Keep answer reactions subtle, optional, and mobile-friendly.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-3 py-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Sound</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Soft tick for correct answers, dull tap for misses.
+              </p>
+            </div>
+            <Toggle
+              checked={feedbackPreferences.soundEnabled}
+              onCheckedChange={(checked) =>
+                updateFeedbackPreferences({ soundEnabled: checked })
+              }
+              aria-label="Toggle answer sound"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted px-3 py-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Haptics</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Use a tiny vibration pulse on supported devices.
+              </p>
+            </div>
+            <Toggle
+              checked={feedbackPreferences.hapticsEnabled}
+              onCheckedChange={(checked) =>
+                updateFeedbackPreferences({ hapticsEnabled: checked })
+              }
+              aria-label="Toggle answer haptics"
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfileAchievements() {
+  const { stats } = useAppState();
+  const unlockedKeySet = new Set(
+    stats.achievementProgress.unlockedAchievementKeys ?? [],
+  );
+  const activeAchievements = ACHIEVEMENTS.filter(
+    (achievement) => achievement.phase === "v1",
+  );
+  const unlockedAchievements = activeAchievements.filter((achievement) =>
+    unlockedKeySet.has(achievement.key),
+  );
+  const latestUnlocked = unlockedAchievements.slice(-4).reverse();
+  const progressPercent =
+    activeAchievements.length > 0
+      ? Math.round((unlockedAchievements.length / activeAchievements.length) * 100)
+      : 0;
+
+  return (
+    <Card
+      className="relative mt-3 overflow-hidden rounded-lg border-border bg-card"
+      data-testid="card-achievements"
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <Trophy className="h-3.5 w-3.5" />
+              Achievements
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">
+              {unlockedAchievements.length}/{activeAchievements.length} unlocked
+            </h2>
+          </div>
+          <div className="rounded-lg border border-primary/35 bg-primary/15 px-3 py-2 text-right">
+            <p className="text-xs font-bold text-primary">{progressPercent}%</p>
+          </div>
+        </div>
+        <Progress value={progressPercent} className="mt-3 h-2 bg-background" />
+
+        <div className="mt-4 space-y-2">
+          {latestUnlocked.length > 0 ? (
+            latestUnlocked.map((achievement) => (
+              <div
+                key={achievement.key}
+                className="rounded-lg border border-border bg-muted px-3 py-2"
+                data-testid="item-achievement-unlocked"
+              >
+                <p className="text-sm font-semibold text-foreground">
+                  {achievement.title}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {achievement.description}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="text-sm font-semibold text-foreground">
+                First Quest is waiting
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Answer one question to unlock your first achievement.
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProfileAccountWithAuth() {
+  const { syncRankedIdentity } = useAppState();
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -197,6 +356,7 @@ function ProfileAccountWithAuth() {
         setProfile(result.profile);
         setProgress(result.progress);
         setRankTiers(result.rank_tiers ?? []);
+        syncRankedIdentity(result.progress, result.rank_tiers);
         if (result.profile?.display_name) {
           setPendingName(result.profile.display_name);
         } else if (fallbackName) {
@@ -224,8 +384,7 @@ function ProfileAccountWithAuth() {
 
   const normalizedPendingName = useMemo(() => pendingName.trim(), [pendingName]);
   const sortedTiers = useMemo(() => {
-    const source = rankTiers.length > 0 ? rankTiers : DEFAULT_RANK_TIERS;
-    return [...source].sort((left, right) => left.min_points - right.min_points);
+    return normalizeRankTiers(rankTiers.length > 0 ? rankTiers : DEFAULT_RANK_TIERS);
   }, [rankTiers]);
   const tierProgress = useMemo(() => {
     if (!progress) {
@@ -270,6 +429,12 @@ function ProfileAccountWithAuth() {
       pointsNeededForNextTier,
     };
   }, [progress, sortedTiers]);
+  const rankPlate = useMemo(() => {
+    if (!progress) {
+      return null;
+    }
+    return getRankPlateData(progress.ranked_points, sortedTiers, progress.current_rank);
+  }, [progress, sortedTiers]);
 
   async function saveDisplayName() {
     if (!isSignedIn) {
@@ -294,6 +459,7 @@ function ProfileAccountWithAuth() {
       setProfile(result.profile);
       setProgress(result.progress);
       setRankTiers(result.rank_tiers ?? []);
+      syncRankedIdentity(result.progress, result.rank_tiers);
       setPendingName(result.profile?.display_name ?? normalizedPendingName);
     } catch (error) {
       setNameError(error instanceof Error ? error.message : "Could not save display name");
@@ -304,9 +470,9 @@ function ProfileAccountWithAuth() {
 
   if (!isLoaded) {
     return (
-      <Card className="bg-card border-border overflow-hidden relative mb-4" data-testid="card-account">
+      <Card className="relative mb-4 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account">
         <CardContent className="p-4">
-          <div className="h-24 animate-pulse rounded-2xl bg-white/5" data-testid="account-loading" />
+          <div className="h-24 animate-pulse rounded-lg bg-muted" data-testid="account-loading" />
         </CardContent>
       </Card>
     );
@@ -314,7 +480,7 @@ function ProfileAccountWithAuth() {
 
   if (isSignedIn) {
     return (
-      <Card className="bg-card border-border overflow-hidden relative mb-4" data-testid="card-account">
+      <Card className="relative mb-4 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account">
         <CardContent className="p-4">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -322,16 +488,16 @@ function ProfileAccountWithAuth() {
                 <img
                   src={user.imageUrl}
                   alt={displayName}
-                  className="h-14 w-14 rounded-2xl object-cover border border-primary/30"
+                  className="h-14 w-14 rounded-lg border border-primary/40 object-cover"
                   data-testid="img-user-avatar"
                 />
               ) : (
-                <div className="h-14 w-14 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-primary/40 bg-primary/15">
                   <UserRound className="h-7 w-7 text-primary" />
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold flex items-center gap-2">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Signed in
                 </p>
@@ -346,7 +512,7 @@ function ProfileAccountWithAuth() {
               </div>
             </div>
             {shouldPromptDisplayName && (
-              <div className="rounded-xl border border-border bg-secondary/40 p-3 space-y-2">
+              <div className="space-y-2 rounded-lg border border-border bg-muted p-3">
                 <p className="text-sm font-medium text-foreground">Choose a display name</p>
                 <p className="text-xs text-muted-foreground">
                   This is optional, but it helps personalize your profile.
@@ -388,7 +554,7 @@ function ProfileAccountWithAuth() {
             )}
             <Button
               variant="outline"
-              className="w-full border-border bg-secondary/50"
+              className="w-full border-border bg-muted hover:bg-muted/80"
               onClick={() => signOut({ redirectUrl: `${import.meta.env.BASE_URL}profile` })}
               data-testid="button-sign-out"
             >
@@ -398,21 +564,14 @@ function ProfileAccountWithAuth() {
 
             {progress && (
               <div
-                className="rounded-xl border border-border bg-secondary/30 p-3 space-y-2"
+                className="space-y-2 rounded-lg border border-border bg-muted p-3"
                 data-testid="card-ranked-progress"
               >
                 <p className="text-xs uppercase tracking-[0.16em] text-primary font-bold flex items-center gap-1.5">
                   <Trophy className="h-3.5 w-3.5" />
                   Ranked
                 </p>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-base font-semibold text-foreground" data-testid="text-current-rank">
-                    {tierProgress?.currentTier.label ?? progress.current_rank}
-                  </p>
-                  <p className="text-sm text-muted-foreground" data-testid="text-ranked-points">
-                    {progress.ranked_points} RP
-                  </p>
-                </div>
+                {rankPlate && <RankPlate plate={rankPlate} variant="full" />}
                 <p className="text-xs text-muted-foreground" data-testid="text-lifetime-xp">
                   Lifetime XP: {progress.lifetime_xp}
                 </p>
@@ -420,7 +579,7 @@ function ProfileAccountWithAuth() {
                   <div className="space-y-1.5">
                     <Progress
                       value={tierProgress.progressPercent}
-                      className="h-2 bg-white/10"
+                      className="h-2 bg-background"
                     />
                     <p className="text-xs text-muted-foreground" data-testid="text-next-rank-progress">
                       {tierProgress.nextTier
@@ -438,7 +597,7 @@ function ProfileAccountWithAuth() {
   }
 
   return (
-    <Card className="bg-card border-border overflow-hidden relative mb-4" data-testid="card-account">
+    <Card className="relative mb-4 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account">
       <CardContent className="p-4">
         <div className="space-y-4">
           <div>
@@ -452,7 +611,7 @@ function ProfileAccountWithAuth() {
             <Button asChild className="bg-primary text-primary-foreground" data-testid="button-profile-sign-in">
               <Link href="/sign-in">Sign in</Link>
             </Button>
-            <Button asChild variant="outline" className="border-border bg-secondary/50" data-testid="button-profile-sign-up">
+            <Button asChild variant="outline" className="border-border bg-muted hover:bg-muted/80" data-testid="button-profile-sign-up">
               <Link href="/sign-up">Sign up</Link>
             </Button>
           </div>
@@ -464,7 +623,7 @@ function ProfileAccountWithAuth() {
 
 function LoggedOutProfileActions() {
   return (
-    <Card className="bg-card border-border overflow-hidden relative mb-4" data-testid="card-account">
+    <Card className="relative mb-4 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account">
       <CardContent className="p-4">
         <div className="space-y-4">
           <div>
@@ -478,7 +637,7 @@ function LoggedOutProfileActions() {
             <Button asChild className="bg-primary text-primary-foreground" data-testid="button-profile-sign-in">
               <Link href="/sign-in">Sign in</Link>
             </Button>
-            <Button asChild variant="outline" className="border-border bg-secondary/50" data-testid="button-profile-sign-up">
+            <Button asChild variant="outline" className="border-border bg-muted hover:bg-muted/80" data-testid="button-profile-sign-up">
               <Link href="/sign-up">Sign up</Link>
             </Button>
           </div>
@@ -490,7 +649,7 @@ function LoggedOutProfileActions() {
 
 function ProfileAccountWithoutAuth() {
   return (
-    <Card className="bg-card border-border overflow-hidden relative mb-4" data-testid="card-account-local">
+    <Card className="relative mb-4 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account-local">
       <CardContent className="p-4">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold">Local Mode</p>
@@ -510,10 +669,10 @@ function ProfileWithAuthGate() {
   if (!isLoaded) {
     return (
       <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile-loading">
-        <Card className="bg-card border-border overflow-hidden relative mb-3" data-testid="card-account-loading">
+        <Card className="relative mb-3 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account-loading">
           <CardContent className="p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold mb-2">Account</p>
-            <div className="h-12 animate-pulse rounded-xl bg-white/5" />
+            <div className="h-12 animate-pulse rounded-lg bg-muted" />
           </CardContent>
         </Card>
         <LoggedOutProfileActions />
@@ -532,7 +691,7 @@ function ProfileWithAuthGate() {
   return (
     <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile">
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/40 bg-primary/15">
           <Zap className="w-6 h-6 text-primary" />
         </div>
         <div>
@@ -543,6 +702,8 @@ function ProfileWithAuthGate() {
 
       <ProfileAccountWithAuth />
       <ProfileStats />
+      <ProfileFeedbackSettings />
+      <ProfileAchievements />
 
       <div className="mt-12 text-center">
         <p className="text-xs text-muted-foreground opacity-50">ReadTok v1.0.0</p>
@@ -559,7 +720,7 @@ export default function Profile() {
   return (
     <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile">
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/40 bg-primary/15">
           <Zap className="w-6 h-6 text-primary" />
         </div>
         <div>
@@ -571,6 +732,8 @@ export default function Profile() {
       <ProfileAccountWithoutAuth />
 
       <ProfileStats />
+      <ProfileFeedbackSettings />
+      <ProfileAchievements />
       
       <div className="mt-12 text-center">
         <p className="text-xs text-muted-foreground opacity-50">ReadTok v1.0.0</p>

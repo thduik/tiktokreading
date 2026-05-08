@@ -309,13 +309,13 @@ export default function Home() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/90">
           IELTS Reading
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-white tracking-tight">
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
           Passage List
         </h1>
       </header>
 
       <section
-        className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+        className="mb-4 rounded-lg border border-border bg-card p-3"
         aria-label="filters"
       >
         <div className="flex items-center gap-2">
@@ -323,7 +323,7 @@ export default function Home() {
             <select
               value={filterMode}
               onChange={(event) => setFilterMode(event.target.value as FilterMode)}
-              className="h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
+              className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
             >
               <option value="band">Band score</option>
               <option value="question_type">Question type</option>
@@ -338,7 +338,7 @@ export default function Home() {
                   const value = event.target.value;
                   setActiveBand(value === "all" ? null : Number(value));
                 }}
-                className="h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
+                className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               >
                 {bandFilterOptions.map((option) => (
                   <option key={option.key} value={option.key}>
@@ -353,7 +353,7 @@ export default function Home() {
                   const value = event.target.value;
                   setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
                 }}
-                className="h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm text-white outline-none transition-colors focus:border-primary/55"
+                className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               >
                 {typeFilterOptions.map((option) => (
                   <option key={option.key} value={option.key}>
@@ -367,7 +367,7 @@ export default function Home() {
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -377,14 +377,14 @@ export default function Home() {
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
-              className="h-28 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]"
+              className="h-28 animate-pulse rounded-lg border border-border bg-card"
             />
           ))}
         </div>
       )}
 
       {!error && !isLoading && items.length === 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-white/70">
+        <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">
           No passages match the selected filters.
         </div>
       )}
@@ -395,27 +395,27 @@ export default function Home() {
             <Link
               key={item.id}
               href={`/?start=${encodeURIComponent(item.id)}`}
-              className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 transition-colors hover:border-primary/40"
+              className="block rounded-lg border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-muted/60"
               data-testid={`card-passage-${item.id}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-white leading-tight">
+                  <h2 className="text-lg font-semibold leading-tight text-foreground">
                     {item.title}
                   </h2>
-                  <p className="mt-1 text-sm text-white/60">{item.topic_label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.topic_label}</p>
                 </div>
-                <ChevronRight className="h-5 w-5 text-white/40" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 font-semibold text-primary">
+                <span className="rounded-md border border-primary/50 bg-primary/15 px-2.5 py-1 font-semibold text-primary">
                   Band {item.band_label}
                 </span>
-                <span className="rounded-full border border-white/20 bg-white/[0.03] px-2.5 py-1 text-white/80">
+                <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
                   {item.question_set_type_label}
                 </span>
-                <span className="rounded-full border border-white/20 bg-white/[0.03] px-2.5 py-1 text-white/70">
+                <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
                   {item.question_count} Questions
                 </span>
               </div>
@@ -423,7 +423,7 @@ export default function Home() {
           ))}
           <div ref={loadMoreRef} className="h-2 w-full" />
           {isLoadingMore && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-white/65">
+            <div className="rounded-lg border border-border bg-card px-4 py-3 text-center text-sm text-muted-foreground">
               Loading more passages...
             </div>
           )}

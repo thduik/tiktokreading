@@ -15,7 +15,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         transition={{ duration: 0.5 }}
         className="max-w-sm w-full space-y-8"
       >
-        <div className="w-24 h-24 bg-primary/20 rounded-full mx-auto flex items-center justify-center mb-8 border-2 border-primary">
+        <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-lg border border-primary/50 bg-primary/15">
           <BookOpen className="w-12 h-12 text-primary" />
         </div>
         
@@ -26,7 +26,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           </p>
         </div>
 
-        <div className="space-y-6 text-left bg-card border border-border p-6 rounded-2xl">
+        <div className="space-y-6 rounded-lg border border-border bg-card p-6 text-left">
           <div className="flex items-start gap-4">
             <div className="bg-primary/20 p-2 rounded-lg mt-1">
               <Zap className="w-5 h-5 text-primary" />
@@ -38,7 +38,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           </div>
           
           <div className="flex items-start gap-4">
-            <div className="bg-success/20 p-2 rounded-lg mt-1">
+            <div className="mt-1 rounded-lg bg-secondary/15 p-2">
               <Target className="w-5 h-5 text-success" />
             </div>
             <div>

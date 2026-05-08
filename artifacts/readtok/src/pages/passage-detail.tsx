@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type WheelEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type TouchEvent,
+  type WheelEvent,
+} from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import {
   AlertTriangle,
@@ -8,9 +14,11 @@ import {
   ChevronLeft,
   ChevronRight,
   House,
+  Trophy,
   Volume2,
   XCircle,
 } from "lucide-react";
+import { RankPlate } from "@/components/rank-plate";
 import {
   fetchPassageDetail,
   fetchPassageList,
@@ -31,6 +39,10 @@ import {
 } from "@/components/ui/dialog";
 import { useAppState } from "@/hooks/use-app-state";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { playAnswerFeedback } from "@/lib/feedback-effects";
+import { getRankPlateData, type RankPlateData } from "@/lib/rank-visual";
+import type { AchievementDefinition } from "@/lib/achievements";
+import { formatLocalDayKey, getDailyGoalProgress } from "@/lib/daily-goal";
 import { submitRankedAnswer } from "@/lib/profile-api";
 
 function toQuestionKey(questionId: number) {
@@ -110,6 +122,36 @@ function escapeRegExp(value: string) {
 
 function normalizeVocabTerm(term: string) {
   return term.replace(/^[*\-\u2022]+\s*/, "").trim();
+}
+
+function AchievementUnlockedToast({
+  achievement,
+}: {
+  achievement: AchievementDefinition;
+}) {
+  return (
+    <div
+      className="pointer-events-none fixed left-1/2 top-4 z-50 w-[min(92vw,360px)] -translate-x-1/2 rounded-lg border border-primary/45 bg-card/95 px-4 py-3 shadow-xl backdrop-blur"
+      data-testid="toast-achievement-unlocked"
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/35 bg-primary/15">
+          <Trophy className="h-5 w-5 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
+            Achievement Unlocked
+          </p>
+          <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+            {achievement.title}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {achievement.description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 type TextRange = {
@@ -293,35 +335,103 @@ function isQuestionCorrect(
   );
 }
 
-function TopBadgeRow({ passage }: { passage: PassageDetail }) {
+function TopBadgeRow({
+  passage,
+  dailyAttempted,
+  answeredCount,
+  rankPlate,
+}: {
+  passage: PassageDetail;
+  dailyAttempted: number;
+  answeredCount: number;
+  rankPlate: RankPlateData | null;
+}) {
   const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
     passage.question_set_type_index,
   )}`;
   const bandFilterHref = `/list?filterMode=band&band=${encodeURIComponent(
     String(passage.band_index),
   )}`;
+  const dailyGoal = getDailyGoalProgress(dailyAttempted);
+  const totalQuestions = Math.max(1, passage.questions.length);
+  const completionPercent = Math.max(
+    0,
+    Math.min(100, Math.round((answeredCount / totalQuestions) * 100)),
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Link
-        href="/"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/40 bg-primary/15 text-primary transition-colors hover:bg-primary/22"
-        aria-label="Go to feed"
+        href="/list"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+        aria-label="Go to passage list"
       >
         <House className="h-4 w-4" />
       </Link>
       <Link
         href={questionFilterHref}
-        className="inline-flex h-9 items-center rounded-full border border-white/15 bg-white/[0.03] px-3 text-[11px] font-medium tracking-[0.04em] text-white/80 transition-colors hover:border-primary/40 hover:text-primary"
+        className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-[11px] font-medium tracking-[0.04em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
       >
         {passage.question_set_type_label}
       </Link>
       <Link
         href={bandFilterHref}
-        className="inline-flex h-9 items-center rounded-full border border-white/15 bg-white/[0.03] px-3 text-[11px] font-medium tracking-[0.04em] text-white/80 transition-colors hover:border-primary/40 hover:text-primary"
+        className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-[11px] font-medium tracking-[0.04em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
       >
         Band {passage.band_label}
       </Link>
+      <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-[11px] font-semibold text-muted-foreground">
+        <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
+          {dailyGoal.attemptedToday}/{dailyGoal.goal}
+        </span>
+        <span>Today</span>
+        <span className="h-1.5 w-10 overflow-hidden rounded-full bg-muted">
+          <span
+            className={`block h-full rounded-full ${
+              dailyGoal.isComplete ? "bg-secondary" : "bg-primary"
+            }`}
+            style={{ width: `${dailyGoal.progressPercent}%` }}
+          />
+        </span>
+      </div>
+      <QuestionCompletionChip
+        answeredCount={answeredCount}
+        totalQuestions={totalQuestions}
+        completionPercent={completionPercent}
+      />
+      {rankPlate && <RankPlate plate={rankPlate} className="h-9" />}
+    </div>
+  );
+}
+
+function QuestionCompletionChip({
+  answeredCount,
+  totalQuestions,
+  completionPercent,
+}: {
+  answeredCount: number;
+  totalQuestions: number;
+  completionPercent: number;
+}) {
+  const completed = answeredCount >= totalQuestions;
+
+  return (
+    <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[11px] font-semibold text-muted-foreground">
+      <div
+        className="relative h-5 w-5 rounded-full"
+        style={{
+          background: `conic-gradient(from 90deg, ${
+            completed ? "hsl(var(--secondary))" : "hsl(var(--primary))"
+          } ${completionPercent}%, hsl(var(--muted)) ${completionPercent}% 100%)`,
+        }}
+        aria-hidden="true"
+      >
+        <div className="absolute inset-[3px] rounded-full bg-card" />
+      </div>
+      <span className={completed ? "text-secondary" : "text-foreground"}>
+        {answeredCount}/{totalQuestions}
+      </span>
+      <span>Done</span>
     </div>
   );
 }
@@ -336,10 +446,10 @@ function AudioButton({
   return (
     <button
       type="button"
-      className={`h-12 w-12 rounded-full border text-white transition-colors ${
+      className={`h-12 w-12 rounded-lg border text-foreground transition-colors ${
         speaking
           ? "border-primary/60 bg-primary/15"
-          : "border-white/15 bg-white/[0.03] hover:border-white/30"
+          : "border-border bg-card hover:border-primary"
       }`}
       onClick={onClick}
       aria-label={speaking ? "Stop audio" : "Read passage"}
@@ -352,7 +462,7 @@ function AudioButton({
 function PassageHeader({ passage }: { passage: PassageDetail }) {
   return (
     <header className="mt-0.5">
-      <h1 className="passage-title-text text-[1.65rem] font-semibold leading-tight tracking-tight text-white md:text-[1.42rem] lg:text-[1.48rem]">
+      <h1 className="passage-title-text text-[1.65rem] font-semibold leading-tight tracking-tight text-foreground md:text-[1.42rem] lg:text-[1.48rem]">
         {passage.title}
       </h1>
     </header>
@@ -371,8 +481,8 @@ function PassageText({
   onVocabTap: (item: PassageVocabItem) => void;
 }) {
   return (
-    <article className="mt-2 rounded-3xl bg-[#090a0a] px-4 py-4">
-      <p className="passage-body-text font-serif text-[1.85rem] leading-[1.68] text-white/92 md:text-[1.42rem] md:leading-[1.56] lg:text-[1.5rem] max-[640px]:text-[1.04rem] max-[640px]:leading-8">
+    <article className="mt-2 rounded-lg border border-border bg-background px-4 py-4">
+      <p className="passage-body-text font-serif text-[1.85rem] leading-[1.68] text-foreground md:text-[1.42rem] md:leading-[1.56] lg:text-[1.5rem] max-[640px]:text-[1.04rem] max-[640px]:leading-8">
         {sentences.map((sentence, sentencePosition) => {
           const highlight = highlightedSentenceMap[sentence.sentence_index];
           const isHighlighted = Boolean(highlight);
@@ -386,7 +496,7 @@ function PassageText({
           return (
             <span
               key={sentence.sentence_index}
-              className={isHighlighted ? "rounded bg-primary/10 px-1 py-0.5 text-white" : ""}
+              className={isHighlighted ? "rounded bg-primary/15 px-1 py-0.5 text-foreground" : ""}
             >
               {segments.map((segment) => {
                 if (segment.vocabItem) {
@@ -397,7 +507,7 @@ function PassageText({
                       type="button"
                       className={`inline rounded-[2px] border-0 bg-transparent p-0 text-left font-semibold leading-[inherit] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/80 ${
                         segment.isEvidence
-                          ? "bg-primary/25 px-0.5 text-white underline decoration-white/60 underline-offset-2"
+                          ? "bg-primary/25 px-0.5 text-foreground underline decoration-primary/70 underline-offset-2"
                           : "text-primary underline decoration-primary/45 underline-offset-2 hover:text-primary/85"
                       }`}
                       onClick={() => onVocabTap(vocabItem)}
@@ -411,7 +521,7 @@ function PassageText({
                   return (
                     <span
                       key={segment.key}
-                      className="rounded bg-primary/25 px-0.5 text-white"
+                      className="rounded bg-primary/25 px-0.5 text-foreground"
                     >
                       {segment.text}
                     </span>
@@ -455,36 +565,36 @@ function VocabMeaningDialog({
 
   return (
     <Dialog open={Boolean(selectedVocab)} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-2xl border border-white/12 bg-[#090a0a] p-4 text-white">
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-border bg-card p-4 text-foreground">
         <div className="space-y-3 pr-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.11em] text-primary/85">
             Vocabulary
           </p>
-          <DialogTitle className="text-2xl font-semibold leading-tight text-white">
+          <DialogTitle className="text-2xl font-semibold leading-tight text-foreground">
             {selectedVocab ? normalizeVocabTerm(selectedVocab.term) : ""}
           </DialogTitle>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+          <div className="rounded-lg border border-border bg-muted px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-primary/90">
               Vietnamese
             </p>
-            <p className="mt-1 text-sm text-white/92">{vietnameseMeaning}</p>
+            <p className="mt-1 text-sm text-foreground">{vietnameseMeaning}</p>
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+          <div className="rounded-lg border border-border bg-muted px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-primary/90">
               Meaning (English)
             </p>
-            <DialogDescription className="mt-1 text-sm leading-relaxed text-white/88">
+            <DialogDescription className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {englishMeaning}
             </DialogDescription>
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+          <div className="rounded-lg border border-border bg-muted px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-primary/90">
               Example Sentence
             </p>
-            <DialogDescription className="mt-1 text-sm leading-relaxed text-white/88">
+            <DialogDescription className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {exampleSentence}
             </DialogDescription>
           </div>
@@ -513,27 +623,27 @@ function PassageReportDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-2xl border border-white/12 bg-[#090a0a] p-4 text-white">
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-border bg-card p-4 text-foreground">
         <div className="space-y-3 pr-7">
-          <DialogTitle className="text-xl font-semibold leading-tight text-white">
+          <DialogTitle className="text-xl font-semibold leading-tight text-foreground">
             Report Passage
           </DialogTitle>
-          <DialogDescription className="text-sm text-white/75">
+          <DialogDescription className="text-sm text-muted-foreground">
             Help us improve quality by reporting the main issue.
           </DialogDescription>
 
           <label className="space-y-1.5 text-sm">
-            <span className="text-white/82">Issue type</span>
+            <span className="text-muted-foreground">Issue type</span>
             <select
               value={reportType}
               onChange={(event) =>
                 onReportTypeChange(event.target.value as PassageReportType)
               }
               disabled={isSubmitting}
-              className="h-11 w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 text-sm text-white outline-none transition-colors focus:border-primary/50"
+              className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
             >
               {PASSAGE_REPORT_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-[#101112]">
+                <option key={option.value} value={option.value} className="bg-card">
                   {option.label}
                 </option>
               ))}
@@ -541,7 +651,7 @@ function PassageReportDialog({
           </label>
 
           {error ? (
-            <p className="rounded-xl border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+            <p className="rounded-lg border border-destructive/45 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {error}
             </p>
           ) : null}
@@ -550,10 +660,10 @@ function PassageReportDialog({
             type="button"
             onClick={onSubmit}
             disabled={isSubmitting}
-            className={`h-11 w-full rounded-xl border text-sm font-semibold transition-colors ${
+            className={`h-11 w-full rounded-lg border text-sm font-semibold transition-colors ${
               isSubmitting
-                ? "cursor-not-allowed border-white/12 bg-white/[0.03] text-white/45"
-                : "border-primary/45 bg-primary/14 text-primary hover:bg-primary/22"
+                ? "cursor-not-allowed border-border bg-muted text-muted-foreground"
+                : "border-primary/45 bg-primary/15 text-primary hover:bg-primary/25"
             }`}
           >
             {isSubmitting ? "Submitting..." : "Submit report"}
@@ -566,7 +676,7 @@ function PassageReportDialog({
 
 function QuestionTypeBadge({ label }: { label: string }) {
   return (
-    <span className="question-pill-text rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-primary">
+    <span className="question-pill-text rounded-md border border-primary/40 bg-primary/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-primary">
       {label}
     </span>
   );
@@ -593,10 +703,10 @@ function McqOptions({
             type="button"
             disabled={disabled}
             onClick={() => onChange(option.key)}
-            className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
+            className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
               selected
-                ? "border-primary/55 bg-primary/12 text-white"
-                : "border-white/12 bg-white/[0.03] text-white/86 hover:border-white/30"
+                ? "border-primary/60 bg-primary/15 text-foreground"
+                : "border-border bg-muted text-foreground hover:border-primary"
             } ${disabled ? "cursor-default" : ""}`}
           >
             <span className="font-semibold">{option.key})</span> {option.text}
@@ -628,10 +738,10 @@ function TfngSelector({
             type="button"
             disabled={disabled}
             onClick={() => onChange(choice)}
-            className={`rounded-xl border px-2 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${
+            className={`rounded-lg border px-2 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${
               selected
-                ? "border-primary/55 bg-primary/14 text-primary"
-                : "border-white/12 bg-white/[0.03] text-white/78 hover:border-white/30"
+                ? "border-primary/55 bg-primary/15 text-primary"
+                : "border-border bg-muted text-muted-foreground hover:border-primary hover:text-foreground"
             } ${disabled ? "cursor-default" : ""}`}
           >
             {choice}
@@ -660,7 +770,7 @@ function TextAnswerInput({
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
       disabled={disabled}
-      className="h-12 w-full rounded-2xl border border-white/12 bg-white/[0.03] px-4 text-base text-white placeholder:text-white/35 outline-none transition-colors focus:border-primary/50 md:text-sm"
+      className="h-12 w-full rounded-lg border border-border bg-muted px-4 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary md:text-sm"
     />
   );
 }
@@ -686,48 +796,87 @@ function ReviewExplanationBlock({
 
   return (
     <div
-      className={`mt-3 rounded-2xl border px-4 py-3 ${
+      className={`mt-3 rounded-lg border px-4 py-3 ${
         isCorrect
-          ? "border-emerald-400/35 bg-emerald-500/10"
-          : "border-rose-400/35 bg-rose-500/10"
+          ? "border-secondary/35 bg-secondary/10"
+          : "border-destructive/35 bg-destructive/10"
       }`}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold md:text-[13px]">
           {isCorrect ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+            <CheckCircle2 className="h-4 w-4 text-secondary" />
           ) : (
-            <XCircle className="h-4 w-4 text-rose-300" />
+            <XCircle className="h-4 w-4 text-destructive" />
           )}
           <span>{isCorrect ? "Correct" : "Incorrect"}</span>
         </div>
         {rankFeedback?.isPending ? (
-          <span className="text-[11px] font-medium text-white/55">LP updating...</span>
+          <span className="text-[11px] font-medium text-muted-foreground">LP updating...</span>
         ) : rankDeltaLabel ? (
           <span
             className={`text-[11px] font-semibold ${
               rankDeltaValue !== null && rankDeltaValue >= 0
-                ? "text-emerald-300/95"
-                : "text-rose-300/95"
+                ? "text-secondary"
+                : "text-destructive"
             }`}
           >
             {rankDeltaLabel}
           </span>
         ) : null}
       </div>
-      <p className="mt-2 text-sm text-white/85 md:text-[13px]">
-        <span className="text-white/60">Your answer:</span>{" "}
+      <p className="mt-2 text-sm text-foreground md:text-[13px]">
+        <span className="text-muted-foreground">Your answer:</span>{" "}
         {userAnswer.trim() ? userAnswer : "No answer"}
       </p>
-      <p className="mt-1 text-sm text-white/90 md:text-[13px]">
-        <span className="text-white/60">Correct answer:</span>{" "}
+      <p className="mt-1 text-sm text-foreground md:text-[13px]">
+        <span className="text-muted-foreground">Correct answer:</span>{" "}
         {answerKey?.answer_value ?? "N/A"}
       </p>
       {answerKey?.explanation && (
-        <p className="mt-2 text-sm leading-relaxed text-white/78 md:text-[13px]">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:text-[13px]">
           {answerKey.explanation}
         </p>
       )}
+    </div>
+  );
+}
+
+function AnswerReactionBadge({
+  isCorrect,
+  rankFeedback,
+}: {
+  isCorrect: boolean;
+  rankFeedback?: RankFeedbackState;
+}) {
+  const rankDeltaValue =
+    rankFeedback && !rankFeedback.isPending ? rankFeedback.rankedPointDelta : null;
+  const rankDeltaLabel =
+    rankDeltaValue === null
+      ? null
+      : `${rankDeltaValue >= 0 ? "+" : ""}${rankDeltaValue} LP`;
+
+  return (
+    <div className="mt-2 flex justify-end">
+      <div
+        className={`answer-reaction-pop inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${
+          isCorrect
+            ? "border-secondary/45 bg-secondary/12 text-secondary"
+            : "border-destructive/45 bg-destructive/12 text-destructive"
+        }`}
+      >
+        {isCorrect ? (
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        ) : (
+          <XCircle className="h-3.5 w-3.5" />
+        )}
+        <span>{isCorrect ? "Correct" : "Missed"}</span>
+        {rankFeedback?.isPending ? (
+          <span className="text-muted-foreground">LP...</span>
+        ) : rankDeltaLabel ? (
+          <span>{rankDeltaLabel}</span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -747,7 +896,7 @@ function FloatingActionButtons({
     <div className="fixed right-4 top-[78%] z-40 flex -translate-y-1/2 flex-col gap-3">
       <button
         type="button"
-        className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-black/65 text-white"
+        className="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-card/90 text-foreground backdrop-blur transition-colors hover:border-primary"
         onClick={onSaveToggle}
         aria-label={saved ? "Unsave passage" : "Save passage"}
       >
@@ -759,16 +908,16 @@ function FloatingActionButtons({
       </button>
       <button
         type="button"
-        className={`flex h-14 w-14 items-center justify-center rounded-full border text-white ${
+        className={`flex h-14 w-14 items-center justify-center rounded-lg border backdrop-blur transition-colors ${
           reportDisabled
-            ? "cursor-not-allowed border-white/12 bg-black/40 text-white/35"
-            : "border-amber-300/35 bg-amber-500/10 hover:bg-amber-500/18"
+            ? "cursor-not-allowed border-border bg-card/60 text-muted-foreground"
+            : "border-accent/45 bg-accent/12 text-accent hover:bg-accent/20"
         }`}
         onClick={onReportClick}
         disabled={reportDisabled}
         aria-label="Report passage issue"
       >
-        <AlertTriangle className="h-6 w-6 text-amber-300/90" />
+        <AlertTriangle className="h-6 w-6 text-current" />
       </button>
     </div>
   );
@@ -831,7 +980,7 @@ function QuestionBlock({
   const canSubmitTextAnswer = answer.trim().length > 0 && !revealed;
 
   return (
-    <section className="question-card-wrap rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+    <section className="question-card-wrap rounded-lg border border-border bg-card px-3 py-3">
       <div className="flex items-center gap-2">
         <p className="question-index-text text-[1.35rem] font-bold tracking-tight text-primary md:text-[1.08rem]">
           Q{displayIndex ?? question.order_index}.
@@ -839,7 +988,7 @@ function QuestionBlock({
         <QuestionTypeBadge label={question.question_type_label} />
       </div>
 
-      <p className="question-prompt-text mt-2.5 text-[1rem] font-medium leading-snug text-white/95 md:text-[0.9rem]">
+      <p className="question-prompt-text mt-2.5 text-[1rem] font-medium leading-snug text-foreground md:text-[0.9rem]">
         {question.prompt}
       </p>
 
@@ -885,10 +1034,10 @@ function QuestionBlock({
               type="button"
               onClick={() => onSubmitAnswer()}
               disabled={!canSubmitTextAnswer}
-              className={`answer-action-btn h-10 w-full rounded-xl border text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${
+              className={`answer-action-btn h-10 w-full rounded-lg border text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${
                 canSubmitTextAnswer
-                  ? "border-primary/45 bg-primary/14 text-primary hover:bg-primary/22"
-                  : "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/40"
+                  ? "border-primary/45 bg-primary/15 text-primary hover:bg-primary/25"
+                  : "cursor-not-allowed border-border bg-muted text-muted-foreground"
               }`}
             >
               {revealed ? "Submitted" : "Submit"}
@@ -896,6 +1045,10 @@ function QuestionBlock({
           </div>
         )}
       </div>
+
+      {revealed && (
+        <AnswerReactionBadge isCorrect={isCorrect} rankFeedback={rankFeedback} />
+      )}
 
       {revealed && (
         <ReviewExplanationBlock
@@ -924,8 +1077,39 @@ export default function PassageDetailPage() {
   const search = useSearch();
   const startPassageId = new URLSearchParams(search).get("start")?.trim() ?? "";
   const routePassageId = (params?.id ?? startPassageId).trim();
-  const { isCardSaved, toggleSaveCard, recordQuestionAttempt } = useAppState();
+  const {
+    isCardSaved,
+    toggleSaveCard,
+    recordQuestionAttempt,
+    recordSessionAnswerResult,
+    recordRankedResult,
+    recordPassageReport,
+    feedbackPreferences,
+    rankedIdentity,
+    syncRankedIdentity,
+    recentAchievementUnlocks,
+    dismissRecentAchievementUnlocks,
+    stats,
+  } = useAppState();
   const isMobile = useIsMobile();
+  const todayStats = stats.dailyStats[formatLocalDayKey()] ?? {
+    attempted: 0,
+    correct: 0,
+  };
+  const rankPlate = rankedIdentity
+    ? getRankPlateData(
+        rankedIdentity.rankedPoints,
+        rankedIdentity.rankTiers,
+        rankedIdentity.currentRank,
+      )
+    : stats.achievementProgress.currentLP > 0 ||
+        stats.achievementProgress.currentRank !== "Bronze"
+      ? getRankPlateData(
+          stats.achievementProgress.currentLP,
+          undefined,
+          stats.achievementProgress.currentRank,
+        )
+      : null;
 
   const [passages, setPassages] = useState<PassageDetail[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -952,14 +1136,13 @@ export default function PassageDetailPage() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportedPassageIds, setReportedPassageIds] = useState<Record<string, true>>({});
-  const feedContainerRef = useRef<HTMLDivElement | null>(null);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
-  const hasMountedInitialScrollRef = useRef(false);
   const questionOrderByPassageRef = useRef<Record<string, number[]>>({});
   const prefetchCountRef = useRef(0);
-  const desktopWheelLockUntilRef = useRef(0);
-  const pendingFeedScrollLeftRef = useRef<number | null>(null);
+  const desktopWheelMomentumTimeoutRef = useRef<number | null>(null);
+  const desktopWheelGestureConsumedRef = useRef(false);
   const arrowTapCooldownTimeoutRef = useRef<number | null>(null);
+  const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mobileSwipeLockUntilRef = useRef(0);
 
   function hasReportedPassageInSession(passageId: string) {
     if (typeof window === "undefined") {
@@ -1136,7 +1319,7 @@ export default function PassageDetailPage() {
         cachedPassages.length - 1,
       ),
     );
-    pendingFeedScrollLeftRef.current = cachedFeedScrollLeft;
+    void cachedFeedScrollLeft;
     setIsLoading(false);
     setError(null);
 
@@ -1152,7 +1335,6 @@ export default function PassageDetailPage() {
     setAnswersByPassageId({});
     setRevealedByPassageId({});
     setSelectedVocab(null);
-    hasMountedInitialScrollRef.current = false;
     prefetchCountRef.current = 0;
 
     if (restoreFromRuntimeSession(routePassageId)) {
@@ -1238,88 +1420,6 @@ export default function PassageDetailPage() {
       }
     };
   }, [routePassageId]);
-
-  useEffect(() => {
-    if (!isMobile || hasMountedInitialScrollRef.current || passages.length === 0) {
-      return;
-    }
-
-    if (pendingFeedScrollLeftRef.current !== null) {
-      return;
-    }
-
-    const activePassage = passages[currentIndex];
-    if (!activePassage) {
-      return;
-    }
-
-    const section = sectionRefs.current[activePassage.id];
-    if (!section) {
-      return;
-    }
-
-    section.scrollIntoView({ inline: "start", block: "nearest" });
-    hasMountedInitialScrollRef.current = true;
-  }, [currentIndex, isMobile, passages]);
-
-  useEffect(() => {
-    if (!isMobile || passages.length === 0) {
-      return;
-    }
-
-    const container = feedContainerRef.current;
-    const pendingScrollLeft = pendingFeedScrollLeftRef.current;
-    if (!container || pendingScrollLeft === null) {
-      return;
-    }
-
-    container.scrollTo({ left: pendingScrollLeft, behavior: "auto" });
-    hasMountedInitialScrollRef.current = true;
-    pendingFeedScrollLeftRef.current = null;
-  }, [isMobile, passages]);
-
-  useEffect(() => {
-    if (!isMobile || passages.length === 0 || !feedContainerRef.current) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-        if (!visibleEntry) {
-          return;
-        }
-
-        const nextId = visibleEntry.target.getAttribute("data-passage-id");
-        if (!nextId) {
-          return;
-        }
-
-        const nextIndex = passages.findIndex((item) => item.id === nextId);
-        if (nextIndex === -1) {
-          return;
-        }
-
-        setCurrentIndex(nextIndex);
-      },
-      {
-        root: feedContainerRef.current,
-        threshold: [0.55, 0.75],
-      },
-    );
-
-    for (const passage of passages) {
-      const section = sectionRefs.current[passage.id];
-      if (section) {
-        observer.observe(section);
-      }
-    }
-
-    return () => observer.disconnect();
-  }, [isMobile, passages]);
 
   async function appendPassageBatch(targetCount = RANDOM_BATCH_SIZE) {
     if (isAppending) {
@@ -1429,6 +1529,15 @@ export default function PassageDetailPage() {
   }, [activePassage]);
 
   useEffect(() => {
+    if (recentAchievementUnlocks.length === 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(dismissRecentAchievementUnlocks, 3200);
+    return () => window.clearTimeout(timeoutId);
+  }, [dismissRecentAchievementUnlocks, recentAchievementUnlocks.length]);
+
+  useEffect(() => {
     setIsReportDialogOpen(false);
     setReportError(null);
     setIsSubmittingReport(false);
@@ -1446,7 +1555,7 @@ export default function PassageDetailPage() {
       revealedByPassageId,
       feedIds,
       listOffset,
-      feedScrollLeft: feedContainerRef.current?.scrollLeft ?? 0,
+      feedScrollLeft: 0,
     };
   }, [
     passages,
@@ -1512,6 +1621,9 @@ export default function PassageDetailPage() {
       if (arrowTapCooldownTimeoutRef.current !== null) {
         window.clearTimeout(arrowTapCooldownTimeoutRef.current);
       }
+      if (desktopWheelMomentumTimeoutRef.current !== null) {
+        window.clearTimeout(desktopWheelMomentumTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -1532,13 +1644,61 @@ export default function PassageDetailPage() {
     }
 
     event.preventDefault();
-    const now = Date.now();
-    if (now < desktopWheelLockUntilRef.current) {
+
+    if (desktopWheelMomentumTimeoutRef.current !== null) {
+      window.clearTimeout(desktopWheelMomentumTimeoutRef.current);
+    }
+    desktopWheelMomentumTimeoutRef.current = window.setTimeout(() => {
+      desktopWheelGestureConsumedRef.current = false;
+      desktopWheelMomentumTimeoutRef.current = null;
+    }, 220);
+
+    if (desktopWheelGestureConsumedRef.current) {
       return;
     }
 
-    desktopWheelLockUntilRef.current = now + 380;
+    desktopWheelGestureConsumedRef.current = true;
     if (horizontalDelta > 0) {
+      void moveToNextPassage();
+      return;
+    }
+    moveToPreviousPassage();
+  }
+
+  function handleMobileSwipeStart(event: TouchEvent<HTMLDivElement>) {
+    if (!isMobile || event.touches.length !== 1) {
+      return;
+    }
+    const touch = event.touches[0];
+    mobileSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleMobileSwipeEnd(event: TouchEvent<HTMLDivElement>) {
+    if (!isMobile) {
+      return;
+    }
+
+    const start = mobileSwipeStartRef.current;
+    mobileSwipeStartRef.current = null;
+    if (!start || event.changedTouches.length !== 1) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (Math.abs(deltaX) < 44 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now < mobileSwipeLockUntilRef.current) {
+      return;
+    }
+    mobileSwipeLockUntilRef.current = now + 500;
+
+    if (deltaX < 0) {
       void moveToNextPassage();
       return;
     }
@@ -1551,6 +1711,10 @@ export default function PassageDetailPage() {
 
   function isQuestionRevealed(passageId: string, questionId: number) {
     return Boolean(revealedByPassageId[passageId]?.[toQuestionKey(questionId)]);
+  }
+
+  function getAnsweredCountForPassage(passageId: string) {
+    return Object.values(revealedByPassageId[passageId] ?? {}).filter(Boolean).length;
   }
 
   function handleAnswerChange(passageId: string, questionId: number, nextAnswer: string) {
@@ -1585,7 +1749,12 @@ export default function PassageDetailPage() {
       (item) => item.question_id === question.id,
     );
     const isCorrect = isQuestionCorrect(question, answerKey, submittedAnswer);
-    recordQuestionAttempt(isCorrect);
+    const xpDelta = isCorrect ? 10 : 2;
+    recordQuestionAttempt(isCorrect, {
+      questionType: question.question_type_index,
+      band: targetPassage?.band_label ?? targetPassage?.band_index,
+    });
+    playAnswerFeedback(isCorrect, feedbackPreferences);
 
     const rankFeedbackKey = toRankFeedbackKey(passageId, question.id);
     setRankFeedbackByQuestion((currentState) => ({
@@ -1602,6 +1771,17 @@ export default function PassageDetailPage() {
       selectedAnswer: submittedAnswer,
     })
       .then((result) => {
+        recordRankedResult({
+          rank: result.answer_result.rankAfter,
+          rankedPointsAfter: result.answer_result.rankedPointsAfter,
+          lpDelta: result.answer_result.rankedPointDelta,
+        });
+        recordSessionAnswerResult({
+          isCorrect,
+          xpDelta,
+          lpDelta: result.answer_result.rankedPointDelta,
+        });
+        syncRankedIdentity(result.progress);
         setRankFeedbackByQuestion((currentState) => ({
           ...currentState,
           [rankFeedbackKey]: {
@@ -1612,6 +1792,11 @@ export default function PassageDetailPage() {
       })
       .catch(() => {
         // Ranking updates are best-effort; UI correctness flow should continue regardless.
+        recordSessionAnswerResult({
+          isCorrect,
+          xpDelta,
+          lpDelta: 0,
+        });
         setRankFeedbackByQuestion((currentState) => ({
           ...currentState,
           [rankFeedbackKey]: {
@@ -1695,6 +1880,7 @@ export default function PassageDetailPage() {
     try {
       await submitPassageReport(activePassage.id, selectedReportType);
       markPassageReportedInSession(activePassage.id);
+      recordPassageReport();
       setIsReportDialogOpen(false);
     } catch {
       setReportError("Could not submit report. Please try again.");
@@ -1707,9 +1893,9 @@ export default function PassageDetailPage() {
     return (
       <div className="min-h-full w-full px-4 pb-24 pt-6">
         <div className="mx-auto w-full max-w-3xl space-y-4">
-          <div className="h-10 w-64 animate-pulse rounded-xl bg-white/[0.05]" />
-          <div className="h-72 animate-pulse rounded-3xl bg-white/[0.05]" />
-          <div className="h-40 animate-pulse rounded-2xl bg-white/[0.05]" />
+          <div className="h-10 w-64 animate-pulse rounded-lg bg-muted" />
+          <div className="h-72 animate-pulse rounded-lg bg-card" />
+          <div className="h-40 animate-pulse rounded-lg bg-card" />
         </div>
       </div>
     );
@@ -1718,7 +1904,7 @@ export default function PassageDetailPage() {
   if (error || passages.length === 0) {
     return (
       <div className="min-h-full w-full px-4 pb-24 pt-6">
-        <div className="mx-auto w-full max-w-2xl rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-4 text-sm text-red-100">
+        <div className="mx-auto w-full max-w-2xl rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-4 text-sm text-destructive">
           {error ?? "Passage not found."}
         </div>
       </div>
@@ -1735,8 +1921,21 @@ export default function PassageDetailPage() {
         className="tablet-portrait-main relative h-[calc(100dvh-60px)] w-full overflow-hidden px-3 pb-3 pt-3"
         onWheel={handleDesktopHorizontalScroll}
       >
+        <div className="absolute left-0 right-0 top-0 z-20 h-0.5 bg-muted">
+          <div
+            className="h-full bg-primary transition-all"
+            style={{
+              width: `${Math.max(0, Math.min(100, ((currentIndex + 1) / Math.max(passages.length, 1)) * 100))}%`,
+            }}
+          />
+        </div>
         <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-start justify-between gap-3">
-          <TopBadgeRow passage={activePassage} />
+          <TopBadgeRow
+            passage={activePassage}
+            dailyAttempted={todayStats.attempted}
+            answeredCount={getAnsweredCountForPassage(activePassage.id)}
+            rankPlate={rankPlate}
+          />
           <AudioButton
             speaking={isSpeaking}
             onClick={() => toggleSpeech(activePassage)}
@@ -1744,7 +1943,7 @@ export default function PassageDetailPage() {
         </div>
 
         <div className="desktop-reading-grid mx-auto grid h-[calc(100%-60px)] w-full max-w-[1600px] grid-cols-[1.22fr_1fr] gap-3">
-          <section className="min-h-0 overflow-y-auto rounded-3xl bg-[#070808] px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <section className="min-h-0 overflow-y-auto rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <PassageHeader passage={activePassage} />
             <PassageText
               sentences={activePassage.passage_sentences}
@@ -1754,7 +1953,7 @@ export default function PassageDetailPage() {
             />
           </section>
 
-          <section className="min-h-0 overflow-y-auto rounded-3xl border border-white/10 bg-[#070808] px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <section className="min-h-0 overflow-y-auto rounded-lg border border-border bg-background px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="space-y-2">
               {displayQuestions.map((question, index) => {
                 const answer = getAnswerForQuestion(activePassage.id, question.id);
@@ -1798,10 +1997,10 @@ export default function PassageDetailPage() {
             type="button"
             onClick={handlePreviousArrowTap}
             disabled={!hasPrevPassage || isArrowTapCooldown}
-            className={`desktop-arrow-btn pointer-events-auto flex h-24 w-14 items-center justify-center rounded-2xl border text-white shadow-lg transition-colors ${
+            className={`desktop-arrow-btn pointer-events-auto flex h-24 w-14 items-center justify-center rounded-lg border transition-colors ${
               hasPrevPassage && !isArrowTapCooldown
-                ? "border-white/25 bg-black/55 hover:bg-black/72"
-                : "cursor-not-allowed border-white/10 bg-black/25 text-white/35"
+                ? "border-border bg-card/85 text-foreground hover:border-primary"
+                : "cursor-not-allowed border-border bg-card/45 text-muted-foreground"
             }`}
             aria-label="Previous passage"
           >
@@ -1814,10 +2013,10 @@ export default function PassageDetailPage() {
             type="button"
             onClick={handleNextArrowTap}
             disabled={isArrowTapCooldown}
-            className={`desktop-arrow-btn pointer-events-auto flex h-24 w-14 items-center justify-center rounded-2xl border text-white shadow-lg transition-colors ${
+            className={`desktop-arrow-btn pointer-events-auto flex h-24 w-14 items-center justify-center rounded-lg border transition-colors ${
               isArrowTapCooldown
-                ? "cursor-not-allowed border-white/10 bg-black/25 text-white/35"
-                : "border-white/25 bg-black/55 hover:bg-black/72"
+                ? "cursor-not-allowed border-border bg-card/45 text-muted-foreground"
+                : "border-border bg-card/85 text-foreground hover:border-primary"
             }`}
             aria-label="Next passage"
           >
@@ -1845,114 +2044,133 @@ export default function PassageDetailPage() {
             void handleSubmitPassageReport();
           }}
         />
+        {recentAchievementUnlocks[0] && (
+          <AchievementUnlockedToast achievement={recentAchievementUnlocks[0]} />
+        )}
       </div>
     );
   }
 
   return (
     <div className="tablet-portrait-main relative h-[calc(100dvh-60px)] w-full overflow-hidden">
+      <div className="absolute left-0 right-0 top-0 z-20 h-0.5 bg-muted">
+        <div
+          className="h-full bg-primary transition-all"
+          style={{
+            width: `${Math.max(0, Math.min(100, ((currentIndex + 1) / Math.max(passages.length, 1)) * 100))}%`,
+          }}
+        />
+      </div>
       <div
-        ref={feedContainerRef}
-        className="flex h-full w-full flex-row snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="h-full w-full overflow-hidden"
+        onTouchStart={handleMobileSwipeStart}
+        onTouchEnd={handleMobileSwipeEnd}
       >
-        {passages.map((passage, index) => {
-          const inRenderWindow = Math.abs(index - currentIndex) <= WINDOW_RADIUS;
+        <div
+          className="flex h-full w-full touch-pan-y transition-transform duration-200 ease-out"
+          style={{ transform: `translate3d(-${currentIndex * 100}%, 0, 0)` }}
+        >
+          {passages.map((passage, index) => {
+            const inRenderWindow = Math.abs(index - currentIndex) <= WINDOW_RADIUS;
 
-          return (
-            <section
-              key={passage.id}
-              ref={(node) => {
-                sectionRefs.current[passage.id] = node;
-              }}
-              data-passage-id={passage.id}
-              className="h-full w-full flex-none snap-start snap-always overflow-hidden px-3 pb-3 pt-3"
-            >
-              {inRenderWindow ? (
-                (() => {
-                  const answerByQuestionId = answerMapByQuestionId(passage.answer_key);
-                  const highlightedSentenceMap = buildHighlightedSentenceMap(passage);
-                  const displayQuestions = getDisplayQuestions(passage);
+            return (
+              <section
+                key={passage.id}
+                data-passage-id={passage.id}
+                className="h-full w-full flex-none overflow-hidden px-3 pb-3 pt-3"
+              >
+                {inRenderWindow ? (
+                  (() => {
+                    const answerByQuestionId = answerMapByQuestionId(passage.answer_key);
+                    const highlightedSentenceMap = buildHighlightedSentenceMap(passage);
+                    const displayQuestions = getDisplayQuestions(passage);
 
-                  return (
-                    <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-                      <div className="flex items-start justify-between gap-3">
-                        <TopBadgeRow passage={passage} />
-                        <AudioButton
-                          speaking={isSpeaking}
-                          onClick={() => toggleSpeech(passage)}
-                        />
-                      </div>
-
-                      <div className="mt-2 grid min-h-0 flex-1 grid-rows-2 gap-2">
-                        <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-3xl bg-[#070808] px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                          <PassageHeader passage={passage} />
-                          <PassageText
-                            sentences={passage.passage_sentences}
-                            highlightedSentenceMap={highlightedSentenceMap}
-                            vocabItems={passage.vocab ?? []}
-                            onVocabTap={setSelectedVocab}
+                    return (
+                      <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
+                        <div className="flex items-start justify-between gap-3">
+                          <TopBadgeRow
+                            passage={passage}
+                            dailyAttempted={todayStats.attempted}
+                            answeredCount={getAnsweredCountForPassage(passage.id)}
+                            rankPlate={rankPlate}
                           />
-                        </section>
+                          <AudioButton
+                            speaking={isSpeaking}
+                            onClick={() => toggleSpeech(passage)}
+                          />
+                        </div>
 
-                        <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-3xl border border-white/10 bg-[#070808] px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                          <div className="space-y-2">
-                            {displayQuestions.map((question, questionIndex) => {
-                              const answer = getAnswerForQuestion(passage.id, question.id);
-                              const revealed = isQuestionRevealed(passage.id, question.id);
+                        <div className="mt-2 grid min-h-0 flex-1 grid-rows-2 gap-2">
+                          <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <PassageHeader passage={passage} />
+                            <PassageText
+                              sentences={passage.passage_sentences}
+                              highlightedSentenceMap={highlightedSentenceMap}
+                              vocabItems={passage.vocab ?? []}
+                              onVocabTap={setSelectedVocab}
+                            />
+                          </section>
 
-                              return (
-                                <QuestionBlock
-                                  key={question.id}
-                                  question={question}
-                                  displayIndex={questionIndex + 1}
-                                  answer={answer}
-                                  answerKey={answerByQuestionId.get(question.id)}
-                                  revealed={revealed}
-                                  rankFeedback={
-                                    rankFeedbackByQuestion[
-                                      toRankFeedbackKey(passage.id, question.id)
-                                    ]
-                                  }
-                                  onAnswerChange={(nextAnswer) =>
-                                    handleAnswerChange(passage.id, question.id, nextAnswer)
-                                  }
-                                  onSubmitAnswer={(nextAnswer) =>
-                                    revealAnswer(passage.id, question, nextAnswer ?? answer)
-                                  }
-                                />
-                              );
-                            })}
-                          </div>
-                        </section>
+                          <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-background px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="space-y-2">
+                              {displayQuestions.map((question, questionIndex) => {
+                                const answer = getAnswerForQuestion(passage.id, question.id);
+                                const revealed = isQuestionRevealed(passage.id, question.id);
+
+                                return (
+                                  <QuestionBlock
+                                    key={question.id}
+                                    question={question}
+                                    displayIndex={questionIndex + 1}
+                                    answer={answer}
+                                    answerKey={answerByQuestionId.get(question.id)}
+                                    revealed={revealed}
+                                    rankFeedback={
+                                      rankFeedbackByQuestion[
+                                        toRankFeedbackKey(passage.id, question.id)
+                                      ]
+                                    }
+                                    onAnswerChange={(nextAnswer) =>
+                                      handleAnswerChange(passage.id, question.id, nextAnswer)
+                                    }
+                                    onSubmitAnswer={(nextAnswer) =>
+                                      revealAnswer(passage.id, question, nextAnswer ?? answer)
+                                    }
+                                  />
+                                );
+                              })}
+                            </div>
+                          </section>
+                        </div>
                       </div>
+                    );
+                  })()
+                ) : (
+                  <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
+                    <div className="rounded-lg border border-border bg-card px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary/85">
+                        Loading Card
+                      </p>
+                      <h2 className="mt-2 text-xl font-semibold leading-tight text-foreground">
+                        {passage.title}
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">{passage.topic_label}</p>
+                      <p className="mt-4 text-xs text-muted-foreground">
+                        Swipe to load full passage content.
+                      </p>
                     </div>
-                  );
-                })()
-              ) : (
-                <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-                  <div className="rounded-3xl border border-white/10 bg-[#070808] px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary/85">
-                      Loading Card
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold leading-tight text-white">
-                      {passage.title}
-                    </h2>
-                    <p className="mt-1 text-sm text-white/65">{passage.topic_label}</p>
-                    <p className="mt-4 text-xs text-white/50">
-                      Swipe to load full passage content.
-                    </p>
+                    <div className="mt-2 min-h-0 flex-1 rounded-lg border border-border bg-card" />
                   </div>
-                  <div className="mt-2 min-h-0 flex-1 rounded-3xl border border-white/8 bg-white/[0.02]" />
-                </div>
-              )}
-            </section>
-          );
-        })}
+                )}
+              </section>
+            );
+          })}
+        </div>
       </div>
 
       <div className="pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center pl-1">
         <div
-          className={`flex h-24 w-8 items-center justify-center rounded-md border border-white/15 bg-black/35 text-white/45 backdrop-blur-[1px] transition-opacity ${
+          className={`flex h-24 w-8 items-center justify-center rounded-lg border border-border bg-card/75 text-muted-foreground backdrop-blur transition-opacity ${
             currentIndex > 0 ? "opacity-100" : "opacity-0"
           }`}
         >
@@ -1962,7 +2180,7 @@ export default function PassageDetailPage() {
 
       <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex items-center pr-1">
         <div
-          className={`flex h-24 w-8 items-center justify-center rounded-md border border-white/15 bg-black/35 text-white/45 backdrop-blur-[1px] transition-opacity ${
+          className={`flex h-24 w-8 items-center justify-center rounded-lg border border-border bg-card/75 text-muted-foreground backdrop-blur transition-opacity ${
             currentIndex < passages.length - 1 ? "animate-pulse opacity-100" : "opacity-0"
           }`}
         >
@@ -1971,7 +2189,7 @@ export default function PassageDetailPage() {
       </div>
 
       {isAppending && (
-        <div className="pointer-events-none absolute bottom-16 left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/10 bg-black/35 px-3 py-1 text-xs text-white/65">
+        <div className="pointer-events-none absolute bottom-16 left-1/2 z-30 -translate-x-1/2 rounded-lg border border-border bg-card/85 px-3 py-1 text-xs text-muted-foreground">
           Loading more sets...
         </div>
       )}
@@ -2005,6 +2223,9 @@ export default function PassageDetailPage() {
           void handleSubmitPassageReport();
         }}
       />
+      {recentAchievementUnlocks[0] && (
+        <AchievementUnlockedToast achievement={recentAchievementUnlocks[0]} />
+      )}
     </div>
   );
 }

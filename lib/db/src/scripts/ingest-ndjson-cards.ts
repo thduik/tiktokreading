@@ -11,6 +11,12 @@ type NdQuestionType =
   | "MatchingHeading"
   | "MatchingInformation";
 type OutQuestionType = "tfng" | "mcq" | "sentence_completion" | "short_answer";
+type OutQuestionSetType =
+  | "tfng"
+  | "mcq"
+  | "sentence_completion"
+  | "short_answer"
+  | "mixed";
 type OutAnswerType = "label" | "option_key" | "text";
 
 type NdCard = {
@@ -42,6 +48,8 @@ type ConvertedCard = {
   id: string;
   bandIndex: number;
   bandLabel: string;
+  questionSetTypeIndex: OutQuestionSetType;
+  questionSetTypeLabel: string;
   topicIndex: string;
   topicLabel: string;
   title: string;
@@ -112,6 +120,14 @@ function questionTypeLabel(type: OutQuestionType, sourceType: NdQuestionType) {
   if (type === "mcq") return "Multiple Choice";
   if (type === "sentence_completion") return "Sentence Completion";
   return "Short Answer";
+}
+
+function questionSetTypeLabel(type: OutQuestionSetType) {
+  if (type === "tfng") return "True / False / Not Given";
+  if (type === "mcq") return "Multiple Choice";
+  if (type === "sentence_completion") return "Sentence Completion";
+  if (type === "short_answer") return "Short Answer";
+  return "Mixed";
 }
 
 function slugify(value: string) {
@@ -193,7 +209,7 @@ function canonicalizeOptionKey(value: string) {
   const stripped = normalizeSpaces(value)
     .replace(/^\d+\s*[.)\-:]\s*/g, "")
     .toUpperCase();
-  const m = stripped.match(/^([A-D])/);
+  const m = stripped.match(/^([A-H])/);
   return m ? m[1] : stripped;
 }
 
@@ -206,6 +222,30 @@ function defaultExampleSentence(sentences: string[], term: string, idx?: number)
   const low = term.toLowerCase();
   const hit = sentences.find((s) => s.toLowerCase().includes(low));
   return hit ?? sentences[0] ?? "";
+}
+
+function deriveQuestionSetType(cardNo: number, questions: ConvertedCard["questions"]) {
+  const typeSet = new Set<OutQuestionType>(questions.map((question) => question.questionTypeIndex));
+  if (typeSet.size === 1) {
+    const onlyType = questions[0]?.questionTypeIndex;
+    if (onlyType) {
+      return onlyType as OutQuestionSetType;
+    }
+  }
+
+  const hasTfng = typeSet.has("tfng");
+  const hasMcq = typeSet.has("mcq");
+  const hasSentenceCompletion = typeSet.has("sentence_completion");
+  const hasShortAnswer = typeSet.has("short_answer");
+
+  if (hasTfng && hasMcq && hasSentenceCompletion && hasShortAnswer) {
+    return "mixed";
+  }
+
+  throw new Error(
+    `card_no=${cardNo} has unsupported multi-type mix (${[...typeSet].join(", ")}). ` +
+      `Allowed combos are single-type sets or full mixed (tfng, mcq, sentence_completion, short_answer).`,
+  );
 }
 
 function parseNdjson(raw: string) {
@@ -254,7 +294,7 @@ function validateAndConvert(cards: NdCard[]) {
       const payload: Record<string, unknown> = {};
 
       if (qType === "mcq") {
-        payload.options = (question.options ?? []).slice(0, 4).map((text, i) => ({
+        payload.options = (question.options ?? []).map((text, i) => ({
           key: ["A", "B", "C", "D"][i] ?? String.fromCharCode(65 + i),
           text: normalizeSpaces(toAsciiPunctuation(text)),
         }));
@@ -358,10 +398,14 @@ function validateAndConvert(cards: NdCard[]) {
       };
     });
 
+    const questionSetTypeIndex = deriveQuestionSetType(card.card_no, outQuestions);
+
     converted.push({
       id: "",
       bandIndex,
       bandLabel: card.band,
+      questionSetTypeIndex,
+      questionSetTypeLabel: questionSetTypeLabel(questionSetTypeIndex),
       topicIndex: slugify(card.topic),
       topicLabel: normalizeSpaces(toAsciiPunctuation(card.topic)),
       title: normalizeSpaces(toAsciiPunctuation(card.title)),
@@ -446,7 +490,7 @@ async function run() {
     existingTitleKeysByBand.set(card.bandLabel, set);
 
     maxSeq += 1;
-    card.id = `ielts_reading_${card.bandIndex}_mixed_${String(maxSeq).padStart(4, "0")}`;
+    card.id = `ielts_reading_${card.bandIndex}_${card.questionSetTypeIndex}_${String(maxSeq).padStart(4, "0")}`;
   }
 
   await db.transaction(async (tx) => {
@@ -460,8 +504,8 @@ async function run() {
           examLabel: "IELTS Reading",
           bandIndex: card.bandIndex,
           bandLabel: card.bandLabel,
-          questionSetTypeIndex: "mixed",
-          questionSetTypeLabel: "Mixed",
+          questionSetTypeIndex: card.questionSetTypeIndex,
+          questionSetTypeLabel: card.questionSetTypeLabel,
           topicIndex: card.topicIndex,
           topicLabel: card.topicLabel,
           title: card.title,
@@ -482,8 +526,8 @@ async function run() {
             examLabel: "IELTS Reading",
             bandIndex: card.bandIndex,
             bandLabel: card.bandLabel,
-            questionSetTypeIndex: "mixed",
-            questionSetTypeLabel: "Mixed",
+            questionSetTypeIndex: card.questionSetTypeIndex,
+            questionSetTypeLabel: card.questionSetTypeLabel,
             topicIndex: card.topicIndex,
             topicLabel: card.topicLabel,
             title: card.title,
