@@ -44,7 +44,7 @@ export function RankPlate({
   return (
     <div
       className={cn(
-        "rounded-lg border shadow-sm backdrop-blur",
+        "min-w-0 rounded-lg border shadow-sm backdrop-blur",
         rankPlateTheme(plate.baseRank),
         isCompact ? "inline-flex h-9 items-center gap-2 px-3" : "p-3",
         className,
@@ -61,11 +61,18 @@ export function RankPlate({
       </div>
 
       <div className={cn("min-w-0", isCompact ? "flex items-baseline gap-2" : "space-y-1")}>
-        <p className={cn("font-semibold leading-none", isCompact ? "text-sm" : "text-base")}>
+        <p
+          className={cn(
+            "font-semibold leading-none",
+            isCompact ? "min-w-0 truncate text-sm" : "text-base",
+          )}
+        >
           {plate.displayLabel}
         </p>
         {isCompact ? (
-          <p className="text-[11px] font-medium text-white/75">{plate.rankedPoints} RP</p>
+          <p className="shrink-0 text-[11px] font-medium text-white/75">
+            {plate.rankedPoints} RP
+          </p>
         ) : (
           <>
             <p className="text-xs text-white/80">{plate.rankedPoints} RP</p>

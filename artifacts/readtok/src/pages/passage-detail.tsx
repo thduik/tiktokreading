@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   House,
+  Maximize2,
+  Minimize2,
   Trophy,
   Volume2,
   XCircle,
@@ -346,6 +348,7 @@ function TopBadgeRow({
   answeredCount: number;
   rankPlate: RankPlateData | null;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
     passage.question_set_type_index,
   )}`;
@@ -360,47 +363,132 @@ function TopBadgeRow({
   );
 
   return (
-    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex-wrap md:gap-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-      <Link
-        href="/list"
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
-        aria-label="Go to passage list"
-      >
-        <House className="h-4 w-4" />
-      </Link>
-      <Link
-        href={questionFilterHref}
-        className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
-      >
-        {passage.question_set_type_label}
-      </Link>
-      <Link
-        href={bandFilterHref}
-        className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
-      >
-        Band {passage.band_label}
-      </Link>
-      <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground md:gap-2 md:px-3 md:text-[11px]">
-        <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
-          {dailyGoal.attemptedToday}/{dailyGoal.goal}
-        </span>
-        <span>Today</span>
-        <span className="h-1.5 w-8 overflow-hidden rounded-full bg-muted md:w-10">
-          <span
-            className={`block h-full rounded-full ${
-              dailyGoal.isComplete ? "bg-secondary" : "bg-primary"
-            }`}
-            style={{ width: `${dailyGoal.progressPercent}%` }}
-          />
-        </span>
+    <>
+      <div className="relative flex min-w-0 flex-1 md:hidden">
+        {!isExpanded ? (
+          <div
+            role="button"
+            tabIndex={0}
+            className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden pr-10 text-left"
+            onClick={() => setIsExpanded(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsExpanded(true);
+              }
+            }}
+            aria-label="Expand reading status bar"
+          >
+            {rankPlate ? (
+              <RankPlate plate={rankPlate} className="h-9 min-w-0 flex-1" />
+            ) : (
+              <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium text-muted-foreground">
+                Band {passage.band_label}
+              </span>
+            )}
+            <QuestionCompletionChip
+              answeredCount={answeredCount}
+              totalQuestions={totalQuestions}
+              completionPercent={completionPercent}
+            />
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pr-10">
+            {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
+            <Link
+              href="/list"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+              aria-label="Go to passage list"
+            >
+              <House className="h-4 w-4" />
+            </Link>
+            <Link
+              href={questionFilterHref}
+              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              {passage.question_set_type_label}
+            </Link>
+            <Link
+              href={bandFilterHref}
+              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              Band {passage.band_label}
+            </Link>
+            <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground">
+              <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
+                {dailyGoal.attemptedToday}/{dailyGoal.goal}
+              </span>
+              <span>Today</span>
+              <span className="h-1.5 w-8 overflow-hidden rounded-full bg-muted">
+                <span
+                  className={`block h-full rounded-full ${
+                    dailyGoal.isComplete ? "bg-secondary" : "bg-primary"
+                  }`}
+                  style={{ width: `${dailyGoal.progressPercent}%` }}
+                />
+              </span>
+            </div>
+            <QuestionCompletionChip
+              answeredCount={answeredCount}
+              totalQuestions={totalQuestions}
+              completionPercent={completionPercent}
+            />
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="absolute right-0 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/95 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-primary hover:text-primary"
+          onClick={() => setIsExpanded((current) => !current)}
+          aria-label={isExpanded ? "Collapse reading status bar" : "Expand reading status bar"}
+          aria-expanded={isExpanded}
+        >
+          {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
       </div>
-      <QuestionCompletionChip
-        answeredCount={answeredCount}
-        totalQuestions={totalQuestions}
-        completionPercent={completionPercent}
-      />
-      {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
-    </div>
+
+      <div className="hidden min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex md:flex-wrap md:gap-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+        {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
+        <Link
+          href="/list"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+          aria-label="Go to passage list"
+        >
+          <House className="h-4 w-4" />
+        </Link>
+        <Link
+          href={questionFilterHref}
+          className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
+        >
+          {passage.question_set_type_label}
+        </Link>
+        <Link
+          href={bandFilterHref}
+          className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
+        >
+          Band {passage.band_label}
+        </Link>
+        <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground md:gap-2 md:px-3 md:text-[11px]">
+          <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
+            {dailyGoal.attemptedToday}/{dailyGoal.goal}
+          </span>
+          <span>Today</span>
+          <span className="h-1.5 w-8 overflow-hidden rounded-full bg-muted md:w-10">
+            <span
+              className={`block h-full rounded-full ${
+                dailyGoal.isComplete ? "bg-secondary" : "bg-primary"
+              }`}
+              style={{ width: `${dailyGoal.progressPercent}%` }}
+            />
+          </span>
+        </div>
+        <QuestionCompletionChip
+          answeredCount={answeredCount}
+          totalQuestions={totalQuestions}
+          completionPercent={completionPercent}
+        />
+      </div>
+    </>
   );
 }
 
