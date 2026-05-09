@@ -11,6 +11,8 @@ Frontend build and publish to Nginx webroot on VPS.
   `/opt/readtok`
 - Webroot path:
   `/var/www/readtok`
+- Node follows the repo contract:
+  `20.19.5` from `.nvmrc` / `.node-version`
 - Clerk publishable key available in VPS env:
   `VITE_CLERK_PUBLISHABLE_KEY` or `CLERK_PUBLISHABLE_KEY`
 
@@ -30,12 +32,18 @@ This calls:
 
 1. SSH into VPS.
 2. `git pull --ff-only`.
-3. `corepack pnpm install`.
-4. Build `@workspace/readtok`.
-5. Write `runtime-config.js` with Clerk runtime keys.
-6. `rsync` built assets into `/var/www/readtok`.
-7. Print first lines of live `index.html`.
-8. Curl live URL for quick check.
+3. Enable Corepack and activate `pnpm@10.33.2`.
+4. Run the repo toolchain check.
+5. `corepack pnpm install --frozen-lockfile`.
+6. Typecheck and build `@workspace/readtok`.
+7. Write `runtime-config.js` with Clerk runtime keys.
+8. `rsync` built assets into `/var/www/readtok`.
+9. Print first lines of live `index.html`.
+10. Curl live URL for quick check.
+
+If deploy stops at the toolchain check, update Node on the VPS before trying
+again. This prevents the app from building with the wrong Vite/Rollup native
+package set.
 
 ## Database Migrations
 

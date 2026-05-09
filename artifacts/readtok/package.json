@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/check-toolchain.mjs --pnpm",
     "dev": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite --config vite.config.ts --host 0.0.0.0",
+    "prebuild": "node ../../scripts/check-toolchain.mjs --pnpm",
     "build": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite build --config vite.config.ts",
+    "preserve": "node ../../scripts/check-toolchain.mjs --pnpm",
     "serve": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test ./src/lib/daily-goal.test.ts ./src/lib/rank-visual.test.ts"

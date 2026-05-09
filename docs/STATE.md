@@ -50,6 +50,10 @@ Last updated: 2026-05-08 (UTC)
   Signed-in answer submissions upsert `user_daily_answer_stats` rows by
   `user + local_date + band_group + question_type`. Today, last 7 days,
   last 30 days, and lifetime stats are calculated from those daily rows.
+- Toolchain:
+  Node `20.19.5` via `.nvmrc` / `.node-version`; pnpm `10.33.2` via
+  `packageManager`. Run `corepack pnpm run doctor` before build/deploy
+  debugging.
 - Tests:
   `corepack pnpm run test` covers ranking, answer analytics helpers, daily goal,
   rank plates, migration smoke checks, and ingest normalization.

@@ -29,7 +29,10 @@ ssh -F /dev/null -o IdentityAgent=none -o IdentitiesOnly=yes -o PreferredAuthent
     set +a
   fi
   git pull --ff-only
-  corepack pnpm install
+  corepack enable
+  corepack prepare pnpm@10.33.2 --activate
+  node ./scripts/check-toolchain.mjs --pnpm
+  corepack pnpm install --frozen-lockfile
   if [ -z \"\${VITE_CLERK_PUBLISHABLE_KEY:-}\" ] && [ -z \"\${CLERK_PUBLISHABLE_KEY:-}\" ]; then
     echo \"[deploy] missing Clerk publishable key; refusing to build frontend in local mode\"
     exit 1
@@ -38,6 +41,7 @@ ssh -F /dev/null -o IdentityAgent=none -o IdentitiesOnly=yes -o PreferredAuthent
   CLERK_PUBLISHABLE_KEY_RUNTIME=\"\${VITE_CLERK_PUBLISHABLE_KEY:-\${CLERK_PUBLISHABLE_KEY:-}}\"
   CLERK_PROXY_URL_RUNTIME=\"\${VITE_CLERK_PROXY_URL:-\${CLERK_PROXY_URL:-}}\"
 
+  corepack pnpm --filter @workspace/readtok run typecheck
   corepack pnpm --filter @workspace/readtok run build
 
   cat > \"${REPO_DIR}/artifacts/readtok/dist/public/runtime-config.js\" <<EOF

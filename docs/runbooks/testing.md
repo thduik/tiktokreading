@@ -5,9 +5,13 @@
 From repo root:
 
 ```bash
+corepack pnpm run doctor
 corepack pnpm run typecheck
 corepack pnpm run test
 ```
+
+The repo expects Node `20.19.5` and `pnpm@10.33.2`. Run `nvm install && nvm use`
+from the repo root before building locally.
 
 The test command runs package-level suites with Node's built-in test runner via
 `tsx`.

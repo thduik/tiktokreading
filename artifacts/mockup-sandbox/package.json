@@ -4,8 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "predev": "node ../../scripts/check-toolchain.mjs --pnpm",
     "dev": "vite dev",
+    "prebuild": "node ../../scripts/check-toolchain.mjs --pnpm",
     "build": "vite build",
+    "prepreview": "node ../../scripts/check-toolchain.mjs --pnpm",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
