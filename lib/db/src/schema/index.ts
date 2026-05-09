@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -28,9 +29,27 @@ export const QUESTION_TYPE_VALUES = [
 
 export const ANSWER_TYPE_VALUES = ["label", "option_key", "text"] as const;
 
+export const ANSWER_STAT_BAND_GROUP_VALUES = [
+  "Band6",
+  "Band7",
+  "Band75",
+  "Band8Plus",
+] as const;
+
+export const ANSWER_STAT_QUESTION_TYPE_VALUES = [
+  "MCQ",
+  "TFNG",
+  "SentenceCompletion",
+  "ShortAnswer",
+  "Matching",
+] as const;
+
 export type QuestionSetTypeIndex = (typeof QUESTION_SET_TYPE_VALUES)[number];
 export type QuestionTypeIndex = (typeof QUESTION_TYPE_VALUES)[number];
 export type AnswerTypeIndex = (typeof ANSWER_TYPE_VALUES)[number];
+export type AnswerStatBandGroup = (typeof ANSWER_STAT_BAND_GROUP_VALUES)[number];
+export type AnswerStatQuestionType =
+  (typeof ANSWER_STAT_QUESTION_TYPE_VALUES)[number];
 export type PassageVocabItem = {
   term: string;
   definition: string;
@@ -107,6 +126,48 @@ export const rankTiers = pgTable(
     uniqueIndex("rank_tiers_sort_order_uidx").on(table.sortOrder),
     check("rank_tiers_min_points_nonnegative_chk", sql`${table.minPoints} >= 0`),
     check("rank_tiers_sort_order_nonnegative_chk", sql`${table.sortOrder} >= 0`),
+  ],
+);
+
+export const userDailyAnswerStats = pgTable(
+  "user_daily_answer_stats",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => userProfiles.userId, { onDelete: "cascade" }),
+    localDate: date("local_date").notNull(),
+    bandGroup: text("band_group").notNull().$type<AnswerStatBandGroup>(),
+    questionType: text("question_type").notNull().$type<AnswerStatQuestionType>(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    correctCount: integer("correct_count").notNull().default(0),
+    wrongCount: integer("wrong_count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("user_daily_answer_stats_user_date_idx").on(table.userId, table.localDate),
+    index("user_daily_answer_stats_user_category_idx").on(
+      table.userId,
+      table.bandGroup,
+      table.questionType,
+    ),
+    check(
+      "user_daily_answer_stats_counts_nonnegative_chk",
+      sql`${table.attemptCount} >= 0 AND ${table.correctCount} >= 0 AND ${table.wrongCount} >= 0`,
+    ),
+    check(
+      "user_daily_answer_stats_counts_match_chk",
+      sql`${table.attemptCount} = ${table.correctCount} + ${table.wrongCount}`,
+    ),
+    check(
+      "user_daily_answer_stats_band_group_chk",
+      sql`${table.bandGroup} in ('Band6','Band7','Band75','Band8Plus')`,
+    ),
+    check(
+      "user_daily_answer_stats_question_type_chk",
+      sql`${table.questionType} in ('MCQ','TFNG','SentenceCompletion','ShortAnswer','Matching')`,
+    ),
   ],
 );
 
@@ -289,6 +350,16 @@ export const userProgressRelations = relations(userProgress, ({ one }) => ({
   }),
 }));
 
+export const userDailyAnswerStatsRelations = relations(
+  userDailyAnswerStats,
+  ({ one }) => ({
+    profile: one(userProfiles, {
+      fields: [userDailyAnswerStats.userId],
+      references: [userProfiles.userId],
+    }),
+  }),
+);
+
 export type Passage = typeof passages.$inferSelect;
 export type NewPassage = typeof passages.$inferInsert;
 export type Question = typeof questions.$inferSelect;
@@ -300,3 +371,5 @@ export type NewUserProfile = typeof userProfiles.$inferInsert;
 export type RankTier = typeof rankTiers.$inferSelect;
 export type UserProgress = typeof userProgress.$inferSelect;
 export type NewUserProgress = typeof userProgress.$inferInsert;
+export type UserDailyAnswerStat = typeof userDailyAnswerStats.$inferSelect;
+export type NewUserDailyAnswerStat = typeof userDailyAnswerStats.$inferInsert;

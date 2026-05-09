@@ -112,6 +112,7 @@ export interface SubmitRankedAnswerRequest {
   passageId: string;
   questionId: number;
   selectedAnswer: string;
+  localDate?: string;
 }
 
 export interface SubmitRankedAnswerResponse {
@@ -147,6 +148,51 @@ export async function submitRankedAnswer(request: SubmitRankedAnswerRequest) {
       passage_id: request.passageId,
       question_id: request.questionId,
       selected_answer: request.selectedAnswer,
+      local_date: request.localDate,
     }),
   });
+}
+
+export type AnswerStatBandGroup = "Band6" | "Band7" | "Band75" | "Band8Plus";
+export type AnswerStatQuestionType =
+  | "MCQ"
+  | "TFNG"
+  | "SentenceCompletion"
+  | "ShortAnswer"
+  | "Matching";
+
+export interface AnswerStatCell {
+  total: number;
+  correct: number;
+  wrong: number;
+  accuracy: number;
+}
+
+export interface AnswerStatsPeriod {
+  overall: AnswerStatCell;
+  byBandAndType: Partial<
+    Record<AnswerStatBandGroup, Partial<Record<AnswerStatQuestionType, AnswerStatCell>>>
+  >;
+}
+
+export interface AnswerStatsEnvelope {
+  localDate: string;
+  categories: {
+    bandGroups: AnswerStatBandGroup[];
+    questionTypes: AnswerStatQuestionType[];
+  };
+  todayData: AnswerStatsPeriod;
+  last7dayData: AnswerStatsPeriod;
+  last30dayData: AnswerStatsPeriod;
+  lifetimeData: AnswerStatsPeriod;
+}
+
+export async function fetchMyAnswerStats(localDate?: string) {
+  const searchParams = new URLSearchParams();
+  if (localDate) {
+    searchParams.set("local_date", localDate);
+  }
+
+  const suffix = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  return requestJson<AnswerStatsEnvelope>(`${API_BASE}/me/answer-stats${suffix}`);
 }

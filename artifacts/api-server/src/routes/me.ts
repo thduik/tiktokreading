@@ -1,12 +1,17 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getAuth } from "@clerk/express";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import {
+  ANSWER_STAT_BAND_GROUP_VALUES,
+  ANSWER_STAT_QUESTION_TYPE_VALUES,
+  type AnswerStatBandGroup,
+  type AnswerStatQuestionType,
   answerKeys,
   db,
   passages,
   questions,
   rankTiers,
+  userDailyAnswerStats,
   userProfiles,
   userProgress,
 } from "@workspace/db";
@@ -19,6 +24,28 @@ import {
 
 const router: IRouter = Router();
 
+type AnswerStatsRow = {
+  bandGroup: AnswerStatBandGroup;
+  questionType: AnswerStatQuestionType;
+  attemptCount: number;
+  correctCount: number;
+  wrongCount: number;
+};
+
+type AnswerStatCell = {
+  total: number;
+  correct: number;
+  wrong: number;
+  accuracy: number;
+};
+
+type AnswerStatsPeriod = {
+  overall: AnswerStatCell;
+  byBandAndType: Partial<
+    Record<AnswerStatBandGroup, Partial<Record<AnswerStatQuestionType, AnswerStatCell>>>
+  >;
+};
+
 function normalizeDisplayName(value: unknown) {
   if (typeof value !== "string") {
     return undefined;
@@ -29,6 +56,166 @@ function normalizeDisplayName(value: unknown) {
     return null;
   }
   return trimmed;
+}
+
+function formatDateKey(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDaysToDateKey(dateKey: string, dayDelta: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + dayDelta);
+  return formatDateKey(date);
+}
+
+function normalizeLocalDateKey(raw: unknown) {
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return null;
+  }
+
+  const [year, month, day] = raw.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return raw;
+}
+
+function readLocalDateKey(raw: unknown) {
+  return normalizeLocalDateKey(raw) ?? formatDateKey(new Date());
+}
+
+function normalizeAnswerStatBandGroup(
+  bandLabel: string | number,
+): AnswerStatBandGroup {
+  const normalized = String(bandLabel).trim().toLowerCase();
+
+  if (normalized === "6" || normalized === "6.0" || normalized === "band 6.0") {
+    return "Band6";
+  }
+  if (normalized === "7" || normalized === "7.0" || normalized === "band 7.0") {
+    return "Band7";
+  }
+  if (
+    normalized === "7.5" ||
+    normalized === "band 7.5" ||
+    normalized === "75"
+  ) {
+    return "Band75";
+  }
+
+  return "Band8Plus";
+}
+
+function normalizeAnswerStatQuestionType({
+  questionTypeIndex,
+  questionTypeLabel,
+}: {
+  questionTypeIndex: string;
+  questionTypeLabel: string;
+}): AnswerStatQuestionType {
+  const label = questionTypeLabel.trim().toLowerCase();
+  if (label.includes("matching")) {
+    return "Matching";
+  }
+
+  if (questionTypeIndex === "tfng") {
+    return "TFNG";
+  }
+  if (questionTypeIndex === "sentence_completion") {
+    return "SentenceCompletion";
+  }
+  if (questionTypeIndex === "short_answer") {
+    return "ShortAnswer";
+  }
+
+  return "MCQ";
+}
+
+function toAccuracy(correct: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Math.round((correct / total) * 1000) / 10;
+}
+
+function toAnswerStatCell(row: {
+  attemptCount: number;
+  correctCount: number;
+  wrongCount: number;
+}): AnswerStatCell {
+  return {
+    total: row.attemptCount,
+    correct: row.correctCount,
+    wrong: row.wrongCount,
+    accuracy: toAccuracy(row.correctCount, row.attemptCount),
+  };
+}
+
+function buildAnswerStatsPeriod(rows: AnswerStatsRow[]): AnswerStatsPeriod {
+  const byBandAndType: AnswerStatsPeriod["byBandAndType"] = {};
+  const overall = {
+    attemptCount: 0,
+    correctCount: 0,
+    wrongCount: 0,
+  };
+
+  for (const row of rows) {
+    overall.attemptCount += row.attemptCount;
+    overall.correctCount += row.correctCount;
+    overall.wrongCount += row.wrongCount;
+
+    const bandStats = byBandAndType[row.bandGroup] ?? {};
+    bandStats[row.questionType] = toAnswerStatCell(row);
+    byBandAndType[row.bandGroup] = bandStats;
+  }
+
+  return {
+    overall: toAnswerStatCell(overall),
+    byBandAndType,
+  };
+}
+
+async function fetchAnswerStatsRows({
+  userId,
+  fromDate,
+  toDate,
+}: {
+  userId: string;
+  fromDate?: string;
+  toDate?: string;
+}) {
+  const conditions = [eq(userDailyAnswerStats.userId, userId)];
+  if (fromDate) {
+    conditions.push(gte(userDailyAnswerStats.localDate, fromDate));
+  }
+  if (toDate) {
+    conditions.push(lte(userDailyAnswerStats.localDate, toDate));
+  }
+
+  const rows = await db
+    .select({
+      bandGroup: userDailyAnswerStats.bandGroup,
+      questionType: userDailyAnswerStats.questionType,
+      attemptCount: sql<number>`coalesce(sum(${userDailyAnswerStats.attemptCount}), 0)::int`,
+      correctCount: sql<number>`coalesce(sum(${userDailyAnswerStats.correctCount}), 0)::int`,
+      wrongCount: sql<number>`coalesce(sum(${userDailyAnswerStats.wrongCount}), 0)::int`,
+    })
+    .from(userDailyAnswerStats)
+    .where(and(...conditions))
+    .groupBy(userDailyAnswerStats.bandGroup, userDailyAnswerStats.questionType);
+
+  return rows;
 }
 
 function readEmailFromClaims(claims: unknown): string | null {
@@ -333,6 +520,70 @@ router.patch("/me", async (req, res) => {
   });
 });
 
+router.get("/me/answer-stats", async (req, res) => {
+  const userId = getUserIdOrRespondUnauthorized(req, res);
+  if (!userId) {
+    return;
+  }
+
+  const localDate = readLocalDateKey(req.query.local_date);
+  const last7StartDate = addDaysToDateKey(localDate, -6);
+  const last30StartDate = addDaysToDateKey(localDate, -29);
+
+  const profileRows = await db
+    .select({ userId: userProfiles.userId })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
+
+  if (profileRows.length === 0) {
+    const emptyPeriod = buildAnswerStatsPeriod([]);
+    res.json({
+      localDate,
+      categories: {
+        bandGroups: ANSWER_STAT_BAND_GROUP_VALUES,
+        questionTypes: ANSWER_STAT_QUESTION_TYPE_VALUES,
+      },
+      todayData: emptyPeriod,
+      last7dayData: emptyPeriod,
+      last30dayData: emptyPeriod,
+      lifetimeData: emptyPeriod,
+    });
+    return;
+  }
+
+  const [todayRows, last7Rows, last30Rows, lifetimeRows] = await Promise.all([
+    fetchAnswerStatsRows({
+      userId,
+      fromDate: localDate,
+      toDate: localDate,
+    }),
+    fetchAnswerStatsRows({
+      userId,
+      fromDate: last7StartDate,
+      toDate: localDate,
+    }),
+    fetchAnswerStatsRows({
+      userId,
+      fromDate: last30StartDate,
+      toDate: localDate,
+    }),
+    fetchAnswerStatsRows({ userId }),
+  ]);
+
+  res.json({
+    localDate,
+    categories: {
+      bandGroups: ANSWER_STAT_BAND_GROUP_VALUES,
+      questionTypes: ANSWER_STAT_QUESTION_TYPE_VALUES,
+    },
+    todayData: buildAnswerStatsPeriod(todayRows),
+    last7dayData: buildAnswerStatsPeriod(last7Rows),
+    last30dayData: buildAnswerStatsPeriod(last30Rows),
+    lifetimeData: buildAnswerStatsPeriod(lifetimeRows),
+  });
+});
+
 router.post("/me/submit-answer", async (req, res) => {
   const userId = getUserIdOrRespondUnauthorized(req, res);
   if (!userId) {
@@ -350,6 +601,7 @@ router.post("/me/submit-answer", async (req, res) => {
       : null;
   const selectedAnswer =
     typeof body?.selected_answer === "string" ? body.selected_answer : "";
+  const localDate = readLocalDateKey(body?.local_date);
 
   if (!passageId || sourceQuestionId === null) {
     res.status(400).json({
@@ -371,6 +623,8 @@ router.post("/me/submit-answer", async (req, res) => {
   const questionRows = await db
     .select({
       questionId: questions.id,
+      questionTypeIndex: questions.questionTypeIndex,
+      questionTypeLabel: questions.questionTypeLabel,
       correctAnswer: answerKeys.answerValue,
       bandLabel: passages.bandLabel,
     })
@@ -392,6 +646,11 @@ router.post("/me/submit-answer", async (req, res) => {
 
   const progressRow = await ensureUserProgress(userId);
   const row = questionRows[0];
+  const bandGroup = normalizeAnswerStatBandGroup(row.bandLabel);
+  const questionType = normalizeAnswerStatQuestionType({
+    questionTypeIndex: row.questionTypeIndex,
+    questionTypeLabel: row.questionTypeLabel,
+  });
 
   const { updatedUserProgress, answerResult } = submitAnswer(
     {
@@ -411,19 +670,51 @@ router.post("/me/submit-answer", async (req, res) => {
     selectedAnswer,
   );
 
-  const updatedRows = await db
-    .update(userProgress)
-    .set({
-      lifetimeXp: updatedUserProgress.lifetimeXp,
-      rankedPoints: updatedUserProgress.rankedPoints,
-      currentRank: updatedUserProgress.currentRank,
-      totalQuestionsAnswered: updatedUserProgress.totalQuestionsAnswered,
-      totalCorrect: updatedUserProgress.totalCorrect,
-      totalIncorrect: updatedUserProgress.totalIncorrect,
-      updatedAt: new Date(),
-    })
-    .where(eq(userProgress.userId, userId))
-    .returning();
+  const correctIncrement = answerResult.isCorrect ? 1 : 0;
+  const wrongIncrement = answerResult.isCorrect ? 0 : 1;
+  const updatedRows = await db.transaction(async (tx) => {
+    const progressRows = await tx
+      .update(userProgress)
+      .set({
+        lifetimeXp: updatedUserProgress.lifetimeXp,
+        rankedPoints: updatedUserProgress.rankedPoints,
+        currentRank: updatedUserProgress.currentRank,
+        totalQuestionsAnswered: updatedUserProgress.totalQuestionsAnswered,
+        totalCorrect: updatedUserProgress.totalCorrect,
+        totalIncorrect: updatedUserProgress.totalIncorrect,
+        updatedAt: new Date(),
+      })
+      .where(eq(userProgress.userId, userId))
+      .returning();
+
+    await tx
+      .insert(userDailyAnswerStats)
+      .values({
+        userId,
+        localDate,
+        bandGroup,
+        questionType,
+        attemptCount: 1,
+        correctCount: correctIncrement,
+        wrongCount: wrongIncrement,
+      })
+      .onConflictDoUpdate({
+        target: [
+          userDailyAnswerStats.userId,
+          userDailyAnswerStats.localDate,
+          userDailyAnswerStats.bandGroup,
+          userDailyAnswerStats.questionType,
+        ],
+        set: {
+          attemptCount: sql`${userDailyAnswerStats.attemptCount} + 1`,
+          correctCount: sql`${userDailyAnswerStats.correctCount} + ${correctIncrement}`,
+          wrongCount: sql`${userDailyAnswerStats.wrongCount} + ${wrongIncrement}`,
+          updatedAt: sql`now()`,
+        },
+      });
+
+    return progressRows;
+  });
 
   const latestProgress = updatedRows[0];
   res.json({

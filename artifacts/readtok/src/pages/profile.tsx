@@ -3,6 +3,7 @@ import { useUser, useClerk } from "@clerk/react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
+  BarChart3,
   Target,
   TrendingUp,
   BookOpenCheck,
@@ -25,7 +26,12 @@ import {
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import {
   bootstrapMyProfile,
+  fetchMyAnswerStats,
   fetchMyProfile,
+  type AnswerStatBandGroup,
+  type AnswerStatQuestionType,
+  type AnswerStatsEnvelope,
+  type AnswerStatsPeriod,
   type RankTierThreshold,
   type UserProgress,
   updateMyProfile,
@@ -51,6 +57,74 @@ function addDays(date: Date, dayDelta: number) {
 function percent(correct: number, attempted: number) {
   if (attempted <= 0) return 0;
   return Math.round((correct / attempted) * 100);
+}
+
+const answerStatsPeriodOptions = [
+  { key: "todayData", label: "Today" },
+  { key: "last7dayData", label: "7 Days" },
+  { key: "last30dayData", label: "30 Days" },
+  { key: "lifetimeData", label: "Lifetime" },
+] as const;
+
+type AnswerStatsPeriodKey = (typeof answerStatsPeriodOptions)[number]["key"];
+
+const answerStatsBandLabels: Record<AnswerStatBandGroup, string> = {
+  Band6: "Band 6.0",
+  Band7: "Band 7.0",
+  Band75: "Band 7.5",
+  Band8Plus: "Band 8.0+",
+};
+
+const answerStatsQuestionTypeLabels: Record<AnswerStatQuestionType, string> = {
+  MCQ: "MCQ",
+  TFNG: "TFNG",
+  SentenceCompletion: "Sentence Completion",
+  ShortAnswer: "Short Answer",
+  Matching: "Matching",
+};
+
+function flattenWeakAreas(period: AnswerStatsPeriod) {
+  const areas: Array<{
+    key: string;
+    bandGroup: AnswerStatBandGroup;
+    questionType: AnswerStatQuestionType;
+    total: number;
+    correct: number;
+    wrong: number;
+    accuracy: number;
+  }> = [];
+
+  for (const [bandGroup, byType] of Object.entries(period.byBandAndType)) {
+    if (!byType) {
+      continue;
+    }
+
+    for (const [questionType, cell] of Object.entries(byType)) {
+      if (!cell || cell.total <= 0) {
+        continue;
+      }
+
+      areas.push({
+        key: `${bandGroup}:${questionType}`,
+        bandGroup: bandGroup as AnswerStatBandGroup,
+        questionType: questionType as AnswerStatQuestionType,
+        total: cell.total,
+        correct: cell.correct,
+        wrong: cell.wrong,
+        accuracy: cell.accuracy,
+      });
+    }
+  }
+
+  return areas.sort((left, right) => {
+    if (right.wrong !== left.wrong) {
+      return right.wrong - left.wrong;
+    }
+    if (left.accuracy !== right.accuracy) {
+      return left.accuracy - right.accuracy;
+    }
+    return right.total - left.total;
+  });
 }
 
 function ProfileStats() {
@@ -226,6 +300,164 @@ function ProfileFeedbackSettings() {
             />
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfileWeakAreas() {
+  const { stats } = useAppState();
+  const [answerStats, setAnswerStats] = useState<AnswerStatsEnvelope | null>(null);
+  const [selectedPeriodKey, setSelectedPeriodKey] =
+    useState<AnswerStatsPeriodKey>("last7dayData");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    async function loadAnswerStats() {
+      try {
+        const result = await fetchMyAnswerStats(formatLocalDayKey());
+        if (cancelled) {
+          return;
+        }
+        setAnswerStats(result);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Could not load answer stats.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadAnswerStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stats.totalQuestionsCompleted]);
+
+  const selectedPeriod = answerStats?.[selectedPeriodKey] ?? null;
+  const weakAreas = selectedPeriod ? flattenWeakAreas(selectedPeriod).slice(0, 4) : [];
+
+  return (
+    <Card
+      className="relative mt-3 overflow-hidden rounded-lg border-border bg-card"
+      data-testid="card-weak-areas"
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Weak Areas
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">
+              Answer patterns
+            </h2>
+          </div>
+          {selectedPeriod && (
+            <div className="rounded-lg border border-primary/35 bg-primary/15 px-3 py-2 text-right">
+              <p className="text-xs font-bold text-primary">
+                {selectedPeriod.overall.accuracy}%
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                Accuracy
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 grid grid-cols-4 gap-1.5">
+          {answerStatsPeriodOptions.map((option) => {
+            const selected = selectedPeriodKey === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setSelectedPeriodKey(option.key)}
+                className={`h-9 rounded-lg border px-2 text-[11px] font-semibold transition-colors ${
+                  selected
+                    ? "border-primary/45 bg-primary/15 text-primary"
+                    : "border-border bg-muted text-muted-foreground hover:border-primary hover:text-foreground"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {isLoading ? (
+          <div className="mt-4 space-y-2">
+            <div className="h-12 animate-pulse rounded-lg bg-muted" />
+            <div className="h-12 animate-pulse rounded-lg bg-muted" />
+          </div>
+        ) : error ? (
+          <div className="mt-4 rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-3">
+            <p className="text-sm font-semibold text-destructive">
+              Stats are not ready yet
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+          </div>
+        ) : selectedPeriod && selectedPeriod.overall.total > 0 ? (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+              <p className="text-sm font-semibold text-foreground">
+                {selectedPeriod.overall.correct}R / {selectedPeriod.overall.wrong}W
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {selectedPeriod.overall.total} answered
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {weakAreas.map((area) => (
+                <div
+                  key={area.key}
+                  className="rounded-lg border border-border bg-muted px-3 py-3"
+                  data-testid="item-weak-area"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {answerStatsBandLabels[area.bandGroup]} ·{" "}
+                        {answerStatsQuestionTypeLabels[area.questionType]}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {area.correct}R / {area.wrong}W · {area.total} total
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-bold text-primary">
+                      {area.accuracy}%
+                    </p>
+                  </div>
+                  <Progress value={area.accuracy} className="mt-2 h-1.5 bg-background" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-lg border border-border bg-muted px-3 py-3">
+            <p className="text-sm font-semibold text-foreground">
+              No backend answer data yet
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Answer a few signed-in questions and this will start showing your
+              strongest and weakest categories.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -702,6 +934,7 @@ function ProfileWithAuthGate() {
 
       <ProfileAccountWithAuth />
       <ProfileStats />
+      <ProfileWeakAreas />
       <ProfileFeedbackSettings />
       <ProfileAchievements />
 

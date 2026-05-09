@@ -46,6 +46,10 @@ Last updated: 2026-05-08 (UTC)
   `GET /api/passages`, `GET /api/passages/:id`, `POST /api/passages/:id/report`.
 - Ranking:
   Server accepts answer submissions and returns LP delta.
+- Answer analytics:
+  Signed-in answer submissions upsert `user_daily_answer_stats` rows by
+  `user + local_date + band_group + question_type`. Today, last 7 days,
+  last 30 days, and lifetime stats are calculated from those daily rows.
 - Passage ingestion:
   NDJSON ingest scripts with anomaly checks/fixes in DB tooling. V2 mixed-card
   ingest supports matching-style option keys beyond `D`.
@@ -66,10 +70,12 @@ Last updated: 2026-05-08 (UTC)
 - Some build logs include non-blocking source-map warnings from upstream packages.
 - Frontend state is intentionally local-first for gamification UX speed.
 - Achievement unlocks are local-device only until backend persistence is added.
+- Answer analytics are backend-backed for signed-in users only; local mode still
+  uses local Profile counters.
 - Agent sessions should use docs in this directory as source of truth, not removed legacy files.
 
 ## Next Priorities
 
-1. Optional backend persistence for achievement snapshots/unlocks.
-2. Mistakes flow or lightweight mistake-saving layer.
-3. Achievement detail screen or richer Profile browsing.
+1. Use answer analytics for a lightweight "Next Best Practice" suggestion.
+2. Optional backend persistence for achievement snapshots/unlocks.
+3. Mistakes flow or lightweight mistake-saving layer.

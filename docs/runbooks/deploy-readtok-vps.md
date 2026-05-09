@@ -37,6 +37,22 @@ This calls:
 7. Print first lines of live `index.html`.
 8. Curl live URL for quick check.
 
+## Database Migrations
+
+When a change adds files under `lib/db/migrations`, run migrations on the VPS
+before restarting API behavior that depends on the new table:
+
+```bash
+cd /opt/readtok
+set -a
+. ./.env.production
+set +a
+corepack pnpm --filter @workspace/db run migrate
+```
+
+Current answer analytics uses `user_daily_answer_stats`, updated on every
+signed-in answer submission.
+
 ## Fast Verification
 
 ```bash

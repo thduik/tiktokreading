@@ -1769,6 +1769,7 @@ export default function PassageDetailPage() {
       passageId,
       questionId: question.id,
       selectedAnswer: submittedAnswer,
+      localDate: formatLocalDayKey(),
     })
       .then((result) => {
         recordRankedResult({
