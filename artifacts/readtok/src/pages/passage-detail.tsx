@@ -360,32 +360,32 @@ function TopBadgeRow({
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex-wrap md:gap-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
       <Link
         href="/list"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
         aria-label="Go to passage list"
       >
         <House className="h-4 w-4" />
       </Link>
       <Link
         href={questionFilterHref}
-        className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-[11px] font-medium tracking-[0.04em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+        className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
       >
         {passage.question_set_type_label}
       </Link>
       <Link
         href={bandFilterHref}
-        className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-[11px] font-medium tracking-[0.04em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+        className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
       >
         Band {passage.band_label}
       </Link>
-      <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-[11px] font-semibold text-muted-foreground">
+      <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground md:gap-2 md:px-3 md:text-[11px]">
         <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
           {dailyGoal.attemptedToday}/{dailyGoal.goal}
         </span>
         <span>Today</span>
-        <span className="h-1.5 w-10 overflow-hidden rounded-full bg-muted">
+        <span className="h-1.5 w-8 overflow-hidden rounded-full bg-muted md:w-10">
           <span
             className={`block h-full rounded-full ${
               dailyGoal.isComplete ? "bg-secondary" : "bg-primary"
@@ -399,7 +399,7 @@ function TopBadgeRow({
         totalQuestions={totalQuestions}
         completionPercent={completionPercent}
       />
-      {rankPlate && <RankPlate plate={rankPlate} className="h-9" />}
+      {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
     </div>
   );
 }
@@ -416,7 +416,7 @@ function QuestionCompletionChip({
   const completed = answeredCount >= totalQuestions;
 
   return (
-    <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[11px] font-semibold text-muted-foreground">
+    <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground md:gap-2 md:text-[11px]">
       <div
         className="relative h-5 w-5 rounded-full"
         style={{
@@ -446,7 +446,7 @@ function AudioButton({
   return (
     <button
       type="button"
-      className={`h-12 w-12 rounded-lg border text-foreground transition-colors ${
+      className={`h-12 w-12 shrink-0 rounded-lg border text-foreground transition-colors ${
         speaking
           ? "border-primary/60 bg-primary/15"
           : "border-border bg-card hover:border-primary"
@@ -1930,7 +1930,7 @@ export default function PassageDetailPage() {
             }}
           />
         </div>
-        <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-start justify-between gap-3">
+        <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-center justify-between gap-3">
           <TopBadgeRow
             passage={activePassage}
             dailyAttempted={todayStats.attempted}
@@ -2088,7 +2088,7 @@ export default function PassageDetailPage() {
 
                     return (
                       <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center justify-between gap-2">
                           <TopBadgeRow
                             passage={passage}
                             dailyAttempted={todayStats.attempted}
