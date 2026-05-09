@@ -44,6 +44,9 @@ Last updated: 2026-05-08 (UTC)
 
 - Passage API:
   `GET /api/passages`, `GET /api/passages/:id`, `POST /api/passages/:id/report`.
+- Admin reports:
+  `/admin` uses env-based admin auth and reads aggregated
+  `passage_report_counts` from `/api/admin/reports`.
 - Ranking:
   Server accepts answer submissions and returns LP delta.
 - Answer analytics:

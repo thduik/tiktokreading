@@ -8,6 +8,7 @@ Runbooks are copy/paste-safe procedures for recurring operational tasks.
 - [ingest-passages.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/runbooks/ingest-passages.md)
 - [backup-postgres-vietnix.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/runbooks/backup-postgres-vietnix.md)
 - [testing.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/runbooks/testing.md)
+- [admin-reports.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/runbooks/admin-reports.md)
 
 ## Rule
 
