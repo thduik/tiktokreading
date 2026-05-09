@@ -2018,28 +2018,29 @@ export default function PassageDetailPage() {
             }}
           />
         </div>
-        <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-center justify-between gap-3">
-          <TopBadgeRow
-            passage={activePassage}
-            dailyAttempted={todayStats.attempted}
-            answeredCount={getAnsweredCountForPassage(activePassage.id)}
-            rankPlate={rankPlate}
-          />
-          <AudioButton
-            speaking={isSpeaking}
-            onClick={() => toggleSpeech(activePassage)}
-          />
+        <div className="mx-auto mb-3 flex w-full max-w-[1600px] justify-end">
+          <AudioButton speaking={isSpeaking} onClick={() => toggleSpeech(activePassage)} />
         </div>
 
         <div className="desktop-reading-grid mx-auto grid h-[calc(100%-60px)] w-full max-w-[1600px] grid-cols-[1.22fr_1fr] gap-3">
-          <section className="min-h-0 overflow-y-auto rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <PassageHeader passage={activePassage} />
-            <PassageText
-              sentences={activePassage.passage_sentences}
-              highlightedSentenceMap={highlightedSentenceMap}
-              vocabItems={activePassage.vocab ?? []}
-              onVocabTap={setSelectedVocab}
-            />
+          <section className="flex min-h-0 flex-col rounded-lg border border-border bg-card px-4 pb-4 pt-2">
+            <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <PassageHeader passage={activePassage} />
+              <PassageText
+                sentences={activePassage.passage_sentences}
+                highlightedSentenceMap={highlightedSentenceMap}
+                vocabItems={activePassage.vocab ?? []}
+                onVocabTap={setSelectedVocab}
+              />
+            </div>
+            <div className="mt-3 border-t border-border pt-3">
+              <TopBadgeRow
+                passage={activePassage}
+                dailyAttempted={todayStats.attempted}
+                answeredCount={getAnsweredCountForPassage(activePassage.id)}
+                rankPlate={rankPlate}
+              />
+            </div>
           </section>
 
           <section className="min-h-0 overflow-y-auto rounded-lg border border-border bg-background px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -2176,13 +2177,7 @@ export default function PassageDetailPage() {
 
                     return (
                       <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-                        <div className="flex items-center justify-between gap-2">
-                          <TopBadgeRow
-                            passage={passage}
-                            dailyAttempted={todayStats.attempted}
-                            answeredCount={getAnsweredCountForPassage(passage.id)}
-                            rankPlate={rankPlate}
-                          />
+                        <div className="flex justify-end">
                           <AudioButton
                             speaking={isSpeaking}
                             onClick={() => toggleSpeech(passage)}
@@ -2190,14 +2185,24 @@ export default function PassageDetailPage() {
                         </div>
 
                         <div className="mt-2 grid min-h-0 flex-1 grid-rows-2 gap-2">
-                          <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                            <PassageHeader passage={passage} />
-                            <PassageText
-                              sentences={passage.passage_sentences}
-                              highlightedSentenceMap={highlightedSentenceMap}
-                              vocabItems={passage.vocab ?? []}
-                              onVocabTap={setSelectedVocab}
-                            />
+                          <section className="flex min-h-0 flex-col rounded-lg border border-border bg-card px-4 pb-4 pt-2">
+                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                              <PassageHeader passage={passage} />
+                              <PassageText
+                                sentences={passage.passage_sentences}
+                                highlightedSentenceMap={highlightedSentenceMap}
+                                vocabItems={passage.vocab ?? []}
+                                onVocabTap={setSelectedVocab}
+                              />
+                            </div>
+                            <div className="mt-3 border-t border-border pt-3">
+                              <TopBadgeRow
+                                passage={passage}
+                                dailyAttempted={todayStats.attempted}
+                                answeredCount={getAnsweredCountForPassage(passage.id)}
+                                rankPlate={rankPlate}
+                              />
+                            </div>
                           </section>
 
                           <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-background px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
