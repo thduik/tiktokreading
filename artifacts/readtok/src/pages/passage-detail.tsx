@@ -46,6 +46,11 @@ import { getRankPlateData, type RankPlateData } from "@/lib/rank-visual";
 import type { AchievementDefinition } from "@/lib/achievements";
 import { formatLocalDayKey, getDailyGoalProgress } from "@/lib/daily-goal";
 import { submitRankedAnswer } from "@/lib/profile-api";
+import {
+  QUESTION_TYPE_DISPLAY_LABELS,
+  createMistakeEntry,
+  normalizePracticeQuestionType,
+} from "@/lib/practice-tracking";
 
 function toQuestionKey(questionId: number) {
   return String(questionId);
@@ -1172,6 +1177,7 @@ export default function PassageDetailPage() {
     recordSessionAnswerResult,
     recordRankedResult,
     recordPassageReport,
+    recordMistake,
     feedbackPreferences,
     rankedIdentity,
     syncRankedIdentity,
@@ -1838,10 +1844,30 @@ export default function PassageDetailPage() {
     );
     const isCorrect = isQuestionCorrect(question, answerKey, submittedAnswer);
     const xpDelta = isCorrect ? 10 : 2;
+    const normalizedQuestionType =
+      normalizePracticeQuestionType(question.question_type_label) ??
+      normalizePracticeQuestionType(question.question_type_index);
+    const questionTypeLabel = normalizedQuestionType
+      ? QUESTION_TYPE_DISPLAY_LABELS[normalizedQuestionType]
+      : question.question_type_label;
     recordQuestionAttempt(isCorrect, {
-      questionType: question.question_type_index,
+      questionType: question.question_type_label,
       band: targetPassage?.band_label ?? targetPassage?.band_index,
     });
+    if (!isCorrect && targetPassage && answerKey) {
+      recordMistake(
+        createMistakeEntry({
+          passageId,
+          questionId: question.id,
+          passageTitle: targetPassage.title,
+          questionPrompt: question.prompt,
+          band: targetPassage.band_label,
+          type: questionTypeLabel,
+          userAnswer: submittedAnswer,
+          correctAnswer: answerKey.answer_value,
+        }),
+      );
+    }
     playAnswerFeedback(isCorrect, feedbackPreferences);
 
     const rankFeedbackKey = toRankFeedbackKey(passageId, question.id);
@@ -1869,6 +1895,7 @@ export default function PassageDetailPage() {
           isCorrect,
           xpDelta,
           lpDelta: result.answer_result.rankedPointDelta,
+          questionType: question.question_type_label,
         });
         syncRankedIdentity(result.progress);
         setRankFeedbackByQuestion((currentState) => ({
@@ -1885,6 +1912,7 @@ export default function PassageDetailPage() {
           isCorrect,
           xpDelta,
           lpDelta: 0,
+          questionType: question.question_type_label,
         });
         setRankFeedbackByQuestion((currentState) => ({
           ...currentState,

@@ -30,6 +30,14 @@ import {
   sanitizeFeedbackPreferences,
   type FeedbackPreferences,
 } from "@/lib/feedback-effects";
+import {
+  advanceSessionSummaryProgress,
+  defaultSessionSummaryProgress,
+  sanitizeMistakes,
+  type MistakeEntry,
+  type SessionSummaryProgress,
+  type SessionSummarySnapshot,
+} from "@/lib/practice-tracking";
 
 export interface UserStats {
   totalQuestionsCompleted: number;
@@ -47,22 +55,6 @@ export interface UserStats {
   achievementProgress: UserAchievementProgress;
 }
 
-export interface SessionSummarySnapshot {
-  answered: number;
-  correct: number;
-  incorrect: number;
-  accuracyPercent: number;
-  lpDeltaTotal: number;
-  xpDeltaTotal: number;
-}
-
-interface SessionSummaryProgress {
-  answered: number;
-  correct: number;
-  lpDeltaTotal: number;
-  xpDeltaTotal: number;
-}
-
 interface AppStateValue {
   isLoaded: boolean;
   hasCompletedOnboarding: boolean;
@@ -73,21 +65,25 @@ interface AppStateValue {
   stats: UserStats;
   rankedIdentity: RankedIdentitySnapshot | null;
   feedbackPreferences: FeedbackPreferences;
+  mistakes: MistakeEntry[];
   pendingSessionSummary: SessionSummarySnapshot | null;
   recentAchievementUnlocks: AchievementDefinition[];
   dismissRecentAchievementUnlocks: () => void;
   dismissSessionSummary: () => void;
+  clearMistakes: () => void;
   recordQuestionAttempt: (
     isCorrect: boolean,
     context?: Omit<AnswerAchievementContext, "dailyGoalTarget">,
   ) => void;
   recordSessionAnswerResult: (result: {
-    isCorrect: boolean;
-    xpDelta: number;
-    lpDelta: number;
-  }) => void;
+      isCorrect: boolean;
+      xpDelta: number;
+      lpDelta: number;
+      questionType?: string;
+    }) => void;
   recordRankedResult: (context: RankedAchievementContext) => void;
   recordPassageReport: () => void;
+  recordMistake: (entry: MistakeEntry) => void;
   syncRankedIdentity: (
     progress: UserProgress | null | undefined,
     rankTiers?: RankTierThreshold[] | null,
@@ -102,6 +98,7 @@ const STORAGE_KEYS = {
   stats: "readtok_stats",
   rankedIdentity: "readtok_ranked_identity",
   feedbackPreferences: "readtok_feedback_preferences",
+  mistakes: "readtok_mistakes",
 } as const;
 
 const defaultStats: UserStats = {
@@ -112,13 +109,6 @@ const defaultStats: UserStats = {
   totalIncorrect: 0,
   dailyStats: {},
   achievementProgress: sanitizeAchievementProgress(null),
-};
-
-const defaultSessionSummaryProgress: SessionSummaryProgress = {
-  answered: 0,
-  correct: 0,
-  lpDeltaTotal: 0,
-  xpDeltaTotal: 0,
 };
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -276,6 +266,9 @@ function readHydratedState() {
     feedbackPreferences: sanitizeFeedbackPreferences(
       JSON.parse(localStorage.getItem(STORAGE_KEYS.feedbackPreferences) ?? "null"),
     ),
+    mistakes: sanitizeMistakes(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.mistakes) ?? "null"),
+    ),
   };
 }
 
@@ -293,6 +286,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   const [feedbackPreferences, setFeedbackPreferences] = useState<FeedbackPreferences>(
     defaultFeedbackPreferences,
   );
+  const [mistakes, setMistakes] = useState<MistakeEntry[]>([]);
   const [sessionSummaryProgress, setSessionSummaryProgress] = useState<SessionSummaryProgress>(
     defaultSessionSummaryProgress,
   );
@@ -311,6 +305,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       setStats(hydratedState.stats);
       setRankedIdentity(hydratedState.rankedIdentity);
       setFeedbackPreferences(hydratedState.feedbackPreferences);
+      setMistakes(hydratedState.mistakes);
     } catch (error) {
       console.error("Failed to load state", error);
     } finally {
@@ -337,10 +332,12 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       STORAGE_KEYS.feedbackPreferences,
       JSON.stringify(feedbackPreferences),
     );
+    localStorage.setItem(STORAGE_KEYS.mistakes, JSON.stringify(mistakes));
   }, [
     feedbackPreferences,
     hasCompletedOnboarding,
     isLoaded,
+    mistakes,
     rankedIdentity,
     savedCardIds,
     stats,
@@ -354,7 +351,8 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
           event.key !== STORAGE_KEYS.saved &&
           event.key !== STORAGE_KEYS.stats &&
           event.key !== STORAGE_KEYS.rankedIdentity &&
-          event.key !== STORAGE_KEYS.feedbackPreferences)
+          event.key !== STORAGE_KEYS.feedbackPreferences &&
+          event.key !== STORAGE_KEYS.mistakes)
       ) {
         return;
       }
@@ -366,6 +364,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
         setStats(hydratedState.stats);
         setRankedIdentity(hydratedState.rankedIdentity);
         setFeedbackPreferences(hydratedState.feedbackPreferences);
+        setMistakes(hydratedState.mistakes);
       } catch (error) {
         console.error("Failed to sync state", error);
       }
@@ -462,43 +461,39 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       isCorrect,
       xpDelta,
       lpDelta,
+      questionType,
     }: {
       isCorrect: boolean;
       xpDelta: number;
       lpDelta: number;
+      questionType?: string;
     }) => {
       setSessionSummaryProgress((previousProgress) => {
-        const nextProgress: SessionSummaryProgress = {
-          answered: previousProgress.answered + 1,
-          correct: previousProgress.correct + (isCorrect ? 1 : 0),
-          xpDeltaTotal: previousProgress.xpDeltaTotal + Math.trunc(xpDelta),
-          lpDeltaTotal: previousProgress.lpDeltaTotal + Math.trunc(lpDelta),
-        };
+        const { nextProgress, snapshot } = advanceSessionSummaryProgress(
+          previousProgress,
+          {
+            isCorrect,
+            xpDelta,
+            lpDelta,
+            questionType,
+          },
+        );
 
-        if (nextProgress.answered < 10) {
-          return nextProgress;
+        if (snapshot) {
+          setPendingSessionSummary(snapshot);
         }
 
-        const incorrect = Math.max(0, nextProgress.answered - nextProgress.correct);
-        const accuracyPercent =
-          nextProgress.answered > 0
-            ? Math.round((nextProgress.correct / nextProgress.answered) * 100)
-            : 0;
-
-        setPendingSessionSummary({
-          answered: nextProgress.answered,
-          correct: nextProgress.correct,
-          incorrect,
-          accuracyPercent,
-          lpDeltaTotal: nextProgress.lpDeltaTotal,
-          xpDeltaTotal: nextProgress.xpDeltaTotal,
-        });
-
-        return defaultSessionSummaryProgress;
+        return nextProgress;
       });
     },
     [],
   );
+
+  const recordMistake = useCallback((entry: MistakeEntry) => {
+    setMistakes((previousMistakes) =>
+      sanitizeMistakes([entry, ...previousMistakes]),
+    );
+  }, []);
 
   const recordRankedResult = useCallback((context: RankedAchievementContext) => {
     setStats((previousStats) => {
@@ -553,6 +548,10 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
 
   const dismissSessionSummary = useCallback(() => {
     setPendingSessionSummary(null);
+  }, []);
+
+  const clearMistakes = useCallback(() => {
+    setMistakes([]);
   }, []);
 
   const syncRankedIdentity = useCallback(
@@ -631,14 +630,17 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     stats,
     rankedIdentity,
     feedbackPreferences,
+    mistakes,
     pendingSessionSummary,
     recentAchievementUnlocks,
     dismissRecentAchievementUnlocks,
     dismissSessionSummary,
+    clearMistakes,
     recordQuestionAttempt,
     recordSessionAnswerResult,
     recordRankedResult,
     recordPassageReport,
+    recordMistake,
     syncRankedIdentity,
     updateStats,
     updateFeedbackPreferences,

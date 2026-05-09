@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SignIn, SignUp, ClerkProvider, useUser } from "@clerk/react";
 import { Switch, Route, Router as WouterRouter, useLocation, useRoute } from "wouter";
-import { Target, TrendingUp, Zap } from "lucide-react";
+import { Award, Swords, Target, TrendingUp, Zap } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
@@ -22,6 +22,12 @@ import Onboarding from "@/components/onboarding";
 import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
 import { fetchPassageList } from "@/lib/passages-api";
 import { bootstrapMyProfile } from "@/lib/profile-api";
+import {
+  QUESTION_TYPE_DISPLAY_LABELS,
+  SESSION_STREAK_BONUS_STREAK,
+  SESSION_STREAK_BONUS_LP,
+  SESSION_SUMMARY_INTERVAL,
+} from "@/lib/practice-tracking";
 import { authEnabled, clerkProxyUrl, clerkPublishableKey } from "@/lib/runtime-config";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -410,6 +416,16 @@ function SessionSummaryDialog() {
 
   const lpLabel = `${pendingSessionSummary.lpDeltaTotal >= 0 ? "+" : ""}${pendingSessionSummary.lpDeltaTotal}`;
   const xpLabel = `+${Math.max(0, pendingSessionSummary.xpDeltaTotal)}`;
+  const bestTypeLabel = pendingSessionSummary.bestType
+    ? QUESTION_TYPE_DISPLAY_LABELS[pendingSessionSummary.bestType]
+    : "None yet";
+  const weakTypeLabel = pendingSessionSummary.weakType
+    ? QUESTION_TYPE_DISPLAY_LABELS[pendingSessionSummary.weakType]
+    : "None yet";
+  const streakBonusLabel =
+    pendingSessionSummary.lpBonusTotal > 0
+      ? `+${pendingSessionSummary.lpBonusTotal}`
+      : "+0";
 
   return (
     <Dialog
@@ -424,7 +440,7 @@ function SessionSummaryDialog() {
         <div className="space-y-4 pr-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-              10-Question Checkpoint
+              {SESSION_SUMMARY_INTERVAL}-Question Checkpoint
             </p>
             <DialogTitle className="mt-1 text-2xl font-semibold leading-tight text-foreground">
               Nice session.
@@ -447,7 +463,7 @@ function SessionSummaryDialog() {
             <div className="rounded-lg border border-border bg-muted px-3 py-3">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 <TrendingUp className="h-3.5 w-3.5" />
-                LP
+                Ranked LP
               </p>
               <p
                 className={`mt-2 text-lg font-semibold ${
@@ -468,8 +484,45 @@ function SessionSummaryDialog() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                <Award className="h-3.5 w-3.5" />
+                Best Type
+              </p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{bestTypeLabel}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                <Swords className="h-3.5 w-3.5" />
+                Weak Type
+              </p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{weakTypeLabel}</p>
+            </div>
+          </div>
+
+          {pendingSessionSummary.lpBonusTotal > 0 ? (
+            <div className="rounded-lg border border-secondary/35 bg-secondary/12 px-3 py-3 text-sm">
+              <p className="font-semibold text-foreground">
+                {pendingSessionSummary.bestStreak}-answer streak
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Bonus LP earned: <span className="font-semibold text-secondary">{streakBonusLabel}</span>
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-3 text-sm">
+              <p className="font-semibold text-foreground">
+                Best streak: {pendingSessionSummary.bestStreak}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Hit {SESSION_STREAK_BONUS_LP} bonus LP by reaching a {SESSION_STREAK_BONUS_STREAK}-answer streak.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-muted-foreground">
-            Keep stacking clean sets. Every 10 answers gives you another checkpoint.
+            Keep stacking clean sets. Every {SESSION_SUMMARY_INTERVAL} answers gives you another checkpoint.
           </div>
 
           <Button className="w-full" onClick={dismissSessionSummary}>

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { BookmarkX } from "lucide-react";
+import { AlertTriangle, BookmarkX, Trash2 } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
 import { fetchPassageList, type PassageListItem } from "@/lib/passages-api";
 
 export default function Saved() {
-  const { savedCardIds, toggleSaveCard } = useAppState();
+  const { savedCardIds, toggleSaveCard, mistakes, clearMistakes } = useAppState();
   const [savedPassages, setSavedPassages] = useState<PassageListItem[]>([]);
+  const [activeTab, setActiveTab] = useState<"saved" | "mistakes">("saved");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +68,8 @@ export default function Saved() {
     [isLoading, savedCardIds.length],
   );
 
+  const mistakesEmptyState = mistakes.length === 0;
+
   return (
     <div className="min-h-full w-full overflow-y-auto px-4 pb-24 pt-6" data-testid="page-saved">
       <header className="mb-4">
@@ -74,17 +77,55 @@ export default function Saved() {
           Your Library
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-          Saved Passages
+          Saved & Mistakes
         </h1>
       </header>
 
-      {error && (
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="grid h-11 flex-1 grid-cols-2 rounded-lg border border-border bg-card p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("saved")}
+            className={`rounded-md text-sm font-semibold transition-colors ${
+              activeTab === "saved"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Saved ({savedCardIds.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("mistakes")}
+            className={`rounded-md text-sm font-semibold transition-colors ${
+              activeTab === "mistakes"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Mistakes ({mistakes.length})
+          </button>
+        </div>
+
+        {activeTab === "mistakes" && mistakes.length > 0 && (
+          <button
+            type="button"
+            onClick={clearMistakes}
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-destructive/50 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear
+          </button>
+        )}
+      </div>
+
+      {activeTab === "saved" && error && (
         <div className="mb-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {isLoading && (
+      {activeTab === "saved" && isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
             <div
@@ -95,7 +136,7 @@ export default function Saved() {
         </div>
       )}
 
-      {emptyState && (
+      {activeTab === "saved" && emptyState && (
         <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">
           <BookmarkX className="mx-auto mb-3 h-10 w-10 opacity-70" />
           <p className="text-base font-semibold text-foreground">
@@ -105,7 +146,7 @@ export default function Saved() {
         </div>
       )}
 
-      {!isLoading && savedPassages.length > 0 && (
+      {activeTab === "saved" && !isLoading && savedPassages.length > 0 && (
         <div className="space-y-3">
           {savedPassages.map((passage) => (
             <div
@@ -143,6 +184,71 @@ export default function Saved() {
                 <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
                   {passage.question_count} Questions
                 </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "mistakes" && mistakesEmptyState && (
+        <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">
+          <AlertTriangle className="mx-auto mb-3 h-10 w-10 opacity-70" />
+          <p className="text-base font-semibold text-foreground">No mistakes logged yet</p>
+          <p className="mt-1 text-sm">
+            Wrong answers will show up here automatically for quick review.
+          </p>
+        </div>
+      )}
+
+      {activeTab === "mistakes" && !mistakesEmptyState && (
+        <div className="space-y-3">
+          {mistakes.map((mistake) => (
+            <div
+              key={mistake.id}
+              className="rounded-lg border border-border bg-card px-4 py-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/?start=${encodeURIComponent(mistake.passageId)}`}
+                    className="block"
+                    data-testid={`mistake-link-${mistake.id}`}
+                  >
+                    <h2 className="text-lg font-semibold leading-tight text-foreground">
+                      {mistake.passageTitle || "Passage review"}
+                    </h2>
+                  </Link>
+                  <p className="mt-1 text-sm text-muted-foreground">{mistake.questionPrompt}</p>
+                </div>
+                <p className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(mistake.createdAt).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-md border border-primary/50 bg-primary/15 px-2.5 py-1 font-semibold text-primary">
+                  Band {mistake.band}
+                </span>
+                <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
+                  {mistake.type}
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-destructive">
+                    Your answer
+                  </p>
+                  <p className="mt-2 text-sm text-foreground">{mistake.userAnswer || "Blank"}</p>
+                </div>
+                <div className="rounded-lg border border-secondary/30 bg-secondary/10 px-3 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-secondary">
+                    Correct answer
+                  </p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {mistake.correctAnswer || "Unavailable"}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
