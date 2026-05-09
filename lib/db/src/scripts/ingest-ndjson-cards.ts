@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { eq, inArray } from "drizzle-orm";
 import { answerKeys, db, passages, pool, questions } from "../index";
 
@@ -200,12 +201,12 @@ function bandIndexFromLabel(label: NdCard["band"]) {
   return 80;
 }
 
-function canonicalizeTfng(value: string) {
+export function canonicalizeTfng(value: string) {
   const compact = normalizeSpaces(value).toUpperCase().replace(/^NOTGIVEN$/, "NOT GIVEN");
   return compact;
 }
 
-function canonicalizeOptionKey(value: string) {
+export function canonicalizeOptionKey(value: string) {
   const stripped = normalizeSpaces(value)
     .replace(/^\d+\s*[.)\-:]\s*/g, "")
     .toUpperCase();
@@ -213,7 +214,7 @@ function canonicalizeOptionKey(value: string) {
   return m ? m[1] : stripped;
 }
 
-function canonicalizeTextAnswer(value: string) {
+export function canonicalizeTextAnswer(value: string) {
   return normalizeSpaces(value).replace(/^\d+\s*[.)\-:]\s*/g, "");
 }
 
@@ -248,7 +249,7 @@ function deriveQuestionSetType(cardNo: number, questions: ConvertedCard["questio
   );
 }
 
-function parseNdjson(raw: string) {
+export function parseNdjson(raw: string) {
   const normalized = raw.replace(/\u2028/g, "\n").replace(/\r\n/g, "\n");
   const lines = normalized
     .split("\n")
@@ -264,7 +265,7 @@ function parseNdjson(raw: string) {
   });
 }
 
-function validateAndConvert(cards: NdCard[]) {
+export function validateAndConvert(cards: NdCard[]) {
   const anomalies: Anomaly[] = [];
   const converted: ConvertedCard[] = [];
 
@@ -599,8 +600,14 @@ async function run() {
   await pool.end();
 }
 
-run().catch(async (error) => {
-  console.error(error);
-  await pool.end();
-  process.exit(1);
-});
+const isDirectRun =
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectRun) {
+  run().catch(async (error) => {
+    console.error(error);
+    await pool.end();
+    process.exit(1);
+  });
+}

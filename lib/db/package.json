@@ -17,6 +17,7 @@
     "enrich:vocab-learning": "tsx ./src/scripts/enrich-vocab-learning-fields.ts",
     "scramble:mcq": "tsx ./src/scripts/scramble-mcq-answers.ts",
     "audit:answer-keys": "tsx ./src/scripts/audit-answer-key-anomalies.ts",
+    "test": "tsx --test ./src/ranking/ranking.test.ts ./src/schema/migration-smoke.test.ts ./src/scripts/ingest-ndjson-cards.test.ts",
     "test:ranking": "tsx --test ./src/ranking/ranking.test.ts",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
