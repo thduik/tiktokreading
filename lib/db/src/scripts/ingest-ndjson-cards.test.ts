@@ -15,6 +15,15 @@ test("text answer canonicalization strips question prefixes without changing con
   assert.equal(ingestModule.canonicalizeTextAnswer("4. good roads"), "good roads");
 });
 
+test("option text canonicalization strips duplicated option labels", () => {
+  assert.equal(ingestModule.canonicalizeOptionText("A. First option", "A"), "First option");
+  assert.equal(ingestModule.canonicalizeOptionText("b) Second option", "B"), "Second option");
+  assert.equal(
+    ingestModule.canonicalizeOptionText("A normal sentence without a label", "A"),
+    "A normal sentence without a label",
+  );
+});
+
 test("converter keeps matching options beyond D and stores them as matching labels", () => {
   const rawCard: Parameters<typeof ingestModule.validateAndConvert>[0][number] = {
     card_no: 1,
@@ -35,7 +44,7 @@ test("converter keeps matching options beyond D and stores them as matching labe
         type: "MCQ",
         prompt: "Which option is correct?",
         instruction: "",
-        options: ["one", "two", "three", "four"],
+        options: ["A. one", "B. two", "C. three", "D. four"],
       },
       {
         type: "SentenceCompletion",
@@ -104,6 +113,12 @@ test("converter keeps matching options beyond D and stores them as matching labe
       (option) => option.key,
     ),
     ["A", "B", "C", "D", "E", "F"],
+  );
+  assert.deepEqual(
+    (card?.questions[1]?.payload.options as Array<{ key: string; text: string }>).map(
+      (option) => option.text,
+    ),
+    ["one", "two", "three", "four"],
   );
   assert.equal(card?.answerKey[4]?.answerValue, "E");
   assert.equal(card?.answerKey[5]?.answerValue, "F");

@@ -218,6 +218,14 @@ export function canonicalizeTextAnswer(value: string) {
   return normalizeSpaces(value).replace(/^\d+\s*[.)\-:]\s*/g, "");
 }
 
+export function canonicalizeOptionText(value: string, key: string) {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return normalizeSpaces(toAsciiPunctuation(value)).replace(
+    new RegExp(`^${escapedKey}\\s*[.)\\-:]\\s+`, "i"),
+    "",
+  );
+}
+
 function defaultExampleSentence(sentences: string[], term: string, idx?: number) {
   if (idx && idx >= 1 && idx <= sentences.length) return sentences[idx - 1];
   const low = term.toLowerCase();
@@ -297,7 +305,10 @@ export function validateAndConvert(cards: NdCard[]) {
       if (qType === "mcq") {
         payload.options = (question.options ?? []).map((text, i) => ({
           key: ["A", "B", "C", "D"][i] ?? String.fromCharCode(65 + i),
-          text: normalizeSpaces(toAsciiPunctuation(text)),
+          text: canonicalizeOptionText(
+            text,
+            ["A", "B", "C", "D"][i] ?? String.fromCharCode(65 + i),
+          ),
         }));
       } else if (qType === "sentence_completion" || qType === "short_answer") {
         payload.max_words = parseMaxWords(instruction);
