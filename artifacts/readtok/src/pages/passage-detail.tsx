@@ -337,16 +337,14 @@ function isQuestionCorrect(
   );
 }
 
-function TopBadgeRow({
+function PassageTagRow({
   passage,
   dailyAttempted,
   answeredCount,
-  rankPlate,
 }: {
   passage: PassageDetail;
   dailyAttempted: number;
   answeredCount: number;
-  rankPlate: RankPlateData | null;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
@@ -379,13 +377,9 @@ function TopBadgeRow({
             }}
             aria-label="Expand reading status bar"
           >
-            {rankPlate ? (
-              <RankPlate plate={rankPlate} className="h-9 min-w-0 flex-1" />
-            ) : (
-              <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium text-muted-foreground">
-                Band {passage.band_label}
-              </span>
-            )}
+            <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium text-muted-foreground">
+              Band {passage.band_label}
+            </span>
             <QuestionCompletionChip
               answeredCount={answeredCount}
               totalQuestions={totalQuestions}
@@ -394,7 +388,6 @@ function TopBadgeRow({
           </div>
         ) : (
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pr-10">
-            {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
             <Link
               href="/list"
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
@@ -448,7 +441,6 @@ function TopBadgeRow({
       </div>
 
       <div className="hidden min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex md:flex-wrap md:gap-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-        {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
         <Link
           href="/list"
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
@@ -2018,7 +2010,8 @@ export default function PassageDetailPage() {
             }}
           />
         </div>
-        <div className="mx-auto mb-3 flex w-full max-w-[1600px] justify-end">
+        <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-center justify-between gap-3">
+          {rankPlate ? <RankPlate plate={rankPlate} className="h-9 min-w-0" /> : <div />}
           <AudioButton speaking={isSpeaking} onClick={() => toggleSpeech(activePassage)} />
         </div>
 
@@ -2034,11 +2027,10 @@ export default function PassageDetailPage() {
               />
             </div>
             <div className="mt-3 border-t border-border pt-3">
-              <TopBadgeRow
+              <PassageTagRow
                 passage={activePassage}
                 dailyAttempted={todayStats.attempted}
                 answeredCount={getAnsweredCountForPassage(activePassage.id)}
-                rankPlate={rankPlate}
               />
             </div>
           </section>
@@ -2177,7 +2169,12 @@ export default function PassageDetailPage() {
 
                     return (
                       <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-                        <div className="flex justify-end">
+                        <div className="flex items-center justify-between gap-3">
+                          {rankPlate ? (
+                            <RankPlate plate={rankPlate} className="h-9 min-w-0" />
+                          ) : (
+                            <div />
+                          )}
                           <AudioButton
                             speaking={isSpeaking}
                             onClick={() => toggleSpeech(passage)}
@@ -2196,11 +2193,10 @@ export default function PassageDetailPage() {
                               />
                             </div>
                             <div className="mt-3 border-t border-border pt-3">
-                              <TopBadgeRow
+                              <PassageTagRow
                                 passage={passage}
                                 dailyAttempted={todayStats.attempted}
                                 answeredCount={getAnsweredCountForPassage(passage.id)}
-                                rankPlate={rankPlate}
                               />
                             </div>
                           </section>
