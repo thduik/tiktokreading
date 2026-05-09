@@ -337,22 +337,18 @@ function isQuestionCorrect(
   );
 }
 
-function PassageTagRow({
+function TopStatusRow({
   passage,
   dailyAttempted,
   answeredCount,
+  rankPlate,
 }: {
   passage: PassageDetail;
   dailyAttempted: number;
   answeredCount: number;
+  rankPlate: RankPlateData | null;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
-    passage.question_set_type_index,
-  )}`;
-  const bandFilterHref = `/list?filterMode=band&band=${encodeURIComponent(
-    String(passage.band_index),
-  )}`;
   const dailyGoal = getDailyGoalProgress(dailyAttempted);
   const totalQuestions = Math.max(1, passage.questions.length);
   const completionPercent = Math.max(
@@ -377,35 +373,32 @@ function PassageTagRow({
             }}
             aria-label="Expand reading status bar"
           >
-            <span className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium text-muted-foreground">
-              Band {passage.band_label}
-            </span>
-            <QuestionCompletionChip
-              answeredCount={answeredCount}
-              totalQuestions={totalQuestions}
-              completionPercent={completionPercent}
-            />
+            {rankPlate ? (
+              <RankPlate plate={rankPlate} className="h-9 min-w-0 flex-1" />
+            ) : (
+              <QuestionCompletionChip
+                answeredCount={answeredCount}
+                totalQuestions={totalQuestions}
+                completionPercent={completionPercent}
+              />
+            )}
+            {rankPlate ? (
+              <QuestionCompletionChip
+                answeredCount={answeredCount}
+                totalQuestions={totalQuestions}
+                completionPercent={completionPercent}
+              />
+            ) : null}
           </div>
         ) : (
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pr-10">
+            {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
             <Link
               href="/list"
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
               aria-label="Go to passage list"
             >
               <House className="h-4 w-4" />
-            </Link>
-            <Link
-              href={questionFilterHref}
-              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              {passage.question_set_type_label}
-            </Link>
-            <Link
-              href={bandFilterHref}
-              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              Band {passage.band_label}
             </Link>
             <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground">
               <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
@@ -441,24 +434,13 @@ function PassageTagRow({
       </div>
 
       <div className="hidden min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex md:flex-wrap md:gap-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+        {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
         <Link
           href="/list"
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
           aria-label="Go to passage list"
         >
           <House className="h-4 w-4" />
-        </Link>
-        <Link
-          href={questionFilterHref}
-          className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
-        >
-          {passage.question_set_type_label}
-        </Link>
-        <Link
-          href={bandFilterHref}
-          className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
-        >
-          Band {passage.band_label}
         </Link>
         <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground md:gap-2 md:px-3 md:text-[11px]">
           <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
@@ -481,6 +463,32 @@ function PassageTagRow({
         />
       </div>
     </>
+  );
+}
+
+function PassageMetaTags({ passage }: { passage: PassageDetail }) {
+  const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
+    passage.question_set_type_index,
+  )}`;
+  const bandFilterHref = `/list?filterMode=band&band=${encodeURIComponent(
+    String(passage.band_index),
+  )}`;
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      <Link
+        href={questionFilterHref}
+        className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
+      >
+        {passage.question_set_type_label}
+      </Link>
+      <Link
+        href={bandFilterHref}
+        className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground transition-colors hover:border-primary hover:text-primary md:px-3 md:text-[11px] md:tracking-[0.04em]"
+      >
+        Band {passage.band_label}
+      </Link>
+    </div>
   );
 }
 
@@ -2011,13 +2019,18 @@ export default function PassageDetailPage() {
           />
         </div>
         <div className="mx-auto mb-3 flex w-full max-w-[1600px] items-center justify-between gap-3">
-          {rankPlate ? <RankPlate plate={rankPlate} className="h-9 min-w-0" /> : <div />}
+          <TopStatusRow
+            passage={activePassage}
+            dailyAttempted={todayStats.attempted}
+            answeredCount={getAnsweredCountForPassage(activePassage.id)}
+            rankPlate={rankPlate}
+          />
           <AudioButton speaking={isSpeaking} onClick={() => toggleSpeech(activePassage)} />
         </div>
 
         <div className="desktop-reading-grid mx-auto grid h-[calc(100%-60px)] w-full max-w-[1600px] grid-cols-[1.22fr_1fr] gap-3">
-          <section className="flex min-h-0 flex-col rounded-lg border border-border bg-card px-4 pb-4 pt-2">
-            <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <section className="min-h-0 overflow-y-auto rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div>
               <PassageHeader passage={activePassage} />
               <PassageText
                 sentences={activePassage.passage_sentences}
@@ -2025,13 +2038,7 @@ export default function PassageDetailPage() {
                 vocabItems={activePassage.vocab ?? []}
                 onVocabTap={setSelectedVocab}
               />
-            </div>
-            <div className="mt-3 border-t border-border pt-3">
-              <PassageTagRow
-                passage={activePassage}
-                dailyAttempted={todayStats.attempted}
-                answeredCount={getAnsweredCountForPassage(activePassage.id)}
-              />
+              <PassageMetaTags passage={activePassage} />
             </div>
           </section>
 
@@ -2170,11 +2177,12 @@ export default function PassageDetailPage() {
                     return (
                       <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
                         <div className="flex items-center justify-between gap-3">
-                          {rankPlate ? (
-                            <RankPlate plate={rankPlate} className="h-9 min-w-0" />
-                          ) : (
-                            <div />
-                          )}
+                          <TopStatusRow
+                            passage={passage}
+                            dailyAttempted={todayStats.attempted}
+                            answeredCount={getAnsweredCountForPassage(passage.id)}
+                            rankPlate={rankPlate}
+                          />
                           <AudioButton
                             speaking={isSpeaking}
                             onClick={() => toggleSpeech(passage)}
@@ -2182,8 +2190,8 @@ export default function PassageDetailPage() {
                         </div>
 
                         <div className="mt-2 grid min-h-0 flex-1 grid-rows-2 gap-2">
-                          <section className="flex min-h-0 flex-col rounded-lg border border-border bg-card px-4 pb-4 pt-2">
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div>
                               <PassageHeader passage={passage} />
                               <PassageText
                                 sentences={passage.passage_sentences}
@@ -2191,13 +2199,7 @@ export default function PassageDetailPage() {
                                 vocabItems={passage.vocab ?? []}
                                 onVocabTap={setSelectedVocab}
                               />
-                            </div>
-                            <div className="mt-3 border-t border-border pt-3">
-                              <PassageTagRow
-                                passage={passage}
-                                dailyAttempted={todayStats.attempted}
-                                answeredCount={getAnsweredCountForPassage(passage.id)}
-                              />
+                              <PassageMetaTags passage={passage} />
                             </div>
                           </section>
 
