@@ -15,6 +15,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Saved from "@/pages/saved";
 import Profile from "@/pages/profile";
+import AdminPage from "@/pages/admin";
 import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
 import Onboarding from "@/components/onboarding";
@@ -295,6 +296,7 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
   const isPassage = location.startsWith("/passages/");
   const isFeedExperience = isFeed || isPassage;
   const isAuthPage = location.startsWith("/sign-in") || location.startsWith("/sign-up");
+  const isAdminPage = location.startsWith("/admin");
   const isOnboarding = isFeed && !hasCompletedOnboarding;
 
   async function completeOnboardingAndOpenRandomPassage() {
@@ -336,7 +338,7 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
       <main
         className={`min-h-0 flex-1 w-full ${
           isFeedExperience ? "overflow-hidden" : "overflow-y-auto"
-        } ${isFeedExperience || isList || isAuthPage ? "" : "pb-[60px]"}`}
+        } ${isFeedExperience || isList || isAuthPage || isAdminPage ? "" : "pb-[60px]"}`}
       >
         <Switch>
           <Route path="/" component={PassageDetailPage} />
@@ -344,12 +346,13 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
           <Route path="/passages/:id" component={LegacyPassageRouteRedirect} />
           <Route path="/saved" component={Saved} />
           <Route path="/profile" component={Profile} />
+          <Route path="/admin" component={AdminPage} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route component={NotFound} />
         </Switch>
       </main>
-      {!isAuthPage && <BottomNav />}
+      {!isAuthPage && !isAdminPage && <BottomNav />}
     </div>
   );
 }
