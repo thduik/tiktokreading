@@ -1,13 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getAuth } from "@clerk/express";
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import {
   answerKeys,
   db,
   passages,
   questions,
-  rankTiers,
   userDailyAnswerStats,
+  userVocabBank,
   userProfiles,
   userProgress,
 } from "@workspace/db";
@@ -27,8 +27,11 @@ import {
   readLocalDateKey,
   type AnswerStatsRow,
 } from "../lib/answer-stats";
+import { fetchRankTiers } from "../lib/rank-tiers";
 
 const router: IRouter = Router();
+const PROFILE_DAILY_QUESTION_GOAL = 20;
+type AuthWithUserId = NonNullable<ReturnType<typeof getAuth>> & { userId: string };
 
 function normalizeDisplayName(value: unknown) {
   if (typeof value !== "string") {
@@ -136,20 +139,20 @@ function toResponseProgress(row: {
   };
 }
 
-function toResponseTiers(
-  rows: Array<{ key: string; label: string; minPoints: number; sortOrder: number }>,
-) {
-  return rows.map((row) => ({
-    key: row.key,
-    label: row.label,
-    min_points: row.minPoints,
-    sort_order: row.sortOrder,
-  }));
+function toPercent(correct: number, attempted: number) {
+  if (attempted <= 0) {
+    return 0;
+  }
+  return Math.round((correct / attempted) * 100);
 }
 
-async function fetchRankTiers() {
-  const rows = await db.select().from(rankTiers).orderBy(asc(rankTiers.sortOrder));
-  return toResponseTiers(rows);
+function normalizeVocabBankTerm(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 async function ensureUserProgress(userId: string) {
@@ -178,6 +181,52 @@ async function ensureUserProgress(userId: string) {
   return insertedRows[0];
 }
 
+async function fetchCurrentPracticeStreakDays({
+  userId,
+  localDate,
+}: {
+  userId: string;
+  localDate: string;
+}) {
+  const rows = await db
+    .select({
+      localDate: userDailyAnswerStats.localDate,
+      attempted: sql<number>`coalesce(sum(${userDailyAnswerStats.attemptCount}), 0)::int`,
+    })
+    .from(userDailyAnswerStats)
+    .where(
+      and(
+        eq(userDailyAnswerStats.userId, userId),
+        lte(userDailyAnswerStats.localDate, localDate),
+      ),
+    )
+    .groupBy(userDailyAnswerStats.localDate)
+    .orderBy(desc(userDailyAnswerStats.localDate))
+    .limit(400);
+
+  const activeDateSet = new Set(
+    rows
+      .filter((row) => Number(row.attempted) > 0)
+      .map((row) => String(row.localDate)),
+  );
+
+  let cursor = localDate;
+  if (!activeDateSet.has(cursor)) {
+    cursor = addDaysToDateKey(localDate, -1);
+  }
+  if (!activeDateSet.has(cursor)) {
+    return 0;
+  }
+
+  let streak = 0;
+  while (activeDateSet.has(cursor)) {
+    streak += 1;
+    cursor = addDaysToDateKey(cursor, -1);
+  }
+
+  return streak;
+}
+
 function getUserIdOrRespondUnauthorized(req: Request, res: Response) {
   let auth: ReturnType<typeof getAuth> | null = null;
   try {
@@ -192,12 +241,58 @@ function getUserIdOrRespondUnauthorized(req: Request, res: Response) {
   return auth.userId;
 }
 
+function getAuthOrRespondUnauthorized(req: Request, res: Response): AuthWithUserId | null {
+  const auth = getSafeAuth(req);
+  if (!auth?.userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  return auth as AuthWithUserId;
+}
+
 function getSafeAuth(req: Request) {
   try {
     return getAuth(req);
   } catch {
     return null;
   }
+}
+
+async function ensureUserProfileForAuth({
+  auth,
+  email,
+  displayName,
+}: {
+  auth: AuthWithUserId;
+  email?: string | null;
+  displayName?: string | null;
+}) {
+  const existingRows = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, auth.userId))
+    .limit(1);
+
+  if (existingRows.length > 0) {
+    return existingRows[0];
+  }
+
+  const normalizedEmail =
+    email ??
+    readEmailFromClaims(auth.sessionClaims) ??
+    `${auth.userId}@readtok.local`;
+
+  const insertedRows = await db
+    .insert(userProfiles)
+    .values({
+      userId: auth.userId,
+      email: normalizedEmail,
+      displayName: displayName ?? null,
+      onboardingCompleted: Boolean(displayName),
+    })
+    .returning();
+
+  return insertedRows[0];
 }
 
 router.get("/me", async (req, res) => {
@@ -218,7 +313,7 @@ router.get("/me", async (req, res) => {
   }
 
   const progress = await ensureUserProgress(userId);
-  const tiers = await fetchRankTiers();
+  const { tiers } = await fetchRankTiers();
   res.json({
     profile: toResponseProfile(rows[0]),
     progress: toResponseProgress(progress),
@@ -270,7 +365,7 @@ router.post("/me/bootstrap", async (req, res) => {
       })
       .returning();
     const progress = await ensureUserProgress(userId);
-    const tiers = await fetchRankTiers();
+    const { tiers } = await fetchRankTiers();
     res.json({
       profile: toResponseProfile(insertRows[0]),
       progress: toResponseProgress(progress),
@@ -298,7 +393,7 @@ router.post("/me/bootstrap", async (req, res) => {
     .where(eq(userProfiles.userId, userId))
     .returning();
   const progress = await ensureUserProgress(userId);
-  const tiers = await fetchRankTiers();
+  const { tiers } = await fetchRankTiers();
   res.json({
     profile: toResponseProfile(updateRows[0]),
     progress: toResponseProgress(progress),
@@ -367,7 +462,7 @@ router.patch("/me", async (req, res) => {
     .where(eq(userProfiles.userId, userId))
     .returning();
   const progress = await ensureUserProgress(userId);
-  const tiers = await fetchRankTiers();
+  const { tiers } = await fetchRankTiers();
   res.json({
     profile: toResponseProfile(updatedRows[0]),
     progress: toResponseProgress(progress),
@@ -376,37 +471,100 @@ router.patch("/me", async (req, res) => {
   });
 });
 
-router.get("/me/answer-stats", async (req, res) => {
-  const userId = getUserIdOrRespondUnauthorized(req, res);
-  if (!userId) {
+router.get("/me/dashboard-stats", async (req, res) => {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
     return;
   }
 
+  const userId = auth.userId;
   const localDate = readLocalDateKey(req.query.local_date);
   const last7StartDate = addDaysToDateKey(localDate, -6);
   const last30StartDate = addDaysToDateKey(localDate, -29);
 
-  const profileRows = await db
-    .select({ userId: userProfiles.userId })
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, userId))
-    .limit(1);
+  await ensureUserProfileForAuth({ auth });
 
-  if (profileRows.length === 0) {
-    const emptyPeriod = buildAnswerStatsPeriod([]);
-    res.json({
-      localDate,
-      categories: {
-        bandGroups: ANSWER_STAT_BAND_GROUP_VALUES,
-        questionTypes: ANSWER_STAT_QUESTION_TYPE_VALUES,
-      },
-      todayData: emptyPeriod,
-      last7dayData: emptyPeriod,
-      last30dayData: emptyPeriod,
-      lifetimeData: emptyPeriod,
-    });
+  const [progress, todayRows, last7Rows, last30Rows, lifetimeRows, currentStreakDays] =
+    await Promise.all([
+      ensureUserProgress(userId),
+      fetchAnswerStatsRows({
+        userId,
+        fromDate: localDate,
+        toDate: localDate,
+      }),
+      fetchAnswerStatsRows({
+        userId,
+        fromDate: last7StartDate,
+        toDate: localDate,
+      }),
+      fetchAnswerStatsRows({
+        userId,
+        fromDate: last30StartDate,
+        toDate: localDate,
+      }),
+      fetchAnswerStatsRows({ userId }),
+      fetchCurrentPracticeStreakDays({ userId, localDate }),
+    ]);
+
+  const todayData = buildAnswerStatsPeriod(todayRows);
+  const last7dayData = buildAnswerStatsPeriod(last7Rows);
+  const last30dayData = buildAnswerStatsPeriod(last30Rows);
+  const lifetimeData = buildAnswerStatsPeriod(lifetimeRows);
+  const dailyGoal = {
+    goal: PROFILE_DAILY_QUESTION_GOAL,
+    attempted_today: todayData.overall.total,
+    remaining: Math.max(0, PROFILE_DAILY_QUESTION_GOAL - todayData.overall.total),
+    progress_percent: Math.min(
+      100,
+      Math.round((todayData.overall.total / PROFILE_DAILY_QUESTION_GOAL) * 100),
+    ),
+    is_complete: todayData.overall.total >= PROFILE_DAILY_QUESTION_GOAL,
+  };
+
+  res.json({
+    local_date: localDate,
+    localDate,
+    progress: toResponseProgress(progress),
+    current_streak_days: currentStreakDays,
+    daily_goal: dailyGoal,
+    headline: {
+      total_questions_completed: progress.totalQuestionsAnswered,
+      total_correct: progress.totalCorrect,
+      total_incorrect: progress.totalIncorrect,
+      lifetime_accuracy: toPercent(
+        progress.totalCorrect,
+        progress.totalQuestionsAnswered,
+      ),
+      last7_accuracy: last7dayData.overall.accuracy,
+      today_accuracy: todayData.overall.accuracy,
+      last7_correct: last7dayData.overall.correct,
+      last7_attempted: last7dayData.overall.total,
+      today_correct: todayData.overall.correct,
+      today_attempted: todayData.overall.total,
+    },
+    categories: {
+      bandGroups: ANSWER_STAT_BAND_GROUP_VALUES,
+      questionTypes: ANSWER_STAT_QUESTION_TYPE_VALUES,
+    },
+    todayData,
+    last7dayData,
+    last30dayData,
+    lifetimeData,
+  });
+});
+
+router.get("/me/answer-stats", async (req, res) => {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
     return;
   }
+
+  const userId = auth.userId;
+  const localDate = readLocalDateKey(req.query.local_date);
+  const last7StartDate = addDaysToDateKey(localDate, -6);
+  const last30StartDate = addDaysToDateKey(localDate, -29);
+
+  await ensureUserProfileForAuth({ auth });
 
   const [todayRows, last7Rows, last30Rows, lifetimeRows] = await Promise.all([
     fetchAnswerStatsRows({
@@ -441,11 +599,12 @@ router.get("/me/answer-stats", async (req, res) => {
 });
 
 router.post("/me/submit-answer", async (req, res) => {
-  const userId = getUserIdOrRespondUnauthorized(req, res);
-  if (!userId) {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
     return;
   }
 
+  const userId = auth.userId;
   const body = req.body as Record<string, unknown> | undefined;
   const passageId =
     typeof body?.passage_id === "string" && body.passage_id.trim().length > 0
@@ -466,15 +625,7 @@ router.post("/me/submit-answer", async (req, res) => {
     return;
   }
 
-  const profileRows = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, userId))
-    .limit(1);
-  if (profileRows.length === 0) {
-    res.status(404).json({ error: "Profile not found. Call /api/me/bootstrap first." });
-    return;
-  }
+  await ensureUserProfileForAuth({ auth });
 
   const questionRows = await db
     .select({
@@ -577,6 +728,152 @@ router.post("/me/submit-answer", async (req, res) => {
     progress: toResponseProgress(latestProgress),
     next_rank_progress: getNextRankProgress(latestProgress.rankedPoints),
     answer_result: answerResult,
+  });
+});
+
+router.post("/me/vocab-bank", async (req, res) => {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
+    return;
+  }
+
+  const body = req.body as Record<string, unknown> | undefined;
+  const term =
+    typeof body?.term === "string" && body.term.trim().length > 0
+      ? body.term.trim()
+      : null;
+  const meaningEn =
+    typeof body?.meaning_en === "string" && body.meaning_en.trim().length > 0
+      ? body.meaning_en.trim()
+      : null;
+  const meaningVi =
+    typeof body?.meaning_vi === "string" && body.meaning_vi.trim().length > 0
+      ? body.meaning_vi.trim()
+      : null;
+  const exampleSentenceEn =
+    typeof body?.example_sentence_en === "string" &&
+    body.example_sentence_en.trim().length > 0
+      ? body.example_sentence_en.trim()
+      : null;
+  const sentenceIndex =
+    typeof body?.sentence_index === "number" &&
+    Number.isInteger(body.sentence_index) &&
+    body.sentence_index >= 1
+      ? body.sentence_index
+      : null;
+  const sourcePassageId =
+    typeof body?.source_passage_id === "string" &&
+    body.source_passage_id.trim().length > 0
+      ? body.source_passage_id.trim()
+      : null;
+  const sourcePassageTitle =
+    typeof body?.source_passage_title === "string" &&
+    body.source_passage_title.trim().length > 0
+      ? body.source_passage_title.trim()
+      : null;
+  const sourceBandLabel =
+    typeof body?.source_band_label === "string" &&
+    body.source_band_label.trim().length > 0
+      ? body.source_band_label.trim()
+      : null;
+
+  if (!term) {
+    res.status(400).json({ error: "term is required." });
+    return;
+  }
+  if (term.length > 160) {
+    res.status(400).json({ error: "term must be at most 160 characters." });
+    return;
+  }
+  if (meaningEn && meaningEn.length > 600) {
+    res.status(400).json({ error: "meaning_en must be at most 600 characters." });
+    return;
+  }
+  if (meaningVi && meaningVi.length > 600) {
+    res.status(400).json({ error: "meaning_vi must be at most 600 characters." });
+    return;
+  }
+  if (exampleSentenceEn && exampleSentenceEn.length > 1000) {
+    res
+      .status(400)
+      .json({ error: "example_sentence_en must be at most 1000 characters." });
+    return;
+  }
+
+  const normalizedTerm = normalizeVocabBankTerm(term);
+  if (normalizedTerm.length === 0) {
+    res.status(400).json({ error: "term is invalid." });
+    return;
+  }
+
+  await ensureUserProfileForAuth({ auth });
+
+  const now = new Date();
+  const existingRows = await db
+    .select()
+    .from(userVocabBank)
+    .where(
+      and(
+        eq(userVocabBank.userId, auth.userId),
+        eq(userVocabBank.normalizedTerm, normalizedTerm),
+      ),
+    )
+    .limit(1);
+
+  const wasExisting = existingRows.length > 0;
+  const baseValues = {
+    userId: auth.userId,
+    normalizedTerm,
+    term,
+    meaningEn,
+    meaningVi,
+    exampleSentenceEn,
+    sentenceIndex,
+    sourcePassageId,
+    sourcePassageTitle,
+    sourceBandLabel,
+  };
+
+  const savedRows = wasExisting
+    ? await db
+        .update(userVocabBank)
+        .set({
+          ...baseValues,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(userVocabBank.userId, auth.userId),
+            eq(userVocabBank.normalizedTerm, normalizedTerm),
+          ),
+        )
+        .returning()
+    : await db
+        .insert(userVocabBank)
+        .values({
+          ...baseValues,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+  const saved = savedRows[0];
+  res.json({
+    ok: true,
+    already_exists: wasExisting,
+    item: {
+      term: saved.term,
+      normalized_term: saved.normalizedTerm,
+      meaning_en: saved.meaningEn,
+      meaning_vi: saved.meaningVi,
+      example_sentence_en: saved.exampleSentenceEn,
+      sentence_index: saved.sentenceIndex,
+      source_passage_id: saved.sourcePassageId,
+      source_passage_title: saved.sourcePassageTitle,
+      source_band_label: saved.sourceBandLabel,
+      created_at: saved.createdAt.toISOString(),
+      updated_at: saved.updatedAt.toISOString(),
+    },
   });
 });
 

@@ -24,6 +24,7 @@ import {
 const reportTypeLabels: Record<string, string> = {
   wrong_answer_key: "Answer key",
   question_unclear: "Unclear",
+  questions_too_easy: "Too easy",
   passage_text_issue: "Passage text",
   formatting_issue: "Formatting",
   other: "Other",
@@ -370,4 +371,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

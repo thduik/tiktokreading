@@ -7,17 +7,24 @@ import {
   Target,
   TrendingUp,
   BookOpenCheck,
-  Zap,
   LogOut,
   ShieldCheck,
   UserRound,
   Trophy,
+  ArrowUpRight,
 } from "lucide-react";
 import { RankPlate } from "@/components/rank-plate";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch as Toggle } from "@/components/ui/switch";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { AppPageHeader } from "@/components/app-page-header";
 import {
   DAILY_QUESTION_GOAL,
   formatLocalDayKey,
@@ -26,12 +33,14 @@ import {
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import {
   bootstrapMyProfile,
+  fetchMyDashboardStats,
   fetchMyAnswerStats,
   fetchMyProfile,
   type AnswerStatBandGroup,
   type AnswerStatQuestionType,
   type AnswerStatsEnvelope,
   type AnswerStatsPeriod,
+  type DashboardStatsEnvelope,
   type RankTierThreshold,
   type UserProgress,
   updateMyProfile,
@@ -56,7 +65,14 @@ function addDays(date: Date, dayDelta: number) {
 
 function percent(correct: number, attempted: number) {
   if (attempted <= 0) return 0;
-  return Math.round((correct / attempted) * 100);
+  return Math.max(0, Math.min(100, Math.round((correct / attempted) * 100)));
+}
+
+function clampAccuracy(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 const answerStatsPeriodOptions = [
@@ -83,15 +99,20 @@ const answerStatsQuestionTypeLabels: Record<AnswerStatQuestionType, string> = {
   Matching: "Matching",
 };
 
-function flattenWeakAreas(period: AnswerStatsPeriod) {
-  const areas: Array<{
-    key: string;
+function buildWeakAreaBandSummaries(period: AnswerStatsPeriod) {
+  const bands: Array<{
     bandGroup: AnswerStatBandGroup;
-    questionType: AnswerStatQuestionType;
     total: number;
     correct: number;
     wrong: number;
     accuracy: number;
+    byType: Array<{
+      questionType: AnswerStatQuestionType;
+      total: number;
+      correct: number;
+      wrong: number;
+      accuracy: number;
+    }>;
   }> = [];
 
   for (const [bandGroup, byType] of Object.entries(period.byBandAndType)) {
@@ -99,14 +120,26 @@ function flattenWeakAreas(period: AnswerStatsPeriod) {
       continue;
     }
 
+    let total = 0;
+    let correct = 0;
+    let wrong = 0;
+    const byTypeRows: Array<{
+      questionType: AnswerStatQuestionType;
+      total: number;
+      correct: number;
+      wrong: number;
+      accuracy: number;
+    }> = [];
+
     for (const [questionType, cell] of Object.entries(byType)) {
       if (!cell || cell.total <= 0) {
         continue;
       }
 
-      areas.push({
-        key: `${bandGroup}:${questionType}`,
-        bandGroup: bandGroup as AnswerStatBandGroup,
+      total += cell.total;
+      correct += cell.correct;
+      wrong += cell.wrong;
+      byTypeRows.push({
         questionType: questionType as AnswerStatQuestionType,
         total: cell.total,
         correct: cell.correct,
@@ -114,9 +147,32 @@ function flattenWeakAreas(period: AnswerStatsPeriod) {
         accuracy: cell.accuracy,
       });
     }
+
+    if (total <= 0) {
+      continue;
+    }
+
+    byTypeRows.sort((left, right) => {
+      if (right.wrong !== left.wrong) {
+        return right.wrong - left.wrong;
+      }
+      if (left.accuracy !== right.accuracy) {
+        return left.accuracy - right.accuracy;
+      }
+      return right.total - left.total;
+    });
+
+    bands.push({
+      bandGroup: bandGroup as AnswerStatBandGroup,
+      total,
+      correct,
+      wrong,
+      accuracy: percent(correct, total),
+      byType: byTypeRows,
+    });
   }
 
-  return areas.sort((left, right) => {
+  return bands.sort((left, right) => {
     if (right.wrong !== left.wrong) {
       return right.wrong - left.wrong;
     }
@@ -127,8 +183,94 @@ function flattenWeakAreas(period: AnswerStatsPeriod) {
   });
 }
 
-function ProfileStats() {
+function ProfileStats({ source = "local" }: { source?: "local" | "synced" }) {
   const { stats } = useAppState();
+  const [dashboardStats, setDashboardStats] = useState<DashboardStatsEnvelope | null>(
+    null,
+  );
+  const [isDashboardLoading, setIsDashboardLoading] = useState(source === "synced");
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (source !== "synced") {
+      setIsDashboardLoading(false);
+      setDashboardError(null);
+      setDashboardStats(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsDashboardLoading(true);
+    setDashboardError(null);
+
+    async function loadDashboardStats() {
+      try {
+        const result = await fetchMyDashboardStats(formatLocalDayKey());
+        if (cancelled) {
+          return;
+        }
+        setDashboardStats(result);
+      } catch (error) {
+        if (!cancelled) {
+          setDashboardError(
+            error instanceof Error ? error.message : "Could not load synced stats.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsDashboardLoading(false);
+        }
+      }
+    }
+
+    void loadDashboardStats();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadDashboardStats();
+      }
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [source]);
+
+  if (source === "synced" && isDashboardLoading) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card
+            key={index}
+            className={`relative overflow-hidden rounded-lg border-border bg-card ${
+              index === 0 || index === 2 ? "col-span-2" : ""
+            }`}
+          >
+            <CardContent className="p-4">
+              <div className="h-20 animate-pulse rounded-lg bg-muted" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (source === "synced" && dashboardError) {
+    return (
+      <Card className="relative overflow-hidden rounded-lg border-destructive/35 bg-card">
+        <CardContent className="p-4">
+          <p className="text-sm font-semibold text-destructive">
+            Synced stats are unavailable
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{dashboardError}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const today = new Date();
   const todayKey = formatDayKey(today);
   const todayStats = stats.dailyStats[todayKey] ?? { attempted: 0, correct: 0 };
@@ -145,10 +287,56 @@ function ProfileStats() {
     last7Correct += dayStats.correct;
   }
 
-  const lifetimeAccuracy = percent(stats.totalCorrect, stats.totalQuestionsCompleted);
-  const last7Accuracy = percent(last7Correct, last7Attempted);
-  const todayAccuracy = percent(todayStats.correct, todayStats.attempted);
-  const dailyGoal = getDailyGoalProgress(todayStats.attempted, DAILY_QUESTION_GOAL);
+  const lifetimeAccuracy =
+    source === "synced" && dashboardStats
+      ? clampAccuracy(dashboardStats.headline.lifetime_accuracy)
+      : percent(stats.totalCorrect, stats.totalQuestionsCompleted);
+  const last7Accuracy =
+    source === "synced" && dashboardStats
+      ? clampAccuracy(dashboardStats.headline.last7_accuracy)
+      : percent(last7Correct, last7Attempted);
+  const todayAccuracy =
+    source === "synced" && dashboardStats
+      ? clampAccuracy(dashboardStats.headline.today_accuracy)
+      : percent(todayStats.correct, todayStats.attempted);
+  const dailyGoal =
+    source === "synced" && dashboardStats
+      ? {
+          attemptedToday: dashboardStats.daily_goal.attempted_today,
+          goal: dashboardStats.daily_goal.goal,
+          remaining: dashboardStats.daily_goal.remaining,
+          progressPercent: dashboardStats.daily_goal.progress_percent,
+          isComplete: dashboardStats.daily_goal.is_complete,
+        }
+      : getDailyGoalProgress(todayStats.attempted, DAILY_QUESTION_GOAL);
+  const currentStreak =
+    source === "synced" && dashboardStats
+      ? dashboardStats.current_streak_days
+      : stats.streak;
+  const totalQuestionsCompleted =
+    source === "synced" && dashboardStats
+      ? dashboardStats.headline.total_questions_completed
+      : stats.totalQuestionsCompleted;
+  const totalCorrect =
+    source === "synced" && dashboardStats
+      ? dashboardStats.headline.total_correct
+      : stats.totalCorrect;
+  const todayCorrect =
+    source === "synced" && dashboardStats
+      ? dashboardStats.headline.today_correct
+      : todayStats.correct;
+  const todayAttempted =
+    source === "synced" && dashboardStats
+      ? dashboardStats.headline.today_attempted
+      : todayStats.attempted;
+  const last7CorrectDisplay =
+    source === "synced" && dashboardStats
+      ? dashboardStats.headline.last7_correct
+      : last7Correct;
+  const last7AttemptedDisplay =
+    source === "synced" && dashboardStats
+      ? dashboardStats.headline.last7_attempted
+      : last7Attempted;
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -184,12 +372,25 @@ function ProfileStats() {
         <CardContent className="p-4 pt-6">
           <p className="text-sm font-medium text-muted-foreground mb-1">Current Streak</p>
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold text-foreground">{stats.streak}</span>
+            <span className="text-4xl font-bold text-foreground">{currentStreak}</span>
             <span className="text-sm text-muted-foreground">days</span>
           </div>
-          {stats.streak > 0 && (
+          {currentStreak > 0 && (
             <p className="mt-2 text-xs font-medium text-secondary">Keep the line alive</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="relative overflow-hidden rounded-lg border-border bg-card" data-testid="stat-questions-completed">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <BookOpenCheck className="w-16 h-16" />
+        </div>
+        <CardContent className="p-4 pt-6">
+          <p className="text-sm font-medium text-muted-foreground mb-1">Total Questions Completed</p>
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-bold text-primary">{totalQuestionsCompleted}</span>
+            <span className="text-sm text-muted-foreground">questions</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -205,7 +406,7 @@ function ProfileStats() {
                 Lifetime
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {lifetimeAccuracy}% ({stats.totalCorrect}/{stats.totalQuestionsCompleted})
+                {lifetimeAccuracy}% ({totalCorrect}/{totalQuestionsCompleted})
               </p>
             </div>
             <div className="flex items-baseline justify-between gap-3">
@@ -213,7 +414,7 @@ function ProfileStats() {
                 Past 7 Days
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {last7Accuracy}% ({last7Correct}/{last7Attempted})
+                {last7Accuracy}% ({last7CorrectDisplay}/{last7AttemptedDisplay})
               </p>
             </div>
             <div className="flex items-baseline justify-between gap-3">
@@ -221,22 +422,9 @@ function ProfileStats() {
                 Today
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {todayAccuracy}% ({todayStats.correct}/{todayStats.attempted})
+                {todayAccuracy}% ({todayCorrect}/{todayAttempted})
               </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="relative overflow-hidden rounded-lg border-border bg-card" data-testid="stat-questions-completed">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <BookOpenCheck className="w-16 h-16" />
-        </div>
-        <CardContent className="p-4 pt-6">
-          <p className="text-sm font-medium text-muted-foreground mb-1">Total Questions Completed</p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold text-primary">{stats.totalQuestionsCompleted}</span>
-            <span className="text-sm text-muted-foreground">questions</span>
           </div>
         </CardContent>
       </Card>
@@ -305,6 +493,35 @@ function ProfileFeedbackSettings() {
   );
 }
 
+function ProfileLeaderboardEntry() {
+  return (
+    <Card className="relative mt-3 overflow-hidden rounded-lg border-border bg-card" data-testid="card-leaderboard-entry">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              Leaderboard
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">See who is climbing</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Browse the global board or drill into Bronze, Silver, Gold, and beyond.
+            </p>
+          </div>
+          <div className="rounded-lg border border-primary/35 bg-primary/10 p-2 text-primary">
+            <Trophy className="h-5 w-5" />
+          </div>
+        </div>
+        <Button asChild className="mt-4 w-full" data-testid="button-open-leaderboard">
+          <Link href="/leaderboard">
+            Open leaderboard
+            <ArrowUpRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProfileWeakAreas() {
   const { stats } = useAppState();
   const [answerStats, setAnswerStats] = useState<AnswerStatsEnvelope | null>(null);
@@ -348,7 +565,7 @@ function ProfileWeakAreas() {
   }, [stats.totalQuestionsCompleted]);
 
   const selectedPeriod = answerStats?.[selectedPeriodKey] ?? null;
-  const weakAreas = selectedPeriod ? flattenWeakAreas(selectedPeriod).slice(0, 4) : [];
+  const bandSummaries = selectedPeriod ? buildWeakAreaBandSummaries(selectedPeriod) : [];
 
   return (
     <Card
@@ -369,7 +586,7 @@ function ProfileWeakAreas() {
           {selectedPeriod && (
             <div className="rounded-lg border border-primary/35 bg-primary/15 px-3 py-2 text-right">
               <p className="text-xs font-bold text-primary">
-                {selectedPeriod.overall.accuracy}%
+                {clampAccuracy(selectedPeriod.overall.accuracy)}%
               </p>
               <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                 Accuracy
@@ -412,40 +629,110 @@ function ProfileWeakAreas() {
           </div>
         ) : selectedPeriod && selectedPeriod.overall.total > 0 ? (
           <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
-              <p className="text-sm font-semibold text-foreground">
-                {selectedPeriod.overall.correct}R / {selectedPeriod.overall.wrong}W
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {selectedPeriod.overall.total} answered
-              </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border bg-muted px-3 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  Attempted
+                </p>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {selectedPeriod.overall.total}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted px-3 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  Wrong
+                </p>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {selectedPeriod.overall.wrong}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted px-3 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  Correct
+                </p>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {selectedPeriod.overall.correct}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted px-3 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  Accuracy
+                </p>
+                <p className="mt-1 text-xl font-bold text-primary">
+                  {clampAccuracy(selectedPeriod.overall.accuracy)}%
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              {weakAreas.map((area) => (
-                <div
-                  key={area.key}
-                  className="rounded-lg border border-border bg-muted px-3 py-3"
-                  data-testid="item-weak-area"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        {answerStatsBandLabels[area.bandGroup]} ·{" "}
-                        {answerStatsQuestionTypeLabels[area.questionType]}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {area.correct}R / {area.wrong}W · {area.total} total
-                      </p>
-                    </div>
-                    <p className="shrink-0 text-sm font-bold text-primary">
-                      {area.accuracy}%
-                    </p>
-                  </div>
-                  <Progress value={area.accuracy} className="mt-2 h-1.5 bg-background" />
-                </div>
-              ))}
-            </div>
+            {bandSummaries.length > 0 ? (
+              <Accordion
+                type="single"
+                collapsible
+                className="rounded-lg border border-border bg-muted px-3"
+              >
+                {bandSummaries.map((band) => (
+                  <AccordionItem
+                    key={band.bandGroup}
+                    value={band.bandGroup}
+                    className="border-border last:border-b-0"
+                  >
+                    <AccordionTrigger className="py-3 hover:no-underline">
+                      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-3">
+                        <div className="min-w-0 text-left">
+                          <p className="text-sm font-semibold text-foreground">
+                            {answerStatsBandLabels[band.bandGroup]}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {band.correct}/{band.total} correct • {band.wrong} wrong
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-bold text-primary">
+                          {clampAccuracy(band.accuracy)}%
+                        </p>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1">
+                      <div className="space-y-2">
+                        {band.byType.map((typeRow) => (
+                          <div
+                            key={`${band.bandGroup}:${typeRow.questionType}`}
+                            className="rounded-lg border border-border bg-card px-3 py-3"
+                            data-testid="item-weak-area"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {answerStatsQuestionTypeLabels[typeRow.questionType]}
+                                </p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {typeRow.correct}/{typeRow.total} correct • {typeRow.wrong} wrong
+                                </p>
+                              </div>
+                              <p className="shrink-0 text-sm font-bold text-primary">
+                                {clampAccuracy(typeRow.accuracy)}%
+                              </p>
+                            </div>
+                            <Progress
+                              value={clampAccuracy(typeRow.accuracy)}
+                              className="mt-2 h-1.5 bg-background"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            ) : (
+              <div className="rounded-lg border border-border bg-muted px-3 py-3">
+                <p className="text-sm font-semibold text-foreground">
+                  No band detail yet
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Keep answering signed-in questions and your band breakdown will fill in here.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-4 rounded-lg border border-border bg-muted px-3 py-3">
@@ -901,6 +1188,7 @@ function ProfileWithAuthGate() {
   if (!isLoaded) {
     return (
       <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile-loading">
+        <AppPageHeader title="Your Stats" />
         <Card className="relative mb-3 overflow-hidden rounded-lg border-border bg-card" data-testid="card-account-loading">
           <CardContent className="p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-primary font-bold mb-2">Account</p>
@@ -915,6 +1203,7 @@ function ProfileWithAuthGate() {
   if (!isSignedIn) {
     return (
       <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile-logged-out">
+        <AppPageHeader title="Your Stats" />
         <LoggedOutProfileActions />
       </div>
     );
@@ -922,18 +1211,11 @@ function ProfileWithAuthGate() {
 
   return (
     <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/40 bg-primary/15">
-          <Zap className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground" data-testid="text-profile-title">Your Stats</h1>
-          <p className="text-sm text-muted-foreground">Keep up the momentum!</p>
-        </div>
-      </div>
+      <AppPageHeader title="Your Stats" />
 
       <ProfileAccountWithAuth />
-      <ProfileStats />
+      <ProfileStats source="synced" />
+      <ProfileLeaderboardEntry />
       <ProfileWeakAreas />
       <ProfileFeedbackSettings />
       <ProfileAchievements />
@@ -952,19 +1234,12 @@ export default function Profile() {
 
   return (
     <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/40 bg-primary/15">
-          <Zap className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground" data-testid="text-profile-title">Your Stats</h1>
-          <p className="text-sm text-muted-foreground">Keep up the momentum!</p>
-        </div>
-      </div>
+      <AppPageHeader title="Your Stats" />
 
       <ProfileAccountWithoutAuth />
 
       <ProfileStats />
+      <ProfileLeaderboardEntry />
       <ProfileFeedbackSettings />
       <ProfileAchievements />
       

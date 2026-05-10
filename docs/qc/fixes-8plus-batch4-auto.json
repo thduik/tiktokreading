@@ -1,0 +1,302 @@
+[
+  {
+    "reviewKey": "ielts_reading_80_mixed_0953::q6",
+    "newPrompt": "According to the passage, according to Bayesian reasoning, new evidence should update what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0361::q4",
+    "newPrompt": "According to the passage, what kind of key has not been found for the Indus script?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0634::q3",
+    "newPrompt": "According to the passage, possible markers include plastics, radionuclides, and industrial ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0717::q2",
+    "newPrompt": "The passage states that the comet's weak gravity made ordinary landing assumptions insufficient.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0881::q3",
+    "newPrompt": "The passage states that the coefficient identifies whether individuals consider inequality fair.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0599::q3",
+    "newPrompt": "According to the passage, access to books, tutors, education, and time remained ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0720::q5",
+    "newPrompt": "According to the passage, destroying these habitats may release stored carbon whereas also removing nursery habitat, storm protection, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0762::q5",
+    "newPrompt": "According to the passage, numerous supposedly pristine landscapes have histories of Indigenous management, burning, travel, hunting, or sacred ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0873::q5",
+    "newPrompt": "According to the passage, the narrative was shaped later via memory, dictation, and literary ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0026::q3",
+    "newPrompt": "According to the passage, when verification is weak, a real video may be dismissed as ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0521::q3",
+    "newPrompt": "According to the passage, evidence need to be evaluated within networks of ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0993::q5",
+    "newPrompt": "According to the passage, she challenged the social system that produced ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0329::q3",
+    "newPrompt": "According to the passage, researchers compare observed events with modelled ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0562::q3",
+    "newPrompt": "According to the passage, small linguistic details may carry social ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0486::q3",
+    "newPrompt": "According to the passage, evolutionary bursts may be separated by long periods of ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0488::q3",
+    "newPrompt": "According to the passage, claimants may emphasize history, dignity, and cultural ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0594::q3",
+    "newPrompt": "According to the passage, self-assessment depends partly on task ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0217::q3",
+    "newPrompt": "According to the passage, infrastructure may make alternatives costly or politically ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0327::q4",
+    "newPrompt": "According to the passage, protection should be designed so safety does not reward what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0641::q3",
+    "newPrompt": "According to the passage, a landscape may be heard via wind, water, voices, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0678::q3",
+    "newPrompt": "According to the passage, option value makes uncertainty economically ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0793::q5",
+    "newPrompt": "According to the passage, planting trees created spaces for civic ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0802::q6",
+    "newPrompt": "According to the passage, what does clarity in communication often depend on choosing to suppress?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0921::q2",
+    "newPrompt": "The passage states that the concept means every tradition improves automatically.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0918::q4",
+    "newPrompt": "The passage states that the photograph was more important as a cultural object than as a scientific image.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0525::q4",
+    "newPrompt": "According to the passage, researchers should understand practices within cultural what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0117::q1",
+    "newPrompt": "The passage states that capital buffers and stress tests may remove uncertainty about behaviour under financial pressure.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0955::q4",
+    "newPrompt": "The passage states that archaeologists are warned against forcing the houses into modern categories of home, temple, and cemetery.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0023::q4",
+    "newPrompt": "According to the passage, the paradox exposes a gap between expectation and what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0028::q3",
+    "newPrompt": "According to the passage, survey results should be read as produced ______ instead of raw access to belief?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0601::q3",
+    "newPrompt": "According to the passage, ecosystem stability may rest on specific ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0601::q4",
+    "newPrompt": "According to the passage, a pollinator and plant may support food ______?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0482::q3",
+    "newPrompt": "According to the passage, individuals may judge the harmful driver more ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0525::q3",
+    "newPrompt": "According to the passage, the challenge is to distinguish interpretation from moral ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0527::q4",
+    "newPrompt": "According to the passage, succession has direction without being fully what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0675::q3",
+    "newPrompt": "According to the passage, temporary shocks may leave lasting ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0676::q3",
+    "newPrompt": "According to the passage, narrative worlds structure action and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0680::q3",
+    "newPrompt": "According to the passage, gradual pressure may produce abrupt ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0999::q5",
+    "newPrompt": "According to the passage, oral history depends on spoken ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1033::q6",
+    "newPrompt": "According to the passage, what kind of mechanism became a foundation for biotechnology?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0795::q1",
+    "newPrompt": "The passage states that a legal fiction becomes literally true in ordinary terms when law treats it as true.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0761::q4",
+    "newPrompt": "The passage states that the passage argues that realism in art may be constructed via rules instead of pure imitation.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0841::q4",
+    "newPrompt": "The passage states that shellfish closures may harm fishers and coastal businesses even when they are scientifically justified.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0404::q3",
+    "newPrompt": "According to the passage, communities may create rules, monitoring systems, sanctions, and conflict-resolution ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0563::q3",
+    "newPrompt": "According to the passage, spillover depends on contact rates, susceptibility, disruption, and the pathogen's ability to ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1079::q2",
+    "newPrompt": "The passage states that removing a keystone predator cannot trigger changes via plants, herbivores, and other animals.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0448::q1",
+    "newPrompt": "The passage states that material culture studies how individuals make objects meaningful via use, circulation, repair, display, and memory.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0958::q2",
+    "newPrompt": "The passage states that the passage accepts the idea that the brain may become anything with enough effort.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0027::q4",
+    "newPrompt": "According to the passage, what does informality help individuals do when official systems do not fully include them?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0365::q3",
+    "newPrompt": "According to the passage, evidence may come from colour terms, spatial frames, or grammatical ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0022::q3",
+    "newPrompt": "According to the passage, rubbish evidence need to be interpreted carefully since disposal reflects class, regulation, convenience, and ideas of ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0023::q3",
+    "newPrompt": "According to the passage, explanations include rare intelligence, self-destruction, or deliberate ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0332::q3",
+    "newPrompt": "According to the passage, similarity may arise via regulation, professional norms, imitation, or legitimacy ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0524::q3",
+    "newPrompt": "According to the passage, the process begins with a prior ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0635::q3",
+    "newPrompt": "According to the passage, corporations may be treated as legal ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0714::q2",
+    "newPrompt": "The passage states that some research incentives may value surprising results more than careful verification.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0756::q5",
+    "newPrompt": "According to the passage, doctors may combine symptoms, patient history, prevalence, and test ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0411::q3",
+    "newPrompt": "According to the passage, gaps in records may result from exclusion, destruction, neglect, or unequal ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0561::q3",
+    "newPrompt": "According to the passage, ship-breaking produces scrap metal, machinery, and reusable ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0599::q4",
+    "newPrompt": "According to the passage, the system could challenge hereditary ______?",
+    "note": "Auto paraphrase (short_answer)."
+  }
+]

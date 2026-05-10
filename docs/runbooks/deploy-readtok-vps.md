@@ -28,6 +28,16 @@ This calls:
 
 `scripts/deploy-readtok-vps.sh`
 
+Do not publish `artifacts/readtok/dist/public/` manually with a raw `rsync`.
+Use the script below so `/var/www/readtok/runtime-config.js` is rewritten from
+the VPS env and verified after publish. The checked-in `public/runtime-config.js`
+is only a placeholder.
+
+Hosted app guard: if Clerk runtime config is missing on a non-local hostname,
+the frontend now shows a production config error instead of falling back to
+local Profile mode. This protects cross-device profile data from silently
+splitting again.
+
 ## What the Script Does
 
 1. SSH into VPS.
@@ -38,8 +48,9 @@ This calls:
 6. Typecheck and build `@workspace/readtok`.
 7. Write `runtime-config.js` with Clerk runtime keys.
 8. `rsync` built assets into `/var/www/readtok`.
-9. Print first lines of live `index.html`.
-10. Curl live URL for quick check.
+9. Rewrite and verify live `runtime-config.js` again after `rsync`.
+10. Print first lines of live `index.html`.
+11. Curl live URL and live `runtime-config.js` for quick checks.
 
 If deploy stops at the toolchain check, update Node on the VPS before trying
 again. This prevents the app from building with the wrong Vite/Rollup native
@@ -68,3 +79,8 @@ curl -fsSL https://ieltstok.online | sed -n '1,20p'
 ```
 
 Confirm script and stylesheet bundle hashes changed as expected.
+Also confirm:
+
+```bash
+curl -fsSL https://ieltstok.online/runtime-config.js | grep 'clerkPublishableKey: ".'
+```

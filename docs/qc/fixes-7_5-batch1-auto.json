@@ -1,0 +1,302 @@
+[
+  {
+    "reviewKey": "ielts_reading_75_tfng_0826::q1",
+    "newPrompt": "The passage states that The Piltdown Man was once presented as an important human ancestor found in England.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_1070::q2",
+    "newPrompt": "The passage states that Climate events can leave biological aftereffects beyond the year in which they occur.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0869::q1",
+    "newPrompt": "The passage states that Black soldier fly larvae can eat large amounts of organic waste.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0872::q4",
+    "newPrompt": "The passage states that The method can help date stone tools and flakes from archaeological sites.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1066::q1",
+    "newPrompt": "The passage states that Volcanic lightning occurs when electrical charge builds inside an eruption plume.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0912::q1",
+    "newPrompt": "The passage states that Quasicrystals have ordered patterns that do not repeat regularly like ordinary crystals.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0441::q4",
+    "newPrompt": "According to the passage, Karst is important for water supply, construction, tourism, and what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0746::q3",
+    "newPrompt": "The passage states that The debate is simply about moving objects from one building to another.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0912::q3",
+    "newPrompt": "The passage states that Later evidence confirmed that such atomic arrangements could exist.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0321::q4",
+    "newPrompt": "According to the passage, What can be as important as the objects themselves?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0667::q4",
+    "newPrompt": "According to the passage, Contributions may be collected through wages, taxes, or what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0823::q1",
+    "newPrompt": "The passage states that Ibn al-Haytham argued that vision occurs when the eye sends rays outward.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0832::q3",
+    "newPrompt": "The passage states that Safety depends on training, inspection, load limits, and bamboo quality.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1072::q1",
+    "newPrompt": "The passage states that Hypatia taught philosophy and mathematics in Alexandria during religious and political tension.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0323::q4",
+    "newPrompt": "According to the passage, Cognitive load refers to the amount of what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_1064::q6",
+    "newPrompt": "According to the passage, What photograph showed Earth above the Moon's grey horizon?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0743::q4",
+    "newPrompt": "The passage states that The narrative includes courts, ports, scholars, and merchants.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1063::q3",
+    "newPrompt": "The passage states that The turning point was the tree alone, not the social organization built around it.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0472::q4",
+    "newPrompt": "According to the passage, Medical evidence gains meaning through what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0668::q4",
+    "newPrompt": "According to the passage, Architectural beauty can depend on what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0830::q1",
+    "newPrompt": "The passage states that Printing Devanagari created technical challenges because of vowel marks and conjunct forms.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0789::q2",
+    "newPrompt": "The passage states that Water pricing tries to balance infrastructure costs with affordability, conservation, and fairness.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0826::q3",
+    "newPrompt": "The passage states that The hoax succeeded partly because it matched expectations some researchers already held.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0480::q1",
+    "newPrompt": "The passage states that Photolithography is used to create patterns on semiconductor materials.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0784::q1",
+    "newPrompt": "The passage states that European eels spend most of their lives in the Sargasso Sea.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0989::q2",
+    "newPrompt": "The passage states that European eels reproduce in the Sargasso Sea.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0752::q3",
+    "newPrompt": "The passage states that Some trees may remain weakened for years after stress.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0823::q2",
+    "newPrompt": "The passage states that His work helped redirect optics toward observation and geometry.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0952::q3",
+    "newPrompt": "The passage states that Comfort is only an engineering calculation.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0115::q4",
+    "newPrompt": "According to the passage, What are children more vulnerable to during active play?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0437::q4",
+    "newPrompt": "According to the passage, Built-up areas are warmer than nearby what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0441::q1",
+    "newPrompt": "The passage states that Karst groundwater can be vulnerable because water moves through cracks quickly.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0442::q4",
+    "newPrompt": "According to the passage, Money depends on material content and what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0475::q4",
+    "newPrompt": "According to the passage, Competition may weaken through shared what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0477::q4",
+    "newPrompt": "According to the passage, Good design considers waste management and what conditions?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0511::q4",
+    "newPrompt": "According to the passage, Palace economies reveal organization and what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0513::q4",
+    "newPrompt": "According to the passage, What do fungi connect with?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0557::q4",
+    "newPrompt": "According to the passage, What may a railway station become?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0992::q6",
+    "newPrompt": "According to the passage, What did fear turn suspicion into?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0869::q3",
+    "newPrompt": "The passage states that Waste quality affects product safety more than it affects larval growth.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0906::q3",
+    "newPrompt": "The passage states that The system may favour established airlines.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0396::q4",
+    "newPrompt": "According to the passage, Where is much octopus neural control distributed?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0784::q6",
+    "newPrompt": "According to the passage, From what bones do scientists use chemical clues?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0946::q1",
+    "newPrompt": "The passage states that Jacobs valued mixed uses, short blocks, local shops, and people watching public space.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0988::q1",
+    "newPrompt": "The passage states that The Open University challenged the idea that serious university study required full-time campus presence.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0746::q2",
+    "newPrompt": "The passage states that Supporters argue that objects taken under colonial pressure may still be tied to living identity and justice.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0790::q5",
+    "newPrompt": "According to the passage, Different sleep stages may contribute differently to facts, skills, emotional memories, and pattern ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0989::q5",
+    "newPrompt": "According to the passage, Eels transform their bodies as they move between freshwater, ocean water, and deep ______ routes.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0707::q5",
+    "newPrompt": "According to the passage, His account offers rich descriptions of courts, cities, trade, religious practice, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0746::q1",
+    "newPrompt": "The passage states that Museum repatriation concerns whether cultural objects should return to communities or countries of origin.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0712::q5",
+    "newPrompt": "According to the passage, Engineers use the tunnels to study spacecraft re-entry, high-speed aircraft, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1030::q3",
+    "newPrompt": "The passage states that Some yakhchals were supplied with ice made during cold nights or brought from nearby mountains.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0704::q5",
+    "newPrompt": "According to the passage, Low prices can encourage waste, but high prices may harm households with ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0983::q5",
+    "newPrompt": "According to the passage, Their work on German cipher systems helped military planners understand enemy ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0826::q4",
+    "newPrompt": "The passage states that The case strengthened demands for better dating methods, comparative anatomy, and sceptical review.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0906::q1",
+    "newPrompt": "The passage states that Airport slot allocation controls which airlines may use runways and gates at specific times.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_1023::q5",
+    "newPrompt": "According to the passage, Further evidence showed atoms could be arranged with long-range order without ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0827::q2",
+    "newPrompt": "The passage states that Laboratory success with metamaterials does not always translate easily into cheap, durable products.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0949::q4",
+    "newPrompt": "The passage states that Post offices helped savings services reach rural and working-class communities.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0827::q5",
+    "newPrompt": "According to the passage, Their properties come less from the substance itself than from the arrangement of tiny internal ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  }
+]

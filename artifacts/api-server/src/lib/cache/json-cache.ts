@@ -20,25 +20,43 @@ export const passageCacheTtls = {
     process.env.REDIS_PASSAGE_DETAIL_TTL_SECONDS,
     300,
   ),
+  idsSeconds: parsePositiveInteger(process.env.REDIS_PASSAGE_IDS_TTL_SECONDS, 300),
+  leaderboardSeconds: parsePositiveInteger(
+    process.env.REDIS_LEADERBOARD_TTL_SECONDS,
+    30,
+  ),
+  rankTiersSeconds: parsePositiveInteger(
+    process.env.REDIS_RANK_TIERS_TTL_SECONDS,
+    3600,
+  ),
 };
 
-export async function readJsonCache<T>(key: string) {
+export type JsonCacheStatus = "HIT" | "MISS" | "BYPASS";
+
+export async function readJsonCacheResult<T>(
+  key: string,
+): Promise<{ status: JsonCacheStatus; value: T | null }> {
   const client = await getRedisClient();
   if (!client) {
-    return null;
+    return { status: "BYPASS", value: null };
   }
 
   try {
     const value = await client.get(key);
     if (!value) {
-      return null;
+      return { status: "MISS", value: null };
     }
 
-    return JSON.parse(value) as T;
+    return { status: "HIT", value: JSON.parse(value) as T };
   } catch (error) {
     logger.warn({ err: error, key }, "Redis read failed");
-    return null;
+    return { status: "BYPASS", value: null };
   }
+}
+
+export async function readJsonCache<T>(key: string) {
+  const result = await readJsonCacheResult<T>(key);
+  return result.value;
 }
 
 export async function writeJsonCache<T>({
@@ -61,4 +79,3 @@ export async function writeJsonCache<T>({
     logger.warn({ err: error, key }, "Redis write failed");
   }
 }
-

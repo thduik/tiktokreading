@@ -113,6 +113,7 @@ export interface PassageListFilters {
 export type PassageReportType =
   | "wrong_answer_key"
   | "question_unclear"
+  | "questions_too_easy"
   | "passage_text_issue"
   | "formatting_issue"
   | "other";
@@ -131,6 +132,22 @@ interface PassageListResponse {
   };
 }
 
+interface PassageIdsResponse {
+  ids: string[];
+  total: number;
+  version: string;
+  status: string;
+  language_code: string | null;
+}
+
+interface PassageFeedBootstrapResponse {
+  random_passages: PassageDetail[];
+  selected_ids: string[];
+  all_passage_ids: string[];
+  total: number;
+  version: string;
+}
+
 export interface SubmitPassageReportResponse {
   ok: boolean;
   passage_id: string;
@@ -141,7 +158,7 @@ export interface SubmitPassageReportResponse {
   }>;
 }
 
-const PASSAGE_CACHE_VERSION = "2026-05-03-v2";
+const PASSAGE_CACHE_VERSION = "2026-05-10-v3";
 const LIST_CACHE_PREFIX = `readtok_passage_list_cache_${PASSAGE_CACHE_VERSION}:`;
 const DETAIL_CACHE_PREFIX = `readtok_passage_detail_cache_${PASSAGE_CACHE_VERSION}:`;
 const LEGACY_LIST_CACHE_PREFIX = "readtok_passage_list_cache_";
@@ -289,6 +306,56 @@ export async function fetchPassageList(filters: PassageListFilters = {}) {
   return response;
 }
 
+export async function fetchPassageIds({
+  status = "active",
+  languageCode,
+}: {
+  status?: string;
+  languageCode?: string;
+} = {}) {
+  const searchParams = new URLSearchParams();
+  if (status !== undefined) {
+    searchParams.set("status", status);
+  }
+  if (languageCode !== undefined) {
+    searchParams.set("language_code", languageCode);
+  }
+
+  const query = searchParams.toString();
+  const url = `${API_BASE}/passages/ids${query ? `?${query}` : ""}`;
+  return fetchJson<PassageIdsResponse>(url);
+}
+
+export async function fetchPassageFeedBootstrap({
+  status = "active",
+  languageCode,
+  limit,
+  includeAnswerKey = true,
+}: {
+  status?: string;
+  languageCode?: string;
+  limit?: number;
+  includeAnswerKey?: boolean;
+} = {}) {
+  const searchParams = new URLSearchParams();
+  if (status !== undefined) {
+    searchParams.set("status", status);
+  }
+  if (languageCode !== undefined) {
+    searchParams.set("language_code", languageCode);
+  }
+  if (limit !== undefined) {
+    searchParams.set("limit", String(limit));
+  }
+  if (!includeAnswerKey) {
+    searchParams.set("include_answer_key", "false");
+  }
+
+  const query = searchParams.toString();
+  const url = `${API_BASE}/passages/feed-bootstrap${query ? `?${query}` : ""}`;
+  return fetchJson<PassageFeedBootstrapResponse>(url);
+}
+
 export async function fetchPassageDetail(id: string, includeAnswerKey = true) {
   const searchParams = new URLSearchParams();
   if (!includeAnswerKey) {
@@ -317,6 +384,24 @@ export async function fetchPassageDetail(id: string, includeAnswerKey = true) {
   detailMemoryCache.set(cacheKey, response);
   writeCachedValue(storageKey, response);
   return response;
+}
+
+export function getCachedPassageDetail(id: string, includeAnswerKey = true) {
+  const cacheKey = `${id}|${includeAnswerKey ? "1" : "0"}`;
+  const storageKey = `${DETAIL_CACHE_PREFIX}${cacheKey}`;
+
+  const cachedMemory = detailMemoryCache.get(cacheKey);
+  if (cachedMemory) {
+    return cachedMemory;
+  }
+
+  const cachedStorage = readCachedValue<PassageDetail>(storageKey);
+  if (cachedStorage) {
+    detailMemoryCache.set(cacheKey, cachedStorage);
+    return cachedStorage;
+  }
+
+  return null;
 }
 
 export async function submitPassageReport(

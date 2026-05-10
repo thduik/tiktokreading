@@ -1,0 +1,202 @@
+[
+  {
+    "reviewKey": "ielts_reading_80_tfng_1040::q2",
+    "newPrompt": "In public-space facial recognition, the only thing that matters is whether the software functions correctly.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0410::q4",
+    "newPrompt": "When people appeal to the past, the focus shifts onto what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0481::q4",
+    "newPrompt": "The Chinese Room challenges the idea that symbol manipulation alone is enough for what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0482::q4",
+    "newPrompt": "In this discussion, responsibility seems attached to what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0594::q4",
+    "newPrompt": "The main lesson concerns metacognitive what rather than simple arrogance?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0679::q4",
+    "newPrompt": "Affordances suggest that usability comes from the user in relation to what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0719::q6",
+    "newPrompt": "In restorative justice, harm can be understood as damage to what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0922::q6",
+    "newPrompt": "According to the passage, a legal person can be what rather than a living citizen?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0961::q3",
+    "newPrompt": "The Bronze Age tin problem can be explained entirely by geology.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0372::q4",
+    "newPrompt": "In ruins, damage can become historically what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0443::q4",
+    "newPrompt": "Within this argument, numbers can end up replacing what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0529::q4",
+    "newPrompt": "Intergenerational justice asks how present decisions can limit tomorrow's what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0530::q4",
+    "newPrompt": "Deep time reaches far beyond ordinary human what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0561::q4",
+    "newPrompt": "Ship-breaking workers may face toxic substances as well as unstable what?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0598::q4",
+    "newPrompt": "From a historical point of view, scientific error can be what rather than just embarrassing?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0639::q4",
+    "newPrompt": "This method pushes historians to examine what instead of merely retelling events?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0674::q4",
+    "newPrompt": "Different priors can lead to different what even when the evidence is the same?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0841::q2",
+    "newPrompt": "Shellfish collection may be halted by officials if toxins build up.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0366::q4",
+    "newPrompt": "What can change owners even when the stone itself does not move?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0793::q6",
+    "newPrompt": "In Maathai's example, ecological action can become a form of what kind of practice?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1082::q6",
+    "newPrompt": "Through melting and ocean flow, what can ice sheets gradually do?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0713::q5",
+    "newPrompt": "In the passage, tree planting becomes tied to rights, livelihoods, and resistance to land ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0714::q5",
+    "newPrompt": "The reforms listed include preregistration, open data, larger samples, and stronger support for ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1081::q4",
+    "newPrompt": "Translation software improved because statistical and neural systems are unable to learn from huge text collections.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0722::q5",
+    "newPrompt": "The puzzle misleads intuition because it ignores how the host chose which door to ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0881::q2",
+    "newPrompt": "Identical Gini scores can still hide inequality showing up in different parts of the distribution.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0798::q3",
+    "newPrompt": "Very stable museum climates may preserve delicate materials but use substantial energy.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0833::q5",
+    "newPrompt": "The passage links deforestation to shortages, soil loss, women's labour, and political ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0715::q5",
+    "newPrompt": "At many vents, organisms rely on microbes powered by chemical energy rather than ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0842::q5",
+    "newPrompt": "According to the passage, zoning maps can shape school siting, insulation, and compensation ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1039::q4",
+    "newPrompt": "The idea questions the assumption that each climate event influences a tree in isolation.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0958::q1",
+    "newPrompt": "Plasticity in the brain is constrained by biology, sensitive periods, and environmental context.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1040::q4",
+    "newPrompt": "Once identification operates at scale, safeguards around consent, retention, auditing, and accountability are no longer necessary.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0716::q5",
+    "newPrompt": "Small loans may fail to produce a lasting route out of poverty when markets are weak or when ______ is high.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0996::q5",
+    "newPrompt": "The deed and intention may stay alike, but moral judgment changes because the ______ differs.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1035::q5",
+    "newPrompt": "Red tides may cause beach closures, shellfish poisoning, fish deaths, and ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1033::q5",
+    "newPrompt": "Before newer gene-editing tools appeared, restriction enzymes were essential for ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0801::q4",
+    "newPrompt": "Viewing a city as a palimpsest means noticing what is missing as well as what remains visible.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0404::q4",
+    "newPrompt": "Alongside forests, fisheries, and grazing land, commons governance also studies what shared system?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0444::q3",
+    "newPrompt": "Axial Age thinkers raised questions about ethics, order, suffering, and human ______.",
+    "note": "Paraphrased sentence-completion context."
+  }
+]

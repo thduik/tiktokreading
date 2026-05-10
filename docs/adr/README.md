@@ -36,3 +36,5 @@ What does this enable, and what tradeoffs did we accept?
 ## Current ADRs
 
 - [0001-official-doc-system.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/adr/0001-official-doc-system.md)
+- [0002-ui-first-achievements.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/adr/0002-ui-first-achievements.md)
+- [0003-api-cache-and-feed-sampling.md](/Users/linhnguyen/Documents/New%20project%202/tiktokreadingv1/docs/adr/0003-api-cache-and-feed-sampling.md)

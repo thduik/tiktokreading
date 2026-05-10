@@ -6,6 +6,7 @@ import {
   type PassageListItem,
   type QuestionTypeIndex,
 } from "@/lib/passages-api";
+import { AppPageHeader } from "@/components/app-page-header";
 
 const bandFilterOptions = [
   { key: "all", label: "All", band: null as number | null },
@@ -33,29 +34,7 @@ const typeFilterOptions: Array<{
 
 type FilterMode = "band" | "question_type";
 const PAGE_SIZE = 30;
-const RANDOM_POOL_FETCH_LIMIT = 500;
 const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v1:";
-
-function shuffleItems<T>(items: T[]) {
-  const next = [...items];
-
-  function randomIndex(maxExclusive: number) {
-    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-      const buffer = new Uint32Array(1);
-      window.crypto.getRandomValues(buffer);
-      return buffer[0] % maxExclusive;
-    }
-    return Math.floor(Math.random() * maxExclusive);
-  }
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomIndex(index + 1);
-    const temp = next[index];
-    next[index] = next[swapIndex];
-    next[swapIndex] = temp;
-  }
-  return next;
-}
 
 function readInitialFilters() {
   if (typeof window === "undefined") {
@@ -169,7 +148,7 @@ export default function Home() {
           if (!cancelled && queryKeyRef.current === queryKey) {
             setItems(sessionItems);
             setNextOffset(sessionItems.length);
-            setHasMore(false);
+            setHasMore(sessionItems.length >= PAGE_SIZE);
           }
           return;
         }
@@ -180,19 +159,18 @@ export default function Home() {
             filterMode === "band" ? (activeBand ?? undefined) : undefined,
           question_type_index:
             filterMode === "question_type" ? (activeType ?? undefined) : undefined,
-          limit: RANDOM_POOL_FETCH_LIMIT,
+          limit: PAGE_SIZE,
           offset: 0,
         });
-        const randomizedItems = shuffleItems(response.items).slice(0, PAGE_SIZE);
 
         if (!cancelled) {
           if (queryKeyRef.current !== queryKey) {
             return;
           }
-          setItems(randomizedItems);
-          setNextOffset(randomizedItems.length);
-          setHasMore(false);
-          writeSessionItems(queryKey, randomizedItems);
+          setItems(response.items);
+          setNextOffset(response.items.length);
+          setHasMore(response.items.length === PAGE_SIZE);
+          writeSessionItems(queryKey, response.items);
         }
       } catch (fetchError) {
         if (!cancelled) {
@@ -305,14 +283,7 @@ export default function Home() {
 
   return (
     <div className="min-h-full w-full px-4 pb-24 pt-6" data-testid="page-list">
-      <header className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/90">
-          IELTS Reading
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-          Passage List
-        </h1>
-      </header>
+      <AppPageHeader title="Passage List" />
 
       <section
         className="mb-4 rounded-lg border border-border bg-card p-3"

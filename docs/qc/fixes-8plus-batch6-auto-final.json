@@ -1,0 +1,187 @@
+[
+  {
+    "reviewKey": "ielts_reading_80_mixed_0564::q4",
+    "newPrompt": "According to the passage, significance is useful with effect size, uncertainty, and what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0756::q2",
+    "newPrompt": "The passage states that a positive test may leave a rare disease unlikely if false positives are numerous enough.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0601::q1",
+    "newPrompt": "The passage states that a small mutualistic interaction may have large ecological effects if numerous processes depend on it.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0959::q1",
+    "newPrompt": "The passage states that the Longitude Prize was just a story of invention, with no testing, bureaucracy, or recognition disputes.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0838::q2",
+    "newPrompt": "The passage states that since formerly enslaved individuals's voices often survive indirectly, the revolution is unknowable.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0216::q3",
+    "newPrompt": "According to the passage, historical photographs and oral histories may extend memory beyond personal ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0403::q3",
+    "newPrompt": "According to the passage, the theorem separates truth from ______ inside rule-based systems?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0443::q3",
+    "newPrompt": "According to the passage, institutions may reward just what is ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0448::q3",
+    "newPrompt": "According to the passage, objects may carry information about labour, belief, exchange, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0489::q3",
+    "newPrompt": "According to the passage, companies may chase visible ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0641::q4",
+    "newPrompt": "According to the passage, listening becomes a way of knowing what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0673::q4",
+    "newPrompt": "According to the passage, legal experience occurs at the intersection of what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0753::q2",
+    "newPrompt": "The passage states that a careful counterfactual should remain close to real historical conditions.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0959::q6",
+    "newPrompt": "According to the passage, what did Harrison's marine chronometers keep accurately during long voyages?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0119::q3",
+    "newPrompt": "According to the passage, corporations may be treated as legal ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0325::q1",
+    "newPrompt": "The passage states that fruit flies are presented as more precise model organisms than mice or yeast.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0325::q4",
+    "newPrompt": "According to the passage, science may gain precision by narrowing what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0447::q4",
+    "newPrompt": "According to the passage, what do two individuals share in the puzzle?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0633::q3",
+    "newPrompt": "According to the passage, evidence updates a prior ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0640::q3",
+    "newPrompt": "According to the passage, the idea separates intention from ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0679::q3",
+    "newPrompt": "According to the passage, a flat plate may afford ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0841::q1",
+    "newPrompt": "The passage states that dangerous red tide blooms are not necessarily visibly red.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0371::q3",
+    "newPrompt": "According to the passage, a researcher’s access, relationships, questions, and social ______ may influence interpretation?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0595::q3",
+    "newPrompt": "According to the passage, introduced organisms may alter fisheries, food webs, or harbour ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0758::q2",
+    "newPrompt": "The passage states that popular discussion may overstate epigenetics by implying every life experience becomes inherited biology.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0526::q3",
+    "newPrompt": "According to the passage, scientific questions involve atmosphere, temperature, water, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0530::q3",
+    "newPrompt": "According to the passage, slow processes include erosion, sedimentation, and mountain ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0882::q5",
+    "newPrompt": "According to the passage, astronauts often describe Earth as fragile, borderless, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1073::q5",
+    "newPrompt": "According to the passage, an enslaved colony became an independent Black republic via the ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0118::q3",
+    "newPrompt": "According to the passage, a tool may become cognitive when it stores, organizes, or ______ information?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0602::q3",
+    "newPrompt": "According to the passage, stress might be measured via survey scores or hormone ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0799::q5",
+    "newPrompt": "According to the passage, formerly enslaved individuals redefined citizenship, freedom, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0876::q6",
+    "newPrompt": "According to the passage, what kind of system is facial recognition besides a technical tool?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0882::q6",
+    "newPrompt": "According to the passage, what does observation become a question about besides ethics and identity?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0916::q6",
+    "newPrompt": "According to the passage, which behaviour does the concept question blame for but not excuse?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0953::q5",
+    "newPrompt": "According to the passage, courts need to assess evidence whereas respecting statistical logic and legal ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0956::q5",
+    "newPrompt": "According to the passage, besides housing and planning, airport noise zones may shape compensation ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  }
+]

@@ -1,0 +1,182 @@
+[
+  {
+    "reviewKey": "ielts_reading_70_mixed_0735::q5",
+    "newPrompt": "According to the passage, By travelling to Suriname, Merian recorded tropical ______ rarely seen by European readers.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0210::q3",
+    "newPrompt": "According to the passage, Dehydration removes moisture to slow ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0313::q4",
+    "newPrompt": "According to the passage, What condition does oral rehydration therapy treat?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0387::q4",
+    "newPrompt": "According to the passage, Preservation depends on ancient freezing and what else?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0697::q6",
+    "newPrompt": "According to the passage, What does planning around noise turn sound into?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_1021::q4",
+    "newPrompt": "The passage states that Mycorrhizae have no influence on above-ground ecosystems.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0694::q1",
+    "newPrompt": "The passage states that Volcanic lightning can occur inside ash clouds during strong eruptions.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0860::q2",
+    "newPrompt": "The passage states that Magnetoreception explains all animal movement through one simple inner compass.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0315::q3",
+    "newPrompt": "According to the passage, Recharge depends on soil type, available space, and water ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0391::q4",
+    "newPrompt": "According to the passage, Dogs were domesticated from what kind of ancestors?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0392::q3",
+    "newPrompt": "According to the passage, Guilds controlled training, prices, product quality, and entry into a ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0432::q4",
+    "newPrompt": "According to the passage, What kind of surfaces could reflect sound?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0463::q3",
+    "newPrompt": "According to the passage, Daguerreotypes were made on polished metal ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0509::q4",
+    "newPrompt": "According to the passage, Terraces shape cultural landscapes and what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0543::q3",
+    "newPrompt": "According to the passage, Ballast is placed low in the ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0979::q2",
+    "newPrompt": "The passage states that Paternoster elevators could move many people quickly through office buildings.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_1061::q2",
+    "newPrompt": "The passage states that The high salt level stops the desired chemical changes from continuing.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0777::q4",
+    "newPrompt": "The passage states that Haenyeo culture includes songs, community organization, and skill transmission.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0310::q3",
+    "newPrompt": "According to the passage, Knot colour, position, number, and type could represent quantities or ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0342::q4",
+    "newPrompt": "According to the passage, What do whales swim upward with when feeding?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0423::q3",
+    "newPrompt": "According to the passage, The walls were built without ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0424::q4",
+    "newPrompt": "According to the passage, What do airports use ceilometers as part of?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0549::q4",
+    "newPrompt": "According to the passage, What histories are hard to observe directly?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0614::q3",
+    "newPrompt": "According to the passage, The bronzes record royal power, ceremonies, trade, and spiritual ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_1058::q5",
+    "newPrompt": "According to the passage, Faster and cheaper nineteenth-century steel production was made possible by the ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0738::q6",
+    "newPrompt": "According to the passage, What kind of messages can the instrument send besides praise, warnings, and names?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0208::q3",
+    "newPrompt": "According to the passage, Trail signs may explain former industries and social ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0346::q3",
+    "newPrompt": "According to the passage, Scholars in Alexandria collected, copied, translated, and ______ texts.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0861::q5",
+    "newPrompt": "According to the passage, Each decimal hour was divided into one hundred ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0385::q3",
+    "newPrompt": "According to the passage, Early computers read hole positions as instructions or ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0427::q3",
+    "newPrompt": "According to the passage, Clay tablets could record grain, animals, workers, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0467::q3",
+    "newPrompt": "According to the passage, In a fugue, another voice repeats the theme at a different ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0547::q4",
+    "newPrompt": "According to the passage, What kind of landscapes are rice terraces besides agricultural systems?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0898::q5",
+    "newPrompt": "According to the passage, Dung beetles move their dung balls away from ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0206::q3",
+    "newPrompt": "According to the passage, Tactile paving can warn pedestrians about crossings, direction changes, and platform ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0316::q3",
+    "newPrompt": "According to the passage, Museums may use provenance research to understand collecting history and legal ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  }
+]

@@ -29,6 +29,10 @@ export function passagesListCacheKey(params: Record<string, CacheScalar>) {
   return `${CACHE_NAMESPACE}:passages:list:${stableParamString(params)}`;
 }
 
+export function passageIdsCacheKey(params: Record<string, CacheScalar>) {
+  return `${CACHE_NAMESPACE}:passages:ids:${stableParamString(params)}`;
+}
+
 export function passageDetailCacheKey({
   id,
   includeAnswerKey,
@@ -41,3 +45,10 @@ export function passageDetailCacheKey({
   )}:answers=${includeAnswerKey ? "1" : "0"}`;
 }
 
+export function leaderboardRowsCacheKey(params: Record<string, CacheScalar>) {
+  return `${CACHE_NAMESPACE}:leaderboard:rows:${stableParamString(params)}`;
+}
+
+export function rankTiersCacheKey() {
+  return `${CACHE_NAMESPACE}:rank-tiers`;
+}

@@ -28,6 +28,30 @@ export interface RankTierThreshold {
   sort_order: number;
 }
 
+export type LeaderboardScope = "global" | "rank";
+
+export interface LeaderboardEntry {
+  user_id: string;
+  display_name: string;
+  current_rank: string;
+  ranked_points: number;
+  lifetime_xp: number;
+  total_questions_answered: number;
+  total_correct: number;
+  total_incorrect: number;
+  accuracy_percent: number;
+  position: number;
+  is_viewer: boolean;
+}
+
+export interface LeaderboardEnvelope {
+  scope: LeaderboardScope;
+  rank: string | null;
+  rank_tiers: RankTierThreshold[];
+  items: LeaderboardEntry[];
+  viewer: LeaderboardEntry | null;
+}
+
 interface ProfileEnvelope {
   profile: UserProfile | null;
   progress: UserProgress | null;
@@ -153,6 +177,51 @@ export async function submitRankedAnswer(request: SubmitRankedAnswerRequest) {
   });
 }
 
+export interface SaveVocabBankRequest {
+  term: string;
+  meaningEn?: string | null;
+  meaningVi?: string | null;
+  exampleSentenceEn?: string | null;
+  sentenceIndex?: number | null;
+  sourcePassageId?: string | null;
+  sourcePassageTitle?: string | null;
+  sourceBandLabel?: string | null;
+}
+
+export interface SaveVocabBankResponse {
+  ok: boolean;
+  already_exists: boolean;
+  item: {
+    term: string;
+    normalized_term: string;
+    meaning_en: string | null;
+    meaning_vi: string | null;
+    example_sentence_en: string | null;
+    sentence_index: number | null;
+    source_passage_id: string | null;
+    source_passage_title: string | null;
+    source_band_label: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+export async function saveVocabToBank(request: SaveVocabBankRequest) {
+  return requestJson<SaveVocabBankResponse>(`${API_BASE}/me/vocab-bank`, {
+    method: "POST",
+    body: JSON.stringify({
+      term: request.term,
+      meaning_en: request.meaningEn,
+      meaning_vi: request.meaningVi,
+      example_sentence_en: request.exampleSentenceEn,
+      sentence_index: request.sentenceIndex,
+      source_passage_id: request.sourcePassageId,
+      source_passage_title: request.sourcePassageTitle,
+      source_band_label: request.sourceBandLabel,
+    }),
+  });
+}
+
 export type AnswerStatBandGroup = "Band6" | "Band7" | "Band75" | "Band8Plus";
 export type AnswerStatQuestionType =
   | "MCQ"
@@ -187,6 +256,31 @@ export interface AnswerStatsEnvelope {
   lifetimeData: AnswerStatsPeriod;
 }
 
+export interface DashboardStatsEnvelope extends AnswerStatsEnvelope {
+  local_date: string;
+  progress: UserProgress;
+  current_streak_days: number;
+  daily_goal: {
+    goal: number;
+    attempted_today: number;
+    remaining: number;
+    progress_percent: number;
+    is_complete: boolean;
+  };
+  headline: {
+    total_questions_completed: number;
+    total_correct: number;
+    total_incorrect: number;
+    lifetime_accuracy: number;
+    last7_accuracy: number;
+    today_accuracy: number;
+    last7_correct: number;
+    last7_attempted: number;
+    today_correct: number;
+    today_attempted: number;
+  };
+}
+
 export async function fetchMyAnswerStats(localDate?: string) {
   const searchParams = new URLSearchParams();
   if (localDate) {
@@ -195,4 +289,35 @@ export async function fetchMyAnswerStats(localDate?: string) {
 
   const suffix = searchParams.toString() ? `?${searchParams.toString()}` : "";
   return requestJson<AnswerStatsEnvelope>(`${API_BASE}/me/answer-stats${suffix}`);
+}
+
+export async function fetchMyDashboardStats(localDate?: string) {
+  const searchParams = new URLSearchParams();
+  if (localDate) {
+    searchParams.set("local_date", localDate);
+  }
+
+  const suffix = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  return requestJson<DashboardStatsEnvelope>(
+    `${API_BASE}/me/dashboard-stats${suffix}`,
+  );
+}
+
+export async function fetchLeaderboard({
+  scope = "global",
+  rank,
+  limit = 50,
+}: {
+  scope?: LeaderboardScope;
+  rank?: string;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  searchParams.set("scope", scope);
+  searchParams.set("limit", String(limit));
+  if (rank) {
+    searchParams.set("rank", rank);
+  }
+
+  return requestJson<LeaderboardEnvelope>(`${API_BASE}/leaderboard?${searchParams.toString()}`);
 }

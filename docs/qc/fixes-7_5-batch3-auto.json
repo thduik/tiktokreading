@@ -1,0 +1,302 @@
+[
+  {
+    "reviewKey": "ielts_reading_75_mixed_0319::q3",
+    "newPrompt": "According to the passage, Buffer zones can reduce pollution, erosion, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0324::q3",
+    "newPrompt": "According to the passage, Trees can reduce heat and improve air ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0435::q3",
+    "newPrompt": "According to the passage, Early recordings captured vibrations on cylinders or ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0664::q3",
+    "newPrompt": "According to the passage, Inscriptions might name patrons or quote ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0398::q4",
+    "newPrompt": "According to the passage, What pushed the crust downward during ice ages?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0438::q3",
+    "newPrompt": "According to the passage, Beta-blockers can reduce rapid heartbeat and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0472::q3",
+    "newPrompt": "According to the passage, Doctors consider prior probability, sensitivity, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0708::q6",
+    "newPrompt": "According to the passage, What kind of decisions may travellers have limited ability to challenge?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0357::q4",
+    "newPrompt": "According to the passage, What was coffeehouse access limited by besides class and gender?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0787::q5",
+    "newPrompt": "According to the passage, Earth's atmosphere bends and separates sunlight slightly, making green light visible at the ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0986::q1",
+    "newPrompt": "The passage states that Wood made stave churches flexible but also vulnerable to fire, rot, and later rebuilding.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0708::q5",
+    "newPrompt": "According to the passage, The system compares a traveller's face with ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0991::q1",
+    "newPrompt": "The passage states that Banknotes combine material technology, artistic design, state authority, and security features.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1030::q4",
+    "newPrompt": "The passage states that Yakhchals reveal how architecture can work with climate.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1066::q2",
+    "newPrompt": "The passage states that Ash particles, ice, and rock fragments can help separate charge within the cloud.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0552::q3",
+    "newPrompt": "According to the passage, Legal reasoning combines stability with ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0632::q3",
+    "newPrompt": "According to the passage, Artists used it to study perspective, proportion, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0947::q2",
+    "newPrompt": "The passage states that Protecting Bennu material from contamination is essential.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0952::q4",
+    "newPrompt": "The passage states that Thermal comfort standards may consider air temperature, humidity, air movement, clothing, activity level, and cultural expectation.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0866::q4",
+    "newPrompt": "The passage states that Modern roads, phones, and schooling can reduce the need to learn whistled languages.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0824::q1",
+    "newPrompt": "The passage states that The Tambora eruption affected sunlight and helped cool parts of the Northern Hemisphere.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0986::q5",
+    "newPrompt": "According to the passage, Wood made the churches flexible, but also vulnerable to fire, rot, and later ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1069::q2",
+    "newPrompt": "The passage states that The canal's value depended on geography but not on the ships, empires, and markets that used it.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0705::q2",
+    "newPrompt": "The passage states that Each young salmon receives a detailed route like a human chart.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0747::q5",
+    "newPrompt": "According to the passage, Researchers examine chemical reactions, mineral particles, and nervous-system ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0826::q2",
+    "newPrompt": "The passage states that Later tests showed that the skull and jaw came from the same species and were unaltered.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0516::q3",
+    "newPrompt": "According to the passage, Epigenetic marks may change with age, diet, stress, or environmental ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0943::q3",
+    "newPrompt": "The passage states that Mansa Musa's pilgrimage was both a religious act and a political performance.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1069::q1",
+    "newPrompt": "The passage states that Control of the Suez Canal became a major political issue in later decades.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0476::q1",
+    "newPrompt": "The passage states that Marginalia may reflect a later reader's interpretation.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0395::q3",
+    "newPrompt": "According to the passage, Supporters say juries give ordinary citizens a role in ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0401::q3",
+    "newPrompt": "According to the passage, Concerns included soil health, chemical use, and crop ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0433::q3",
+    "newPrompt": "According to the passage, The manuscript creates tension between visual richness and linguistic ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0434::q3",
+    "newPrompt": "According to the passage, Some mangrove roots help the plant breathe in waterlogged ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0214::q3",
+    "newPrompt": "According to the passage, Rent tools may compare vacancies, market trends, and competitor ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0354::q4",
+    "newPrompt": "According to the passage, Monsoon systems are driven by heating differences between what two surfaces?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0584::q3",
+    "newPrompt": "According to the passage, Stick charts used sticks and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0712::q6",
+    "newPrompt": "According to the passage, What becomes part of the engineering challenge?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0354::q3",
+    "newPrompt": "According to the passage, Monsoon rainfall may be affected by ocean temperatures, snow cover, land use, and atmospheric ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0947::q5",
+    "newPrompt": "According to the passage, Instead of relying only on telescope observations, missions bring Bennu material back to ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0864::q1",
+    "newPrompt": "The passage states that Most Benin Bronzes are now held in museums outside Nigeria.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_1031::q4",
+    "newPrompt": "The passage states that Because Noh expressions are restrained, small gestures become meaningless.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0351::q3",
+    "newPrompt": "According to the passage, The device could track lunar phases, eclipses, and calendar ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0353::q3",
+    "newPrompt": "According to the passage, The tapestry uses embroidered images and short Latin ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0511::q3",
+    "newPrompt": "According to the passage, Tablets recorded grain, textiles, livestock, workers, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0784::q2",
+    "newPrompt": "The passage states that Evidence about eel migration is hard to collect directly.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0867::q5",
+    "newPrompt": "According to the passage, The folds allow thin materials to span wider ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0318::q3",
+    "newPrompt": "According to the passage, Conclusions should be limited to what the sample can reasonably ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0706::q5",
+    "newPrompt": "According to the passage, Origami engineering has influenced solar panels, medical stents, airbags, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_1064::q1",
+    "newPrompt": "The passage states that The Earthrise photograph was the first image of Earth from space.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0903::q1",
+    "newPrompt": "The passage states that The Haitian Revolution exposed a contradiction between revolutionary language and plantation slavery.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0211::q1",
+    "newPrompt": "The passage states that Adaptive reuse can preserve architectural character while also reducing the need for demolition.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0393::q3",
+    "newPrompt": "According to the passage, Calibration may use tree rings, corals, and other ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0436::q3",
+    "newPrompt": "According to the passage, The council influenced religious art, education, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_tfng_0829::q1",
+    "newPrompt": "The passage states that All cuckoo species reproduce by laying eggs in the nests of other birds.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0864::q5",
+    "newPrompt": "According to the passage, Many Benin Bronzes are now held in museums outside ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0356::q3",
+    "newPrompt": "According to the passage, Bauhaus teaching linked art, craft, architecture, and industrial ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0787::q1",
+    "newPrompt": "The passage states that The green flash is easier to see over the ocean than over every land horizon.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0904::q5",
+    "newPrompt": "According to the passage, Seagrass protection connects climate goals with fisheries, water quality, and coastal ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_75_mixed_0318::q1",
+    "newPrompt": "The passage states that A survey of online volunteers may fail to include some people who lack internet access.",
+    "note": "Auto paraphrase (tfng)."
+  }
+]

@@ -2,7 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
-  type TouchEvent,
+  type TouchEvent as ReactTouchEvent,
   type WheelEvent,
 } from "react";
 import { Link, useRoute, useSearch } from "wouter";
@@ -23,7 +23,9 @@ import {
 import { RankPlate } from "@/components/rank-plate";
 import {
   fetchPassageDetail,
-  fetchPassageList,
+  fetchPassageFeedBootstrap,
+  fetchPassageIds,
+  getCachedPassageDetail,
   type PassageAnswerKey,
   type PassageDetail,
   type PassageQuestion,
@@ -46,6 +48,7 @@ import { getRankPlateData, type RankPlateData } from "@/lib/rank-visual";
 import type { AchievementDefinition } from "@/lib/achievements";
 import { formatLocalDayKey, getDailyGoalProgress } from "@/lib/daily-goal";
 import { submitRankedAnswer } from "@/lib/profile-api";
+import { saveVocabToBank } from "@/lib/profile-api";
 import {
   QUESTION_TYPE_DISPLAY_LABELS,
   createMistakeEntry,
@@ -63,6 +66,13 @@ function toRankFeedbackKey(passageId: string, questionId: number) {
 type RankFeedbackState = {
   isPending: boolean;
   rankedPointDelta: number | null;
+};
+
+type SelectedVocabContext = {
+  vocabItem: PassageVocabItem;
+  sourcePassageId: string;
+  sourcePassageTitle: string;
+  sourceBandLabel: string;
 };
 
 type FeedRuntimeSession = {
@@ -84,6 +94,7 @@ const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
 }> = [
   { value: "wrong_answer_key", label: "Wrong answer key" },
   { value: "question_unclear", label: "Question unclear" },
+  { value: "questions_too_easy", label: "Questions too easy" },
   { value: "passage_text_issue", label: "Passage text issue" },
   { value: "formatting_issue", label: "Formatting issue" },
   { value: "other", label: "Other" },
@@ -131,14 +142,31 @@ function normalizeVocabTerm(term: string) {
   return term.replace(/^[*\-\u2022]+\s*/, "").trim();
 }
 
+function normalizeVocabBankKey(term: string) {
+  return normalizeVocabTerm(term)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function AchievementUnlockedToast({
   achievement,
+  effectVariant,
 }: {
   achievement: AchievementDefinition;
+  effectVariant: "a" | "b" | "c";
 }) {
   return (
     <div
-      className="pointer-events-none fixed left-1/2 top-4 z-50 w-[min(92vw,360px)] -translate-x-1/2 rounded-lg border border-primary/45 bg-card/95 px-4 py-3 shadow-xl backdrop-blur"
+      className={`pointer-events-none fixed left-1/2 top-4 z-50 w-[min(92vw,360px)] -translate-x-1/2 rounded-lg border border-primary/45 bg-card/95 px-4 py-3 shadow-xl backdrop-blur achievement-toast-pop ${
+        effectVariant === "a"
+          ? "achievement-toast-glow-a"
+          : effectVariant === "b"
+            ? "achievement-toast-glow-b"
+            : "achievement-toast-glow-c"
+      }`}
       data-testid="toast-achievement-unlocked"
     >
       <div className="flex items-start gap-3">
@@ -396,15 +424,40 @@ function TopStatusRow({
             ) : null}
           </div>
         ) : (
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pr-10">
-            {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
+          <div
+            role="button"
+            tabIndex={0}
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pr-10 text-left"
+            onClick={() => setIsExpanded(false)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsExpanded(false);
+              }
+            }}
+            aria-label="Collapse reading status bar"
+          >
             <Link
               href="/list"
               className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
               aria-label="Go to passage list"
             >
               <House className="h-4 w-4" />
             </Link>
+            <Link
+              href="/leaderboard"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              aria-label="Open leaderboard"
+            >
+              <Trophy className="h-4 w-4" />
+            </Link>
+            {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
             <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground">
               <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
                 {dailyGoal.attemptedToday}/{dailyGoal.goal}
@@ -430,7 +483,10 @@ function TopStatusRow({
         <button
           type="button"
           className="absolute right-0 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/95 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-primary hover:text-primary"
-          onClick={() => setIsExpanded((current) => !current)}
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsExpanded((current) => !current);
+          }}
           aria-label={isExpanded ? "Collapse reading status bar" : "Expand reading status bar"}
           aria-expanded={isExpanded}
         >
@@ -439,7 +495,6 @@ function TopStatusRow({
       </div>
 
       <div className="hidden min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:flex md:flex-wrap md:gap-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-        {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
         <Link
           href="/list"
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
@@ -447,6 +502,14 @@ function TopStatusRow({
         >
           <House className="h-4 w-4" />
         </Link>
+        <Link
+          href="/leaderboard"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/50 bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+          aria-label="Open leaderboard"
+        >
+          <Trophy className="h-4 w-4" />
+        </Link>
+        {rankPlate && <RankPlate plate={rankPlate} className="h-9 shrink-0" />}
         <div className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[10px] font-semibold text-muted-foreground md:gap-2 md:px-3 md:text-[11px]">
           <span className={dailyGoal.isComplete ? "text-secondary" : "text-primary"}>
             {dailyGoal.attemptedToday}/{dailyGoal.goal}
@@ -633,12 +696,21 @@ function PassageText({
 }
 
 function VocabMeaningDialog({
-  selectedVocab,
+  selectedVocabContext,
   onOpenChange,
+  isSavingToBank,
+  isSavedToBank,
+  saveToBankError,
+  onSaveToBank,
 }: {
-  selectedVocab: PassageVocabItem | null;
+  selectedVocabContext: SelectedVocabContext | null;
   onOpenChange: (open: boolean) => void;
+  isSavingToBank: boolean;
+  isSavedToBank: boolean;
+  saveToBankError: string | null;
+  onSaveToBank: () => void;
 }) {
+  const selectedVocab = selectedVocabContext?.vocabItem ?? null;
   const vietnameseMeaning =
     selectedVocab?.meaning_vi && selectedVocab.meaning_vi.trim().length > 0
       ? selectedVocab.meaning_vi
@@ -657,7 +729,7 @@ function VocabMeaningDialog({
       : "No example sentence available.";
 
   return (
-    <Dialog open={Boolean(selectedVocab)} onOpenChange={onOpenChange}>
+    <Dialog open={Boolean(selectedVocabContext)} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-border bg-card p-4 text-foreground">
         <div className="space-y-3 pr-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.11em] text-primary/85">
@@ -690,6 +762,34 @@ function VocabMeaningDialog({
             <DialogDescription className="mt-1 text-sm leading-relaxed text-muted-foreground">
               {exampleSentence}
             </DialogDescription>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              type="button"
+              disabled={isSavingToBank || isSavedToBank}
+              onClick={onSaveToBank}
+              className={`h-11 w-full rounded-lg border text-sm font-semibold transition-colors ${
+                isSavedToBank
+                  ? "cursor-default border-secondary/55 bg-secondary/15 text-secondary"
+                  : isSavingToBank
+                    ? "cursor-not-allowed border-border bg-muted text-muted-foreground"
+                    : "border-primary/45 bg-primary/15 text-primary hover:bg-primary/25"
+              }`}
+            >
+              {isSavedToBank
+                ? "Saved to Vocab Bank"
+                : isSavingToBank
+                  ? "Saving..."
+                  : "Add to Vocab Bank"}
+            </button>
+            {saveToBankError ? (
+              <p className="text-xs text-destructive">{saveToBankError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Save this word to your personal vocab bank.
+              </p>
+            )}
           </div>
         </div>
       </DialogContent>
@@ -1050,6 +1150,7 @@ function QuestionBlock({
   displayIndex,
   answer,
   answerKey,
+  answerKeyAvailable,
   revealed,
   rankFeedback,
   onAnswerChange,
@@ -1059,6 +1160,7 @@ function QuestionBlock({
   displayIndex?: number;
   answer: string;
   answerKey: PassageAnswerKey | undefined;
+  answerKeyAvailable: boolean;
   revealed: boolean;
   rankFeedback?: RankFeedbackState;
   onAnswerChange: (nextAnswer: string) => void;
@@ -1070,7 +1172,7 @@ function QuestionBlock({
   const isTextQuestion =
     question.question_type_index === "sentence_completion" ||
     question.question_type_index === "short_answer";
-  const canSubmitTextAnswer = answer.trim().length > 0 && !revealed;
+  const canSubmitTextAnswer = answer.trim().length > 0 && !revealed && answerKeyAvailable;
 
   return (
     <section className="question-card-wrap rounded-lg border border-border bg-card px-3 py-3">
@@ -1100,7 +1202,7 @@ function QuestionBlock({
               onAnswerChange(nextAnswer);
               onSubmitAnswer(nextAnswer);
             }}
-            disabled={revealed}
+            disabled={revealed || !answerKeyAvailable}
           />
         )}
 
@@ -1111,7 +1213,7 @@ function QuestionBlock({
               onAnswerChange(nextAnswer);
               onSubmitAnswer(nextAnswer);
             }}
-            disabled={revealed}
+            disabled={revealed || !answerKeyAvailable}
           />
         )}
 
@@ -1120,7 +1222,7 @@ function QuestionBlock({
             <TextAnswerInput
               answer={answer}
               onChange={onAnswerChange}
-              disabled={revealed}
+              disabled={revealed || !answerKeyAvailable}
               placeholder="Type your answer"
             />
             <button
@@ -1139,6 +1241,12 @@ function QuestionBlock({
         )}
       </div>
 
+      {!answerKeyAvailable && !revealed && (
+        <p className="mt-2 text-xs font-medium text-muted-foreground">
+          Loading answer key...
+        </p>
+      )}
+
       {revealed && (
         <AnswerReactionBadge isCorrect={isCorrect} rankFeedback={rankFeedback} />
       )}
@@ -1156,15 +1264,14 @@ function QuestionBlock({
 }
 
 export default function PassageDetailPage() {
-  const RANDOM_BATCH_SIZE = 10;
-  const INITIAL_STACK_SIZE = 40;
-  const PREFETCH_BATCH_SIZE = 30;
+  const RANDOM_BATCH_SIZE = 8;
+  const INITIAL_STACK_SIZE = 16;
+  const PREFETCH_BATCH_SIZE = 16;
   const MAX_PREFETCH_COUNT = 3;
-  const PREFETCH_TRIGGER_REMAINING = 20;
-  const WINDOW_RADIUS = 10;
-  const RANDOM_POOL_FETCH_LIMIT = 500;
-  const RANDOM_POOL_STORAGE_KEY = "readtok_random_pool_ids_v2";
-  const RANDOM_SHOWN_STORAGE_KEY = "readtok_random_shown_ids_v2";
+  const PREFETCH_TRIGGER_REMAINING = 8;
+  const WINDOW_RADIUS = 3;
+  const RANDOM_POOL_STORAGE_KEY = "readtok_random_pool_ids_v3";
+  const RANDOM_SHOWN_STORAGE_KEY = "readtok_random_shown_ids_v3";
 
   const [, params] = useRoute("/passages/:id");
   const search = useSearch();
@@ -1186,10 +1293,12 @@ export default function PassageDetailPage() {
     stats,
   } = useAppState();
   const isMobile = useIsMobile();
+  const [hasTouchInput, setHasTouchInput] = useState(false);
   const todayStats = stats.dailyStats[formatLocalDayKey()] ?? {
     attempted: 0,
     correct: 0,
   };
+  const isTouchMobile = isMobile && hasTouchInput;
   const rankPlate = rankedIdentity
     ? getRankPlateData(
         rankedIdentity.rankedPoints,
@@ -1219,7 +1328,11 @@ export default function PassageDetailPage() {
     Record<string, RankFeedbackState>
   >({});
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [selectedVocab, setSelectedVocab] = useState<PassageVocabItem | null>(null);
+  const [selectedVocabContext, setSelectedVocabContext] =
+    useState<SelectedVocabContext | null>(null);
+  const [isSavingVocabToBank, setIsSavingVocabToBank] = useState(false);
+  const [vocabBankSaveError, setVocabBankSaveError] = useState<string | null>(null);
+  const [savedVocabBankKeys, setSavedVocabBankKeys] = useState<Record<string, true>>({});
   const [feedIds, setFeedIds] = useState<string[]>([]);
   const [listOffset, setListOffset] = useState(0);
   const [isAppending, setIsAppending] = useState(false);
@@ -1230,8 +1343,10 @@ export default function PassageDetailPage() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportedPassageIds, setReportedPassageIds] = useState<Record<string, true>>({});
+  const [achievementEffectVariant, setAchievementEffectVariant] = useState<"a" | "b" | "c">("a");
   const questionOrderByPassageRef = useRef<Record<string, number[]>>({});
   const prefetchCountRef = useRef(0);
+  const hydratingAnswerKeyPassageIdsRef = useRef<Set<string>>(new Set());
   const desktopWheelMomentumTimeoutRef = useRef<number | null>(null);
   const desktopWheelGestureConsumedRef = useRef(false);
   const arrowTapCooldownTimeoutRef = useRef<number | null>(null);
@@ -1365,9 +1480,9 @@ export default function PassageDetailPage() {
     return shuffleIds(resetCandidates).slice(0, count);
   }
 
-  async function fetchPassageDetailsSafe(ids: string[]) {
+  async function fetchPassageDetailsSafe(ids: string[], includeAnswerKey = true) {
     const results = await Promise.allSettled(
-      ids.map((id) => fetchPassageDetail(id, true)),
+      ids.map((id) => fetchPassageDetail(id, includeAnswerKey)),
     );
 
     return results
@@ -1428,7 +1543,7 @@ export default function PassageDetailPage() {
     setCurrentIndex(0);
     setAnswersByPassageId({});
     setRevealedByPassageId({});
-    setSelectedVocab(null);
+    setSelectedVocabContext(null);
     prefetchCountRef.current = 0;
 
     if (restoreFromRuntimeSession(routePassageId)) {
@@ -1440,29 +1555,58 @@ export default function PassageDetailPage() {
       };
     }
 
+    if (routePassageId) {
+      const cachedRoutePassage = getCachedPassageDetail(routePassageId, true);
+      if (cachedRoutePassage) {
+        setPassages([cachedRoutePassage]);
+        setCurrentIndex(0);
+        setIsLoading(false);
+      }
+    }
+
     async function loadInitialPassages() {
       try {
-        const poolResponse = await fetchPassageList({
+        const bootstrapResponse = await fetchPassageFeedBootstrap({
           status: "active",
-          limit: RANDOM_POOL_FETCH_LIMIT,
-          offset: 0,
+          limit: routePassageId ? INITIAL_STACK_SIZE - 1 : INITIAL_STACK_SIZE,
+          includeAnswerKey: false,
         });
-        const poolIds = uniqueIds(poolResponse.items.map((item) => item.id));
+        const poolIds = uniqueIds(bootstrapResponse.all_passage_ids);
         writeIdArrayToStorage(RANDOM_POOL_STORAGE_KEY, poolIds);
 
         const alreadyShown = readIdArrayFromStorage(RANDOM_SHOWN_STORAGE_KEY);
-        const initialTargetCount = INITIAL_STACK_SIZE;
-        const randomIds = selectRandomIdsFromPool({
+        const randomDetails = bootstrapResponse.random_passages;
+        const alreadyShownSet = new Set(alreadyShown);
+        const randomIds = randomDetails
+          .map((item) => item.id)
+          .filter((id) => !alreadyShownSet.has(id));
+        const seededIds = uniqueIds(routePassageId ? [routePassageId, ...randomIds] : randomIds);
+        const fillIds = selectRandomIdsFromPool({
           poolIds,
           alreadyShownIds: alreadyShown,
-          excludeIds: [],
-          count: initialTargetCount,
+          excludeIds: seededIds,
+          count: Math.max(INITIAL_STACK_SIZE - seededIds.length, 0),
         });
         const initialIds = uniqueIds(
-          routePassageId ? [routePassageId, ...randomIds] : randomIds,
-        ).slice(0, initialTargetCount);
+          routePassageId
+            ? [routePassageId, ...randomIds, ...fillIds]
+            : [...randomIds, ...fillIds],
+        ).slice(0, INITIAL_STACK_SIZE);
+        const bootstrapDetailsById = new Map(
+          randomDetails.map((detail) => [detail.id, detail]),
+        );
+        const missingInitialIds = initialIds.filter(
+          (id) => !bootstrapDetailsById.has(id),
+        );
+        const missingDetails = await fetchPassageDetailsSafe(missingInitialIds, false);
+        const details = initialIds
+          .map(
+            (id) =>
+              bootstrapDetailsById.get(id) ??
+              missingDetails.find((detail) => detail.id === id),
+          )
+          .filter((detail): detail is PassageDetail => Boolean(detail));
 
-        const details = await fetchPassageDetailsSafe(initialIds);
         if (details.length === 0) {
           throw new Error("No passages could be loaded.");
         }
@@ -1524,12 +1668,10 @@ export default function PassageDetailPage() {
     try {
       let poolIds = feedIds;
       if (poolIds.length === 0) {
-        const poolResponse = await fetchPassageList({
+        const poolResponse = await fetchPassageIds({
           status: "active",
-          limit: RANDOM_POOL_FETCH_LIMIT,
-          offset: 0,
         });
-        poolIds = uniqueIds(poolResponse.items.map((item) => item.id));
+        poolIds = uniqueIds(poolResponse.ids);
         setFeedIds(poolIds);
         writeIdArrayToStorage(RANDOM_POOL_STORAGE_KEY, poolIds);
       }
@@ -1546,7 +1688,7 @@ export default function PassageDetailPage() {
         return 0;
       }
 
-      const details = await fetchPassageDetailsSafe(nextIds);
+      const details = await fetchPassageDetailsSafe(nextIds, false);
       if (details.length === 0) {
         return 0;
       }
@@ -1576,6 +1718,17 @@ export default function PassageDetailPage() {
       setIsAppending(false);
     }
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const touchPoints =
+      typeof navigator !== "undefined" ? navigator.maxTouchPoints > 0 : false;
+    setHasTouchInput(coarsePointer || touchPoints);
+  }, []);
 
   useEffect(() => {
     if (!isMobile || passages.length === 0) {
@@ -1627,15 +1780,29 @@ export default function PassageDetailPage() {
       return;
     }
 
-    const timeoutId = window.setTimeout(dismissRecentAchievementUnlocks, 3200);
+    const timeoutId = window.setTimeout(dismissRecentAchievementUnlocks, 5200);
     return () => window.clearTimeout(timeoutId);
   }, [dismissRecentAchievementUnlocks, recentAchievementUnlocks.length]);
+
+  useEffect(() => {
+    if (!recentAchievementUnlocks[0]) {
+      return;
+    }
+    const variants: Array<"a" | "b" | "c"> = ["a", "b", "c"];
+    const randomVariant = variants[Math.floor(Math.random() * variants.length)];
+    setAchievementEffectVariant(randomVariant);
+  }, [recentAchievementUnlocks[0]?.key]);
 
   useEffect(() => {
     setIsReportDialogOpen(false);
     setReportError(null);
     setIsSubmittingReport(false);
   }, [activePassage?.id]);
+
+  useEffect(() => {
+    setVocabBankSaveError(null);
+    setIsSavingVocabToBank(false);
+  }, [selectedVocabContext?.vocabItem.term]);
 
   useEffect(() => {
     if (passages.length === 0) {
@@ -1659,6 +1826,31 @@ export default function PassageDetailPage() {
     feedIds,
     listOffset,
   ]);
+
+  useEffect(() => {
+    if (!activePassage) {
+      return;
+    }
+    if (activePassage.answer_key.length > 0) {
+      return;
+    }
+    if (hydratingAnswerKeyPassageIdsRef.current.has(activePassage.id)) {
+      return;
+    }
+
+    hydratingAnswerKeyPassageIdsRef.current.add(activePassage.id);
+    void fetchPassageDetail(activePassage.id, true)
+      .then((fullDetail) => {
+        setPassages((currentPassages) =>
+          currentPassages.map((passage) =>
+            passage.id === fullDetail.id ? fullDetail : passage,
+          ),
+        );
+      })
+      .finally(() => {
+        hydratingAnswerKeyPassageIdsRef.current.delete(activePassage.id);
+      });
+  }, [activePassage]);
 
   function moveToPreviousPassage() {
     if (!hasPrevPassage) {
@@ -1691,7 +1883,7 @@ export default function PassageDetailPage() {
     arrowTapCooldownTimeoutRef.current = window.setTimeout(() => {
       setIsArrowTapCooldown(false);
       arrowTapCooldownTimeoutRef.current = null;
-    }, 1000);
+    }, 500);
   }
 
   function handlePreviousArrowTap() {
@@ -1722,7 +1914,7 @@ export default function PassageDetailPage() {
   }, []);
 
   function handleDesktopHorizontalScroll(event: WheelEvent<HTMLDivElement>) {
-    if (isMobile) {
+    if (isTouchMobile) {
       return;
     }
 
@@ -1759,16 +1951,24 @@ export default function PassageDetailPage() {
     moveToPreviousPassage();
   }
 
-  function handleMobileSwipeStart(event: TouchEvent<HTMLDivElement>) {
-    if (!isMobile || event.touches.length !== 1) {
+  function handleMobileSwipeStart(event: ReactTouchEvent<HTMLDivElement>) {
+    if (!isTouchMobile || event.touches.length !== 1) {
+      return;
+    }
+    const eventTarget = event.target;
+    if (
+      eventTarget instanceof Element &&
+      eventTarget.closest("input, textarea, select, option, [contenteditable='true']")
+    ) {
+      mobileSwipeStartRef.current = null;
       return;
     }
     const touch = event.touches[0];
     mobileSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
   }
 
-  function handleMobileSwipeEnd(event: TouchEvent<HTMLDivElement>) {
-    if (!isMobile) {
+  function handleMobileSwipeEnd(event: ReactTouchEvent<HTMLDivElement>) {
+    if (!isTouchMobile) {
       return;
     }
 
@@ -1821,12 +2021,74 @@ export default function PassageDetailPage() {
     }));
   }
 
+  function isSelectedVocabSaved() {
+    if (!selectedVocabContext) {
+      return false;
+    }
+    const key = normalizeVocabBankKey(selectedVocabContext.vocabItem.term);
+    return key.length > 0 && Boolean(savedVocabBankKeys[key]);
+  }
+
+  async function handleSaveSelectedVocabToBank() {
+    if (!selectedVocabContext || isSavingVocabToBank) {
+      return;
+    }
+
+    const vocabItem = selectedVocabContext.vocabItem;
+    const normalizedKey = normalizeVocabBankKey(vocabItem.term);
+    if (!normalizedKey) {
+      setVocabBankSaveError("This term cannot be saved yet.");
+      return;
+    }
+    if (savedVocabBankKeys[normalizedKey]) {
+      return;
+    }
+
+    setVocabBankSaveError(null);
+    setIsSavingVocabToBank(true);
+    try {
+      await saveVocabToBank({
+        term: normalizeVocabTerm(vocabItem.term),
+        meaningEn: vocabItem.simple_meaning_en ?? vocabItem.definition ?? null,
+        meaningVi: vocabItem.meaning_vi ?? null,
+        exampleSentenceEn: vocabItem.example_sentence_en ?? null,
+        sentenceIndex: vocabItem.sentence_index ?? null,
+        sourcePassageId: selectedVocabContext.sourcePassageId,
+        sourcePassageTitle: selectedVocabContext.sourcePassageTitle,
+        sourceBandLabel: selectedVocabContext.sourceBandLabel,
+      });
+      setSavedVocabBankKeys((current) => ({
+        ...current,
+        [normalizedKey]: true,
+      }));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not save this vocab item.";
+      if (message.toLowerCase().includes("unauthorized")) {
+        setVocabBankSaveError("Sign in first to save words to your vocab bank.");
+      } else {
+        setVocabBankSaveError(message);
+      }
+    } finally {
+      setIsSavingVocabToBank(false);
+    }
+  }
+
   function revealAnswer(
     passageId: string,
     question: PassageQuestion,
     submittedAnswer: string,
   ) {
     if (!submittedAnswer.trim()) {
+      return;
+    }
+
+    const targetPassage = passages.find((item) => item.id === passageId);
+    if (!targetPassage) {
+      return;
+    }
+    const answerKey = targetPassage.answer_key.find((item) => item.question_id === question.id);
+    if (!answerKey) {
       return;
     }
 
@@ -1838,10 +2100,6 @@ export default function PassageDetailPage() {
       },
     }));
 
-    const targetPassage = passages.find((item) => item.id === passageId);
-    const answerKey = targetPassage?.answer_key.find(
-      (item) => item.question_id === question.id,
-    );
     const isCorrect = isQuestionCorrect(question, answerKey, submittedAnswer);
     const xpDelta = isCorrect ? 10 : 2;
     const normalizedQuestionType =
@@ -1852,9 +2110,9 @@ export default function PassageDetailPage() {
       : question.question_type_label;
     recordQuestionAttempt(isCorrect, {
       questionType: question.question_type_label,
-      band: targetPassage?.band_label ?? targetPassage?.band_index,
+      band: targetPassage.band_label ?? targetPassage.band_index,
     });
-    if (!isCorrect && targetPassage && answerKey) {
+    if (!isCorrect) {
       recordMistake(
         createMistakeEntry({
           passageId,
@@ -2064,7 +2322,14 @@ export default function PassageDetailPage() {
                 sentences={activePassage.passage_sentences}
                 highlightedSentenceMap={highlightedSentenceMap}
                 vocabItems={activePassage.vocab ?? []}
-                onVocabTap={setSelectedVocab}
+                onVocabTap={(vocabItem) => {
+                  setSelectedVocabContext({
+                    vocabItem,
+                    sourcePassageId: activePassage.id,
+                    sourcePassageTitle: activePassage.title,
+                    sourceBandLabel: activePassage.band_label,
+                  });
+                }}
               />
               <PassageMetaTags passage={activePassage} />
             </div>
@@ -2083,6 +2348,7 @@ export default function PassageDetailPage() {
                     displayIndex={index + 1}
                     answer={answer}
                     answerKey={answerByQuestionId.get(question.id)}
+                    answerKeyAvailable={activePassage.answer_key.length > 0}
                     revealed={revealed}
                     rankFeedback={
                       rankFeedbackByQuestion[
@@ -2142,10 +2408,16 @@ export default function PassageDetailPage() {
         </div>
 
         <VocabMeaningDialog
-          selectedVocab={selectedVocab}
+          selectedVocabContext={selectedVocabContext}
+          isSavingToBank={isSavingVocabToBank}
+          isSavedToBank={isSelectedVocabSaved()}
+          saveToBankError={vocabBankSaveError}
+          onSaveToBank={() => {
+            void handleSaveSelectedVocabToBank();
+          }}
           onOpenChange={(open) => {
             if (!open) {
-              setSelectedVocab(null);
+              setSelectedVocabContext(null);
             }
           }}
         />
@@ -2162,14 +2434,20 @@ export default function PassageDetailPage() {
           }}
         />
         {recentAchievementUnlocks[0] && (
-          <AchievementUnlockedToast achievement={recentAchievementUnlocks[0]} />
+          <AchievementUnlockedToast
+            achievement={recentAchievementUnlocks[0]}
+            effectVariant={achievementEffectVariant}
+          />
         )}
       </div>
     );
   }
 
   return (
-    <div className="tablet-portrait-main relative h-[calc(100dvh-60px)] w-full overflow-hidden">
+    <div
+      className="tablet-portrait-main relative h-[calc(100dvh-60px)] w-full overflow-hidden"
+      onWheel={handleDesktopHorizontalScroll}
+    >
       <div className="absolute left-0 right-0 top-0 z-20 h-0.5 bg-muted">
         <div
           className="h-full bg-primary transition-all"
@@ -2180,8 +2458,11 @@ export default function PassageDetailPage() {
       </div>
       <div
         className="h-full w-full overflow-hidden"
-        onTouchStart={handleMobileSwipeStart}
-        onTouchEnd={handleMobileSwipeEnd}
+        onTouchStartCapture={handleMobileSwipeStart}
+        onTouchEndCapture={handleMobileSwipeEnd}
+        onTouchCancelCapture={() => {
+          mobileSwipeStartRef.current = null;
+        }}
       >
         <div
           className="flex h-full w-full touch-pan-y transition-transform duration-200 ease-out"
@@ -2225,7 +2506,14 @@ export default function PassageDetailPage() {
                                 sentences={passage.passage_sentences}
                                 highlightedSentenceMap={highlightedSentenceMap}
                                 vocabItems={passage.vocab ?? []}
-                                onVocabTap={setSelectedVocab}
+                                onVocabTap={(vocabItem) => {
+                                  setSelectedVocabContext({
+                                    vocabItem,
+                                    sourcePassageId: passage.id,
+                                    sourcePassageTitle: passage.title,
+                                    sourceBandLabel: passage.band_label,
+                                  });
+                                }}
                               />
                               <PassageMetaTags passage={passage} />
                             </div>
@@ -2244,6 +2532,7 @@ export default function PassageDetailPage() {
                                     displayIndex={questionIndex + 1}
                                     answer={answer}
                                     answerKey={answerByQuestionId.get(question.id)}
+                                    answerKeyAvailable={passage.answer_key.length > 0}
                                     revealed={revealed}
                                     rankFeedback={
                                       rankFeedbackByQuestion[
@@ -2289,23 +2578,31 @@ export default function PassageDetailPage() {
       </div>
 
       <div className="pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center pl-1">
-        <div
-          className={`flex h-24 w-8 items-center justify-center rounded-lg border border-border bg-card/75 text-muted-foreground backdrop-blur transition-opacity ${
+        <button
+          type="button"
+          onClick={handlePreviousArrowTap}
+          disabled={!hasPrevPassage || isArrowTapCooldown}
+          className={`pointer-events-auto flex h-24 w-8 items-center justify-center rounded-lg border border-border bg-card/75 text-muted-foreground backdrop-blur transition-opacity ${
             currentIndex > 0 ? "opacity-100" : "opacity-0"
-          }`}
+          } ${!hasPrevPassage || isArrowTapCooldown ? "cursor-not-allowed" : ""}`}
+          aria-label="Previous passage"
         >
           <ChevronLeft className="h-6 w-6" />
-        </div>
+        </button>
       </div>
 
       <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex items-center pr-1">
-        <div
-          className={`flex h-24 w-8 items-center justify-center rounded-lg border border-border bg-card/75 text-muted-foreground backdrop-blur transition-opacity ${
+        <button
+          type="button"
+          onClick={handleNextArrowTap}
+          disabled={!hasNextPassage || isArrowTapCooldown}
+          className={`pointer-events-auto flex h-24 w-8 items-center justify-center rounded-lg border border-border bg-card/75 text-muted-foreground backdrop-blur transition-opacity ${
             currentIndex < passages.length - 1 ? "animate-pulse opacity-100" : "opacity-0"
-          }`}
+          } ${!hasNextPassage || isArrowTapCooldown ? "cursor-not-allowed" : ""}`}
+          aria-label="Next passage"
         >
           <ChevronRight className="h-6 w-6" />
-        </div>
+        </button>
       </div>
 
       {isAppending && (
@@ -2324,10 +2621,16 @@ export default function PassageDetailPage() {
       )}
 
       <VocabMeaningDialog
-        selectedVocab={selectedVocab}
+        selectedVocabContext={selectedVocabContext}
+        isSavingToBank={isSavingVocabToBank}
+        isSavedToBank={isSelectedVocabSaved()}
+        saveToBankError={vocabBankSaveError}
+        onSaveToBank={() => {
+          void handleSaveSelectedVocabToBank();
+        }}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedVocab(null);
+            setSelectedVocabContext(null);
           }
         }}
       />
@@ -2344,7 +2647,10 @@ export default function PassageDetailPage() {
         }}
       />
       {recentAchievementUnlocks[0] && (
-        <AchievementUnlockedToast achievement={recentAchievementUnlocks[0]} />
+        <AchievementUnlockedToast
+          achievement={recentAchievementUnlocks[0]}
+          effectVariant={achievementEffectVariant}
+        />
       )}
     </div>
   );

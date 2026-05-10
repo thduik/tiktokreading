@@ -1,0 +1,302 @@
+[
+  {
+    "reviewKey": "ielts_reading_70_mixed_1013::q2",
+    "newPrompt": "The passage states that Uneven adoption meant neighbouring places sometimes used different dates for the same day.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0737::q1",
+    "newPrompt": "The passage states that Volcanic lightning can occur when ash particles collide inside an eruption cloud.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_1060::q1",
+    "newPrompt": "The passage states that Mary Anning found important marine fossils along the cliffs of southern England.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0821::q2",
+    "newPrompt": "The passage states that Different regions use different fish, salt ratios, containers, and ageing times.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0895::q2",
+    "newPrompt": "The passage states that Scientists study desert varnish because it can preserve clues about climate and surface age.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0860::q3",
+    "newPrompt": "The passage states that Experiments may change magnetic conditions and observe whether an animal's direction changes.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_1020::q2",
+    "newPrompt": "The passage states that Machines helped speed up some tasks, but human judgement remained essential.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_1057::q4",
+    "newPrompt": "The passage states that Warm water, nutrient runoff, and calm conditions can support some blooms.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0975::q1",
+    "newPrompt": "The passage states that Archaeological remains suggest careful planning rather than random coastal growth.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_1022::q2",
+    "newPrompt": "The passage states that The images showed human bodies packed tightly into ship spaces.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0901::q1",
+    "newPrompt": "The passage states that Sourdough depends on a living mixture of yeasts and bacteria.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0979::q6",
+    "newPrompt": "According to the passage, What concerns led many buildings to remove or restrict paternosters?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0937::q4",
+    "newPrompt": "The passage states that A single actor could change roles by changing masks.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0981::q1",
+    "newPrompt": "The passage states that The Phoenician alphabet used a small set of signs for consonant sounds.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0775::q2",
+    "newPrompt": "The passage states that Ash clouds can spread far from an eruption.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0815::q1",
+    "newPrompt": "The passage states that The narwhal's tusk usually grows from the upper jaw of males.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0737::q3",
+    "newPrompt": "The passage states that Detecting lightning can help track eruptions when visibility is poor.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0740::q2",
+    "newPrompt": "The passage states that Wooden beams help workers climb the building during repairs.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0621::q4",
+    "newPrompt": "According to the passage, What allowed difficult truths to be presented?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0775::q6",
+    "newPrompt": "According to the passage, What may pilots lose when flying through an ash cloud?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0815::q2",
+    "newPrompt": "The passage states that The tusk is mainly a weapon for stabbing prey.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0855::q2",
+    "newPrompt": "The passage states that Votive offerings can carry personal and religious meaning.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0814::q2",
+    "newPrompt": "The passage states that Its power came from coordination rather than one invention alone.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0900::q1",
+    "newPrompt": "The passage states that Cantilever bridge arms are supported at only one end.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0015::q4",
+    "newPrompt": "According to the passage, What can farmers save if the system works reliably?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0546::q1",
+    "newPrompt": "The passage states that Parametric insurance depends heavily on reliable data and fair thresholds.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0780::q2",
+    "newPrompt": "The passage states that Some coastal defences used curved surfaces to collect sound before radar became widely used.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0780::q4",
+    "newPrompt": "The passage states that Radar later made acoustic mirrors more important for military defence.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0462::q1",
+    "newPrompt": "The passage states that Scientists study gecko adhesion more for robots than for new materials.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0741::q1",
+    "newPrompt": "The passage states that Japan invested in railways after the Meiji Restoration as part of modernization.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0017::q4",
+    "newPrompt": "According to the passage, What do solar panels collect during the day?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0312::q4",
+    "newPrompt": "According to the passage, Where is climate evidence stored in ice cores?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0347::q4",
+    "newPrompt": "According to the passage, What do workers process to make thread?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0386::q4",
+    "newPrompt": "According to the passage, Who was the army probably intended to serve or protect?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0577::q4",
+    "newPrompt": "According to the passage, Where do mycorrhizal fungi live?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0580::q1",
+    "newPrompt": "The passage states that Ear trumpets were assistive technology before modern electronics.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0620::q4",
+    "newPrompt": "According to the passage, What was trapped at high tide?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0662::q4",
+    "newPrompt": "According to the passage, Coral layers provide what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0973::q6",
+    "newPrompt": "According to the passage, Who later used Tycho's data to develop planetary laws?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_1016::q6",
+    "newPrompt": "According to the passage, Where may tiny chemical traces survive?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0702::q5",
+    "newPrompt": "According to the passage, The conflict involved enslaved workers, free people of colour, French authorities, European powers, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0693::q5",
+    "newPrompt": "According to the passage, Her discoveries of marine reptiles helped scholars rethink the history of life and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0820::q2",
+    "newPrompt": "The passage states that Court interpreters are expected to remain neutral even though their choices shape communication.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0815::q5",
+    "newPrompt": "According to the passage, Narwhals live in Arctic waters where sea ice and seasonal ______ shape their behaviour.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0821::q5",
+    "newPrompt": "According to the passage, Different regions use different fish, salt ratios, containers, and ageing ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0507::q3",
+    "newPrompt": "According to the passage, Sign languages use hand shape, movement, facial expression, and body ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0700::q5",
+    "newPrompt": "According to the passage, Trees can carry signs of past drought in growth rings, wood structure, and later ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_1016::q5",
+    "newPrompt": "According to the passage, The method helps archaeologists study ______ without relying only on bones or seeds.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0344::q3",
+    "newPrompt": "According to the passage, Researchers study teenage sleep to understand learning, mood, attention, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0695::q5",
+    "newPrompt": "According to the passage, Repatriation asks whether museums are only storehouses of objects or institutions with ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_1013::q5",
+    "newPrompt": "According to the passage, Over centuries, the date of the ______ had moved away from the date used in church calculations.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0696::q5",
+    "newPrompt": "According to the passage, New leaders reorganized government, military service, education, industry, and ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0698::q5",
+    "newPrompt": "According to the passage, Certain algae may produce toxins that harm fish, shellfish, birds, or ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0741::q5",
+    "newPrompt": "According to the passage, Rail lines helped move people, goods, soldiers, and ______ more quickly.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_0817::q2",
+    "newPrompt": "The passage states that Drivers entering a roundabout usually give way to traffic already inside it.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0697::q1",
+    "newPrompt": "The passage states that Airport noise zoning manages land use near flight paths.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0348::q3",
+    "newPrompt": "According to the passage, Early warning systems send alerts before stronger ______ arrives.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_0391::q3",
+    "newPrompt": "According to the passage, Early dogs may have helped with hunting, guarding, waste removal, or ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_mixed_1014::q5",
+    "newPrompt": "According to the passage, The behaviour is striking because a small insect uses large-scale ______.?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_70_tfng_1060::q4",
+    "newPrompt": "The passage states that Later historians have emphasized how much professional geology learned from Anning's finds.",
+    "note": "Auto paraphrase (tfng)."
+  }
+]

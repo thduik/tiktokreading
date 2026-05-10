@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-05-10T10:04:32.058Z",
+  "currentBand": "7.0",
+  "totalRowsScanned": 611,
+  "totalFlagged": 161,
+  "byType": {
+    "tfng": 70,
+    "sentence_completion": 74,
+    "short_answer": 17
+  },
+  "byStatus": {
+    "fixed": 161
+  },
+  "ledger": {
+    "totalReviewed": 216,
+    "byStatus": {
+      "fixed": 216
+    }
+  },
+  "nextBatchCount": 0,
+  "nextBands": [
+    "6.0"
+  ]
+}

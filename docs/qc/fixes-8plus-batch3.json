@@ -1,0 +1,202 @@
+[
+  {
+    "reviewKey": "ielts_reading_80_mixed_1034::q5",
+    "newPrompt": "If protections are weak, higher prices may reduce waste while harming ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0368::q3",
+    "newPrompt": "A display may lead viewers to see an object as art, sacred material, evidence, or a national ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1082::q5",
+    "newPrompt": "Through oceanward ice flow and surface melting, ______ can gradually lose mass.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0875::q1",
+    "newPrompt": "Volcanic lightning is merely ordinary storm lightning occurring over a volcano.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0370::q3",
+    "newPrompt": "Besides roads, bridges, hostels, and markets, pilgrimage routes also required water ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0798::q1",
+    "newPrompt": "In museum climate control, temperature matters more than humidity, light, or air quality.",
+    "note": "Paraphrased copied not-given TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0721::q5",
+    "newPrompt": "Rather than choosing a fixed sound, the user builds a signal chain from oscillators, filters, envelopes, and ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0839::q5",
+    "newPrompt": "Physicists describe this connection more precisely with mathematics than with everyday ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0753::q5",
+    "newPrompt": "Counterfactual history can reveal hidden assumptions about inevitability, agency, and ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1001::q4",
+    "newPrompt": "The argument asks whether damage, repair, and location can really be treated as interchangeable.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0796::q5",
+    "newPrompt": "Jantar Mantar combined astronomy and architecture with courtly power and mathematical ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0369::q3",
+    "newPrompt": "To reduce this bias, researchers may rely on indirect questioning, anonymous surveys, or behavioural ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0642::q3",
+    "newPrompt": "The paradox highlights a tension between gradual change and sharp ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0993::q2",
+    "newPrompt": "Wollstonecraft mainly wanted women to be praised as morally exceptional.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0958::q4",
+    "newPrompt": "After injury, recovery usually means a simple return to the earlier state.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0450::q3",
+    "newPrompt": "A strict standing rule may leave out broad harms such as environmental ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0799::q2",
+    "newPrompt": "Foreign governments feared the Haitian Revolution because it made slave economies elsewhere more secure.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0962::q5",
+    "newPrompt": "These vents release mineral-rich fluids from the ocean ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0027::q3",
+    "newPrompt": "Informal settlements and transport networks may be practical responses to exclusion from formal ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0328::q3",
+    "newPrompt": "A community may lack the shared concepts needed to express experience ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0802::q5",
+    "newPrompt": "On this map, a route can look straight even though it really ______ through the city.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1040::q1",
+    "newPrompt": "Facial recognition identifies people by matching facial features against stored images.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0529::q3",
+    "newPrompt": "People in the future may inherit debt, infrastructure, environmental damage, or institutional ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0998::q2",
+    "newPrompt": "Critics of gene patents said genes were human inventions rather than discovered natural information.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0836::q5",
+    "newPrompt": "Although these responses may help the tree survive, they can also reduce ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0636::q3",
+    "newPrompt": "Some expertise is carried through practice rather than explicit ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0717::q5",
+    "newPrompt": "After bouncing, Philae came to rest in a less ______ location.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1078::q1",
+    "newPrompt": "Writing generally appears as a sudden jump from silence to literature.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0030::q3",
+    "newPrompt": "This approach challenges the idea that an object's meaning is fixed at the moment of ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0217::q4",
+    "newPrompt": "Infrastructure lock-in shows how earlier decisions keep shaping possibility through what kind of systems?",
+    "note": "Paraphrased short-answer context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0330::q3",
+    "newPrompt": "Under data colonialism, everyday movement, communication, and emotion can become ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0839::q1",
+    "newPrompt": "Quantum entanglement allows ordinary messages to travel faster than light.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1082::q2",
+    "newPrompt": "Gradual ice loss can eventually turn into a self-reinforcing retreat.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0560::q3",
+    "newPrompt": "A string quartet cannot simply perform with half the ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1075::q2",
+    "newPrompt": "Long periods of erosion can set up the conditions for rapid landscape change.",
+    "note": "Paraphrased copied TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0409::q3",
+    "newPrompt": "Researchers have examined construction, ageing, wood density, and ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0528::q1",
+    "newPrompt": "Maps help people move without affecting how places are understood.",
+    "note": "Paraphrased copied false TFNG sentence."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0025::q3",
+    "newPrompt": "A nearly human face may feel disturbing if it contains unnatural ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0364::q3",
+    "newPrompt": "Authorities sometimes responded by limiting movement or freezing ______.",
+    "note": "Paraphrased sentence-completion context."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0411::q4",
+    "newPrompt": "Historians must read archives not only for what they preserve but also for what they make hard to ______.",
+    "note": "Paraphrased short-answer context."
+  }
+]

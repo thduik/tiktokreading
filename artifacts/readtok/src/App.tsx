@@ -4,23 +4,18 @@ import { Switch, Route, Router as WouterRouter, useLocation, useRoute } from "wo
 import { Award, Swords, Target, TrendingUp, Zap } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Saved from "@/pages/saved";
 import Profile from "@/pages/profile";
 import AdminPage from "@/pages/admin";
+import LeaderboardPage from "@/pages/leaderboard";
 import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
 import Onboarding from "@/components/onboarding";
 import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
-import { fetchPassageList } from "@/lib/passages-api";
+import { fetchPassageFeedBootstrap } from "@/lib/passages-api";
 import { bootstrapMyProfile } from "@/lib/profile-api";
 import {
   QUESTION_TYPE_DISPLAY_LABELS,
@@ -28,10 +23,17 @@ import {
   SESSION_STREAK_BONUS_LP,
   SESSION_SUMMARY_INTERVAL,
 } from "@/lib/practice-tracking";
-import { authEnabled, clerkProxyUrl, clerkPublishableKey } from "@/lib/runtime-config";
+import {
+  authConfigMissingOnHostedApp,
+  authEnabled,
+  clerkProxyUrl,
+  clerkPublishableKey,
+  runtimeHostname,
+} from "@/lib/runtime-config";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const pendingDisplayNameStorageKey = "readtok_pending_display_name";
+const sessionStreakDismissedStorageKey = "readtok_session_streak_dismissed_v1";
 const authAppearance = {
   theme: "simple",
   variables: {
@@ -313,17 +315,14 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
     setIsLaunchingFromOnboarding(true);
     let nextPath = "/";
     try {
-      const response = await fetchPassageList({
+      const response = await fetchPassageFeedBootstrap({
         status: "active",
-        limit: 500,
-        offset: 0,
+        limit: 1,
+        includeAnswerKey: false,
       });
-      if (response.items.length > 0) {
-        const randomIndex = Math.floor(Math.random() * response.items.length);
-        const randomPassage = response.items[randomIndex];
-        if (randomPassage) {
-          nextPath = `/?start=${encodeURIComponent(randomPassage.id)}`;
-        }
+      const randomPassage = response.random_passages[0];
+      if (randomPassage) {
+        nextPath = `/?start=${encodeURIComponent(randomPassage.id)}`;
       }
     } catch {
       nextPath = "/";
@@ -352,6 +351,7 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
           <Route path="/passages/:id" component={LegacyPassageRouteRedirect} />
           <Route path="/saved" component={Saved} />
           <Route path="/profile" component={Profile} />
+          <Route path="/leaderboard" component={LeaderboardPage} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
@@ -409,8 +409,46 @@ function AppRoutes({
 
 function SessionSummaryDialog() {
   const { pendingSessionSummary, dismissSessionSummary } = useAppState();
+  const [dismissedStreakMilestones, setDismissedStreakMilestones] = useState<number[]>(
+    () => {
+      if (typeof window === "undefined") {
+        return [];
+      }
+      try {
+        const parsed = JSON.parse(
+          window.sessionStorage.getItem(sessionStreakDismissedStorageKey) ?? "[]",
+        ) as unknown;
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+        return parsed
+          .map((value) => Number(value))
+          .filter((value) => Number.isInteger(value) && value > 0);
+      } catch {
+        return [];
+      }
+    },
+  );
 
   if (!pendingSessionSummary) {
+    return null;
+  }
+
+  const streakMilestone =
+    pendingSessionSummary.bestStreak >= 20
+      ? 20
+      : pendingSessionSummary.bestStreak >= 10
+        ? 10
+        : null;
+  const isDismissedMilestone =
+    streakMilestone !== null && dismissedStreakMilestones.includes(streakMilestone);
+  useEffect(() => {
+    if (isDismissedMilestone) {
+      dismissSessionSummary();
+    }
+  }, [dismissSessionSummary, isDismissedMilestone]);
+
+  if (isDismissedMilestone) {
     return null;
   }
 
@@ -427,110 +465,142 @@ function SessionSummaryDialog() {
       ? `+${pendingSessionSummary.lpBonusTotal}`
       : "+0";
 
+  function dismissNotification() {
+    if (streakMilestone !== null) {
+      const next = Array.from(new Set([...dismissedStreakMilestones, streakMilestone]));
+      setDismissedStreakMilestones(next);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          sessionStreakDismissedStorageKey,
+          JSON.stringify(next),
+        );
+      }
+    }
+    dismissSessionSummary();
+  }
+
   return (
-    <Dialog
-      open={Boolean(pendingSessionSummary)}
-      onOpenChange={(open) => {
-        if (!open) {
-          dismissSessionSummary();
-        }
-      }}
-    >
-      <DialogContent className="w-[calc(100%-1.5rem)] max-w-sm rounded-lg border border-border bg-card p-5 text-foreground">
-        <div className="space-y-4 pr-7">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-              {SESSION_SUMMARY_INTERVAL}-Question Checkpoint
-            </p>
-            <DialogTitle className="mt-1 text-2xl font-semibold leading-tight text-foreground">
-              Nice session.
-            </DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {pendingSessionSummary.correct} correct / {pendingSessionSummary.answered} answered.
-            </DialogDescription>
+    <div className="pointer-events-none fixed bottom-[74px] left-1/2 z-50 w-[min(94vw,440px)] -translate-x-1/2">
+      <div className="pointer-events-auto rounded-lg border border-border bg-card/95 p-4 text-foreground shadow-xl backdrop-blur">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                {SESSION_SUMMARY_INTERVAL}-Question Checkpoint
+              </p>
+              <p className="mt-1 text-lg font-semibold leading-tight text-foreground">
+                Nice session.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pendingSessionSummary.correct} correct / {pendingSessionSummary.answered} answered.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={dismissNotification}>
+              Close
+            </Button>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+            <div className="rounded-lg border border-border bg-muted px-3 py-2.5">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 <Target className="h-3.5 w-3.5" />
                 Accuracy
               </p>
-              <p className="mt-2 text-lg font-semibold text-foreground">
+              <p className="mt-1.5 text-lg font-semibold text-foreground">
                 {pendingSessionSummary.accuracyPercent}%
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+            <div className="rounded-lg border border-border bg-muted px-3 py-2.5">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 <TrendingUp className="h-3.5 w-3.5" />
                 Ranked LP
               </p>
               <p
-                className={`mt-2 text-lg font-semibold ${
-                  pendingSessionSummary.lpDeltaTotal >= 0
-                    ? "text-primary"
-                    : "text-destructive"
+                className={`mt-1.5 text-lg font-semibold ${
+                  pendingSessionSummary.lpDeltaTotal >= 0 ? "text-primary" : "text-destructive"
                 }`}
               >
                 {lpLabel}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+            <div className="rounded-lg border border-border bg-muted px-3 py-2.5">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 <Zap className="h-3.5 w-3.5" />
                 XP
               </p>
-              <p className="mt-2 text-lg font-semibold text-secondary">{xpLabel}</p>
+              <p className="mt-1.5 text-lg font-semibold text-secondary">{xpLabel}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+            <div className="rounded-lg border border-border bg-muted px-3 py-2.5">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 <Award className="h-3.5 w-3.5" />
                 Best Type
               </p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{bestTypeLabel}</p>
+              <p className="mt-1.5 text-sm font-semibold text-foreground">{bestTypeLabel}</p>
             </div>
-            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+            <div className="rounded-lg border border-border bg-muted px-3 py-2.5">
               <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 <Swords className="h-3.5 w-3.5" />
                 Weak Type
               </p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{weakTypeLabel}</p>
+              <p className="mt-1.5 text-sm font-semibold text-foreground">{weakTypeLabel}</p>
             </div>
           </div>
 
           {pendingSessionSummary.lpBonusTotal > 0 ? (
-            <div className="rounded-lg border border-secondary/35 bg-secondary/12 px-3 py-3 text-sm">
+            <div className="rounded-lg border border-secondary/35 bg-secondary/12 px-3 py-2.5 text-sm">
               <p className="font-semibold text-foreground">
                 {pendingSessionSummary.bestStreak}-answer streak
               </p>
-              <p className="mt-1 text-muted-foreground">
-                Bonus LP earned: <span className="font-semibold text-secondary">{streakBonusLabel}</span>
+              <p className="mt-0.5 text-muted-foreground">
+                Bonus LP earned:{" "}
+                <span className="font-semibold text-secondary">{streakBonusLabel}</span>
               </p>
             </div>
           ) : (
-            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-3 text-sm">
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
               <p className="font-semibold text-foreground">
                 Best streak: {pendingSessionSummary.bestStreak}
               </p>
-              <p className="mt-1 text-muted-foreground">
+              <p className="mt-0.5 text-muted-foreground">
                 Hit {SESSION_STREAK_BONUS_LP} bonus LP by reaching a {SESSION_STREAK_BONUS_STREAK}-answer streak.
               </p>
             </div>
           )}
 
-          <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-muted-foreground">
-            Keep stacking clean sets. Every {SESSION_SUMMARY_INTERVAL} answers gives you another checkpoint.
-          </div>
-
-          <Button className="w-full" onClick={dismissSessionSummary}>
-            Keep going
-          </Button>
+          {streakMilestone ? (
+            <div className="rounded-lg border border-primary/35 bg-primary/12 px-3 py-2 text-xs font-semibold text-primary">
+              {streakMilestone}-streak milestone card is session-only after you close it.
+            </div>
+          ) : null}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
+  );
+}
+
+function HostedAuthConfigError() {
+  return (
+    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-[440px] rounded-lg border border-destructive/40 bg-card p-5 text-center shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-destructive">
+          Production auth config missing
+        </p>
+        <h1 className="mt-3 text-2xl font-bold text-foreground">
+          ReadTok cannot start in local profile mode.
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          The live site did not receive its Clerk runtime config for{" "}
+          <span className="font-semibold text-foreground">{runtimeHostname}</span>. This
+          protects cross-device profile data from silently falling back to this device.
+        </p>
+        <Button className="mt-5 w-full" onClick={() => window.location.reload()}>
+          Reload app
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -558,6 +628,10 @@ function AppContent() {
 
     void unregisterServiceWorkers();
   }, []);
+
+  if (authConfigMissingOnHostedApp) {
+    return <HostedAuthConfigError />;
+  }
 
   if (!isLoaded) {
     return <div className="h-[100dvh] bg-background flex items-center justify-center" />;

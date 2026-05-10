@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -101,6 +102,12 @@ export const userProgress = pgTable(
       .defaultNow(),
   },
   (table) => [
+    index("user_progress_ranked_points_idx").on(table.rankedPoints, table.totalCorrect),
+    index("user_progress_rank_leaderboard_idx").on(
+      table.currentRank,
+      table.rankedPoints,
+      table.totalCorrect,
+    ),
     check("user_progress_lifetime_xp_nonnegative_chk", sql`${table.lifetimeXp} >= 0`),
     check("user_progress_ranked_points_nonnegative_chk", sql`${table.rankedPoints} >= 0`),
     check(
@@ -238,6 +245,48 @@ export const passageReportCounts = pgTable(
   ],
 );
 
+export const userVocabBank = pgTable(
+  "user_vocab_bank",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => userProfiles.userId, { onDelete: "cascade" }),
+    normalizedTerm: text("normalized_term").notNull(),
+    term: text("term").notNull(),
+    meaningEn: text("meaning_en"),
+    meaningVi: text("meaning_vi"),
+    exampleSentenceEn: text("example_sentence_en"),
+    sentenceIndex: integer("sentence_index"),
+    sourcePassageId: text("source_passage_id").references(() => passages.id, {
+      onDelete: "set null",
+    }),
+    sourcePassageTitle: text("source_passage_title"),
+    sourceBandLabel: text("source_band_label"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "user_vocab_bank_pkey",
+      columns: [table.userId, table.normalizedTerm],
+    }),
+    index("user_vocab_bank_user_created_idx").on(table.userId, table.createdAt),
+    check("user_vocab_bank_term_nonempty_chk", sql`length(trim(${table.term})) > 0`),
+    check(
+      "user_vocab_bank_normalized_term_nonempty_chk",
+      sql`length(trim(${table.normalizedTerm})) > 0`,
+    ),
+    check(
+      "user_vocab_bank_sentence_index_positive_chk",
+      sql`${table.sentenceIndex} is null or ${table.sentenceIndex} >= 1`,
+    ),
+  ],
+);
+
 export const questions = pgTable(
   "questions",
   {
@@ -360,6 +409,17 @@ export const userDailyAnswerStatsRelations = relations(
   }),
 );
 
+export const userVocabBankRelations = relations(userVocabBank, ({ one }) => ({
+  profile: one(userProfiles, {
+    fields: [userVocabBank.userId],
+    references: [userProfiles.userId],
+  }),
+  passage: one(passages, {
+    fields: [userVocabBank.sourcePassageId],
+    references: [passages.id],
+  }),
+}));
+
 export type Passage = typeof passages.$inferSelect;
 export type NewPassage = typeof passages.$inferInsert;
 export type Question = typeof questions.$inferSelect;
@@ -373,3 +433,5 @@ export type UserProgress = typeof userProgress.$inferSelect;
 export type NewUserProgress = typeof userProgress.$inferInsert;
 export type UserDailyAnswerStat = typeof userDailyAnswerStats.$inferSelect;
 export type NewUserDailyAnswerStat = typeof userDailyAnswerStats.$inferInsert;
+export type UserVocabBankItem = typeof userVocabBank.$inferSelect;
+export type NewUserVocabBankItem = typeof userVocabBank.$inferInsert;

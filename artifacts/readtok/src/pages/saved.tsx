@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { AlertTriangle, BookmarkX, Trash2 } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
 import { fetchPassageList, type PassageListItem } from "@/lib/passages-api";
+import { AppPageHeader } from "@/components/app-page-header";
 
 export default function Saved() {
   const { savedCardIds, toggleSaveCard, mistakes, clearMistakes } = useAppState();
@@ -72,14 +73,7 @@ export default function Saved() {
 
   return (
     <div className="min-h-full w-full overflow-y-auto px-4 pb-24 pt-6" data-testid="page-saved">
-      <header className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary/90">
-          Your Library
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-          Saved & Mistakes
-        </h1>
-      </header>
+      <AppPageHeader title="Saved & Mistakes" />
 
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="grid h-11 flex-1 grid-cols-2 rounded-lg border border-border bg-card p-1">
@@ -155,7 +149,7 @@ export default function Saved() {
             >
               <div className="flex items-start justify-between gap-3">
                 <Link
-                  href={`/?start=${encodeURIComponent(passage.id)}`}
+                  href={`/passages/${encodeURIComponent(passage.id)}`}
                   className="block min-w-0 flex-1"
                   data-testid={`saved-link-${passage.id}`}
                 >
@@ -210,7 +204,7 @@ export default function Saved() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/?start=${encodeURIComponent(mistake.passageId)}`}
+                    href={`/passages/${encodeURIComponent(mistake.passageId)}`}
                     className="block"
                     data-testid={`mistake-link-${mistake.id}`}
                   >

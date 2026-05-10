@@ -30,8 +30,26 @@ export const DEFAULT_RANK_TIERS: RankTierThreshold[] = [
 
 const DIVISIONS = ["IV", "III", "II", "I"] as const;
 
+function hasCompleteRankTierSet(rankTiers: RankTierThreshold[]) {
+  if (rankTiers.length !== DEFAULT_RANK_TIERS.length) {
+    return false;
+  }
+
+  return DEFAULT_RANK_TIERS.every((defaultTier) =>
+    rankTiers.some(
+      (candidate) =>
+        candidate.key === defaultTier.key &&
+        candidate.label === defaultTier.label &&
+        candidate.min_points === defaultTier.min_points,
+    ),
+  );
+}
+
 export function normalizeRankTiers(rankTiers?: RankTierThreshold[] | null) {
-  const source = Array.isArray(rankTiers) && rankTiers.length > 0 ? rankTiers : DEFAULT_RANK_TIERS;
+  const source =
+    Array.isArray(rankTiers) && rankTiers.length > 0 && hasCompleteRankTierSet(rankTiers)
+      ? rankTiers
+      : DEFAULT_RANK_TIERS;
   return [...source].sort((left, right) => left.min_points - right.min_points);
 }
 

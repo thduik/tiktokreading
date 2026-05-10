@@ -1,0 +1,302 @@
+[
+  {
+    "reviewKey": "ielts_reading_80_mixed_0882::q1",
+    "newPrompt": "The passage states that most astronauts report the overview effect after seeing Earth from space.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1002::q3",
+    "newPrompt": "The passage states that deep time changes the scale on which causes and consequences are understood.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0527::q3",
+    "newPrompt": "According to the passage, succession may be interrupted by fire, storms, grazing, or human ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0718::q5",
+    "newPrompt": "According to the passage, starters transform grain, milk, beans, or other foods via ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0490::q3",
+    "newPrompt": "According to the passage, a fossil record may be shaped by decay, transport, burial, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0598::q3",
+    "newPrompt": "According to the passage, the theory encouraged study of knots, fluid motion, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0801::q2",
+    "newPrompt": "The passage states that the palimpsest metaphor means the past is simply preserved intact.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0219::q3",
+    "newPrompt": "According to the passage, judges compare facts, legal principles, and institutional ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0406::q3",
+    "newPrompt": "According to the passage, biological response may depend on dose, timing, organism, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0600::q3",
+    "newPrompt": "According to the passage, assumptions may involve volatility, time, interest rates, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0682::q3",
+    "newPrompt": "According to the passage, chemical marks may affect whether genes are more or less ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0959::q5",
+    "newPrompt": "According to the passage, compared with longitude, sailors could estimate latitude relatively ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0881::q1",
+    "newPrompt": "The passage states that the Gini coefficient is best understood as a complete social diagnosis.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0759::q5",
+    "newPrompt": "According to the passage, option value complicates decisions based just on immediate profit or present ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0995::q4",
+    "newPrompt": "The passage states that algorithmic management draws a clear, fixed line between self-employment and employment.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0326::q3",
+    "newPrompt": "According to the passage, boundary objects need to be stable enough to share but flexible enough to serve different professional ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0961::q2",
+    "newPrompt": "The passage states that evidence for Bronze Age tin routes is difficult since metals may be recycled, mixed, and moved numerous times.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0758::q3",
+    "newPrompt": "The passage states that research has already shown exactly which marks persist, under what conditions, and for how long.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0996::q1",
+    "newPrompt": "The passage states that moral luck says responsibility should depend just on what a person controls.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0600::q1",
+    "newPrompt": "The passage states that a model price becomes useless whenever real markets deviate from its assumptions.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0673::q3",
+    "newPrompt": "According to the passage, legal systems may conflict, overlap, or compete for ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0719::q5",
+    "newPrompt": "According to the passage, supporters argue restorative justice may give victims voice and offenders ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0120::q1",
+    "newPrompt": "The passage states that the principle treats uncertainty as a reason for careful action instead of automatic inaction.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0446::q3",
+    "newPrompt": "According to the passage, habitability may depend on atmosphere, magnetic field, geological activity, and stellar ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0677::q3",
+    "newPrompt": "According to the passage, connection distribution may shape resilience, speed, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_1034::q2",
+    "newPrompt": "The passage states that the passage presents water just as a market good, not as a basic need.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1041::q2",
+    "newPrompt": "The passage states that the photograph was important partly since it made Earth appear fragile, unified, and visually distant from human conflict.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0450::q1",
+    "newPrompt": "The passage states that diffuse harms such as environmental damage are the most common reason courts deny legal standing.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0756::q1",
+    "newPrompt": "The passage states that bayesian diagnosis treats test evidence as something that need to be interpreted against background likelihood.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0879::q1",
+    "newPrompt": "The passage states that modern imaging's key challenge is just seeing inside the scroll, not interpreting marks.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0956::q1",
+    "newPrompt": "The passage states that airport noise map boundaries may decide who receives protection and who does not.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0715::q1",
+    "newPrompt": "The passage states that hydrothermal vents challenged the idea that sunlight was necessary for rich ecosystems.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0913::q1",
+    "newPrompt": "The passage states that ibn al-Haytham argued that seeing depends on light entering the eye.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0326::q1",
+    "newPrompt": "The passage states that boundary objects may support cooperation without requiring full agreement.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0363::q3",
+    "newPrompt": "According to the passage, the test asks whether machine conversation may become indistinguishable from a ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0367::q3",
+    "newPrompt": "According to the passage, the radiation records conditions after the universe had cooled enough for light to move ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0412::q4",
+    "newPrompt": "According to the passage, the theory shifts attention to the informational structure of what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0878::q3",
+    "newPrompt": "The passage states that a video that looks direct may still require metadata, chain of custody, expert analysis, and contextual evidence.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0525::q1",
+    "newPrompt": "The passage states that cultural relativism requires moral silence when harm is involved.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0528::q3",
+    "newPrompt": "According to the passage, maps represent features via symbols, scale, projection, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0361::q3",
+    "newPrompt": "According to the passage, decoding usually depends on repeated patterns linked to known sounds or ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0117::q3",
+    "newPrompt": "According to the passage, financial contagion may involve trust, liquidity, collateral values, and payment ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0597::q3",
+    "newPrompt": "According to the passage, later construction may erase, distort, or ______ earlier traces?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0713::q1",
+    "newPrompt": "The passage states that maathai's tree-planting activism is presented as separate from democratic rights and land politics.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0922::q1",
+    "newPrompt": "The passage states that corporate personhood means a corporation is biologically identical to a human being.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0021::q1",
+    "newPrompt": "The passage states that prediction-market prices are useful mainly since they reveal informed expectations without being shaped by who is able or motivated to trade.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_1041::q1",
+    "newPrompt": "The passage states that the Earthrise photograph was taken by a camera mounted outside the spacecraft.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0835::q1",
+    "newPrompt": "The passage states that facial recognition in public transit is presented as offering convenience whereas also raising monitoring concerns.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_tfng_0835::q4",
+    "newPrompt": "The passage states that the passage states that critics reject every possible use of facial recognition in public transit.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0328::q4",
+    "newPrompt": "According to the passage, epistemic injustice wrongs individuals in their capacity as what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0330::q4",
+    "newPrompt": "According to the passage, data collection is reframed as a political economy of what?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0362::q4",
+    "newPrompt": "According to the passage, what compound does the Haber-Bosch process synthesize?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0366::q3",
+    "newPrompt": "According to the passage, rai value depended on size, production difficulty, ownership recognition, and social ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0370::q4",
+    "newPrompt": "According to the passage, spiritual movement may generate what kind of networks?",
+    "note": "Auto paraphrase (short_answer)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0559::q3",
+    "newPrompt": "According to the passage, bayesian analysis makes assumptions ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0564::q3",
+    "newPrompt": "According to the passage, a tiny effect may be significant in a huge ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0596::q3",
+    "newPrompt": "According to the passage, institutions may distribute risk, dignity, and ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0674::q3",
+    "newPrompt": "According to the passage, evidence updates a prior into a posterior ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0802::q1",
+    "newPrompt": "The passage states that topological transit maps simplify physical distance and geography to indicate station relationships.",
+    "note": "Auto paraphrase (tfng)."
+  },
+  {
+    "reviewKey": "ielts_reading_80_mixed_0449::q3",
+    "newPrompt": "According to the passage, selection shapes traits in different ______?",
+    "note": "Auto paraphrase (sentence_completion)."
+  }
+]

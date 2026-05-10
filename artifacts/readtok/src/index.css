@@ -189,6 +189,48 @@
   animation: answer-reaction-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+@keyframes achievement-toast-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  16% {
+    opacity: 1;
+    transform: translateY(0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes achievement-toast-glow {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px hsl(var(--primary) / 0.18);
+  }
+  50% {
+    box-shadow: 0 16px 36px hsl(var(--primary) / 0.32);
+  }
+}
+
+.achievement-toast-pop {
+  animation: achievement-toast-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    achievement-toast-glow 1.8s ease-in-out infinite;
+}
+
+.achievement-toast-glow-a {
+  border-color: hsl(var(--primary) / 0.55) !important;
+}
+
+.achievement-toast-glow-b {
+  border-color: hsl(var(--secondary) / 0.55) !important;
+}
+
+.achievement-toast-glow-c {
+  border-color: hsl(var(--accent) / 0.6) !important;
+}
+
 /* Snap scrolling container */
 .snap-container {
   scroll-snap-type: y mandatory;

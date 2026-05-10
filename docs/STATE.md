@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-05-08 (UTC)
+Last updated: 2026-05-10 (UTC)
 
 ## Product Snapshot
 
@@ -39,20 +39,49 @@ Last updated: 2026-05-08 (UTC)
 - Rank identity:
   ranked LP now renders as subdivision plates such as `Bronze IV` through
   `Bronze I`, with a compact plate in Feed and a fuller plate in Profile.
+- Leaderboards:
+  `/leaderboard` now shows a global board plus per-rank boards sourced from
+  backend `user_progress` and `user_profiles`.
 
 ## Current Backend/Data Notes
 
 - Passage API:
-  `GET /api/passages`, `GET /api/passages/:id`, `POST /api/passages/:id/report`.
+  `GET /api/passages`, `GET /api/passages/ids`,
+  `GET /api/passages/feed-bootstrap`, `GET /api/passages/:id`,
+  `POST /api/passages/:id/report`.
+- Feed sampling:
+  Feed bootstrap now receives `40` random passage details plus the full active
+  passage ID pool. The UI owns the random queue and excludes already-shown IDs
+  locally, so Feed is no longer capped to the first ordered `500` passages.
+- Redis cache policy:
+  Public read-heavy data uses Redis when `REDIS_URL` is configured: passage
+  lists, passage details, passage ID pools, rank tiers, and short-lived
+  leaderboard rows. Private/user/admin mutation routes are intentionally not
+  shared-cacheable.
 - Admin reports:
   `/admin` uses env-based admin auth and reads aggregated
   `passage_report_counts` from `/api/admin/reports`.
 - Ranking:
   Server accepts answer submissions and returns LP delta.
+- Leaderboard API:
+  `GET /api/leaderboard?scope=global|rank&rank=Bronze&limit=50` returns public
+  ranked standings plus an optional signed-in viewer row.
 - Answer analytics:
   Signed-in answer submissions upsert `user_daily_answer_stats` rows by
   `user + local_date + band_group + question_type`. Today, last 7 days,
   last 30 days, and lifetime stats are calculated from those daily rows.
+- Synced profile stats:
+  Signed-in Profile headline cards now read from `/api/me/dashboard-stats`
+  instead of device-local storage. Current streak, daily goal, lifetime
+  accuracy, 7-day accuracy, today's accuracy, and total questions completed are
+  backend-backed for cross-device consistency. Authenticated profile stats and
+  answer submission routes ensure the profile row exists before reading/writing,
+  so a new device cannot miss writes while profile bootstrap is still racing.
+- Production auth guard:
+  On non-local hostnames, missing Clerk runtime config now shows a production
+  config error instead of silently falling Profile back to local mode. The VPS
+  deploy script rewrites and verifies `/var/www/readtok/runtime-config.js` after
+  `rsync` so the checked-in placeholder cannot be the final live file.
 - Toolchain:
   Node `20.19.5` via `.nvmrc` / `.node-version`; pnpm `10.33.2` via
   `packageManager`. Run `corepack pnpm run doctor` before build/deploy
@@ -89,3 +118,5 @@ Last updated: 2026-05-08 (UTC)
 1. Use answer analytics for a lightweight "Next Best Practice" suggestion.
 2. Optional backend persistence for achievement snapshots/unlocks.
 3. Mistakes flow or lightweight mistake-saving layer.
+4. Restore production `REDIS_URL` and verify live `x-cache` headers show
+   `MISS -> HIT` for cacheable endpoints.

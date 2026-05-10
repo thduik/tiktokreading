@@ -25,3 +25,39 @@ test("user progress migration still protects nonnegative scoring counters", asyn
   assert.match(sql, /lifetime_xp INTEGER NOT NULL DEFAULT 0/i);
   assert.match(sql, /CHECK \(ranked_points >= 0\)/i);
 });
+
+test("leaderboard migration adds ranked lookup indexes", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0011_leaderboard_indexes.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS user_progress_ranked_points_idx/i);
+  assert.match(sql, /ranked_points DESC, total_correct DESC/i);
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS user_progress_rank_leaderboard_idx/i);
+  assert.match(sql, /current_rank, ranked_points DESC, total_correct DESC/i);
+});
+
+test("rank tiers correction migration restores Grandmaster and Challenger thresholds", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0012_fix_rank_tiers.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /'grandmaster', 'Grandmaster', 2700, 6/i);
+  assert.match(sql, /'challenger', 'Challenger', 3500, 7/i);
+  assert.match(sql, /DELETE FROM rank_tiers/i);
+});
+
+test("vocab bank migration creates a user-scoped dictionary table", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0013_user_vocab_bank.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS user_vocab_bank/i);
+  assert.match(sql, /PRIMARY KEY \(user_id, normalized_term\)/i);
+  assert.match(sql, /REFERENCES user_profiles\(user_id\) ON DELETE CASCADE/i);
+  assert.match(sql, /source_passage_id TEXT NULL REFERENCES passages\(id\) ON DELETE SET NULL/i);
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS user_vocab_bank_user_created_idx/i);
+});

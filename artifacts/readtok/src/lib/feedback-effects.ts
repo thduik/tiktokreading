@@ -52,28 +52,38 @@ function playTone(frequency: number, durationMs: number, volume: number) {
     return;
   }
 
+  const playNow = () => {
+    const startTime = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+
+    gainNode.gain.setValueAtTime(0.0001, startTime);
+    gainNode.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.0001,
+      startTime + durationMs / 1000,
+    );
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + durationMs / 1000 + 0.02);
+  };
+
   if (audioContext.state === "suspended") {
-    void audioContext.resume().catch(() => undefined);
+    void audioContext
+      .resume()
+      .then(() => {
+        playNow();
+      })
+      .catch(() => undefined);
+    return;
   }
 
-  const startTime = audioContext.currentTime;
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(frequency, startTime);
-
-  gainNode.gain.setValueAtTime(0.0001, startTime);
-  gainNode.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.0001,
-    startTime + durationMs / 1000,
-  );
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  oscillator.start(startTime);
-  oscillator.stop(startTime + durationMs / 1000 + 0.02);
+  playNow();
 }
 
 export function playAnswerFeedback(
