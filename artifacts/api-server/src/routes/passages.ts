@@ -47,6 +47,23 @@ function firstValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function parseFactoryTag(raw: string | undefined) {
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  if (!/^v\d+$/.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function parseOptionalInteger(raw: string | undefined) {
   if (raw === undefined) {
     return undefined;
@@ -100,6 +117,7 @@ type PassageListItemResponse = {
   topic_index: string;
   topic_label: string;
   title: string;
+  factory_tag: string;
   language_code: string;
   status: string;
   question_count: number;
@@ -117,6 +135,7 @@ type PassageDetailResponse = {
   topic_index: string;
   topic_label: string;
   title: string;
+  factory_tag: string;
   language_code: string;
   status: string;
   passage: string;
@@ -160,6 +179,7 @@ type PassageIdPoolResponse = {
   ids: string[];
   total: number;
   version: string;
+  factory_tag: string | null;
 };
 
 function splitPassageIntoSentences(passage: string) {
@@ -377,6 +397,7 @@ function toPassageListItemResponse(row: {
   topicIndex: string;
   topicLabel: string;
   title: string;
+  factoryTag: string;
   languageCode: string;
   status: string;
   questionCount: number;
@@ -392,6 +413,7 @@ function toPassageListItemResponse(row: {
     topic_index: row.topicIndex,
     topic_label: row.topicLabel,
     title: row.title,
+    factory_tag: row.factoryTag,
     language_code: row.languageCode,
     status: row.status,
     question_count: row.questionCount,
@@ -424,6 +446,7 @@ function buildPassageDetailResponse({
     topic_index: row.topicIndex,
     topic_label: row.topicLabel,
     title: row.title,
+    factory_tag: row.factoryTag,
     language_code: row.languageCode,
     status: row.status,
     passage: row.passage,
@@ -491,13 +514,16 @@ function sampleIds(ids: string[], count: number) {
 async function fetchPassageIdPool({
   status,
   languageCode,
+  factoryTag,
 }: {
   status?: string;
   languageCode?: string;
+  factoryTag?: string;
 }): Promise<{ pool: PassageIdPoolResponse; cacheStatus: JsonCacheStatus }> {
   const cacheKey = passageIdsCacheKey({
     status,
     language_code: languageCode,
+    factory_tag: factoryTag,
   });
   const cached = await readJsonCacheResult<PassageIdPoolResponse>(cacheKey);
   if (cached.value) {
@@ -510,6 +536,9 @@ async function fetchPassageIdPool({
   }
   if (languageCode !== undefined) {
     whereConditions.push(eq(passages.languageCode, languageCode));
+  }
+  if (factoryTag !== undefined) {
+    whereConditions.push(eq(passages.factoryTag, factoryTag));
   }
   const whereClause =
     whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -531,6 +560,7 @@ async function fetchPassageIdPool({
     ids: rows.map((row) => row.id),
     total: rows.length,
     version: `${rows.length}:${latestUpdatedAt ?? "empty"}`,
+    factory_tag: factoryTag ?? null,
   };
 
   await writeJsonCache({
@@ -677,6 +707,7 @@ router.get("/passages", async (req, res) => {
   const topicIndex = firstValue(req.query.topic_index);
   const status = firstValue(req.query.status);
   const languageCode = firstValue(req.query.language_code);
+  const factoryTagRaw = firstValue(req.query.factory_tag);
   const ids = firstValue(req.query.ids);
   const titleContainsRaw = firstValue(req.query.title_contains);
   const titleContains =
@@ -687,6 +718,7 @@ router.get("/passages", async (req, res) => {
   const offsetRaw = firstValue(req.query.offset);
 
   const bandIndex = parseOptionalInteger(bandIndexRaw);
+  const factoryTag = parseFactoryTag(factoryTagRaw);
   const parsedLimit = parseOptionalInteger(limitRaw);
   const parsedOffset = parseOptionalInteger(offsetRaw);
   const limit = parsedLimit ?? DEFAULT_LIST_LIMIT;
@@ -694,6 +726,7 @@ router.get("/passages", async (req, res) => {
 
   if (
     bandIndex === null ||
+    factoryTag === null ||
     parsedLimit === null ||
     parsedOffset === null ||
     limit <= 0 ||
@@ -726,6 +759,7 @@ router.get("/passages", async (req, res) => {
     band_index: bandIndex,
     question_set_type_index: questionSetTypeRaw,
     question_type_index: questionTypeRaw,
+    factory_tag: factoryTag,
     topic_index: topicIndex,
     status,
     language_code: languageCode,
@@ -779,6 +813,9 @@ router.get("/passages", async (req, res) => {
   if (languageCode !== undefined) {
     whereConditions.push(eq(passages.languageCode, languageCode));
   }
+  if (factoryTag !== undefined) {
+    whereConditions.push(eq(passages.factoryTag, factoryTag));
+  }
   if (idsList && idsList.length > 0) {
     whereConditions.push(inArray(passages.id, idsList));
   }
@@ -803,6 +840,7 @@ router.get("/passages", async (req, res) => {
       topicIndex: passages.topicIndex,
       topicLabel: passages.topicLabel,
       title: passages.title,
+      factoryTag: passages.factoryTag,
       languageCode: passages.languageCode,
       status: passages.status,
       questionCount: db.$count(questions, eq(questions.passageId, passages.id)),
@@ -837,7 +875,16 @@ router.get("/passages", async (req, res) => {
 router.get("/passages/ids", async (req, res) => {
   const status = firstValue(req.query.status) ?? "active";
   const languageCode = firstValue(req.query.language_code);
-  const { pool, cacheStatus } = await fetchPassageIdPool({ status, languageCode });
+  const factoryTag = parseFactoryTag(firstValue(req.query.factory_tag));
+  if (factoryTag === null) {
+    res.status(400).json({ error: "Invalid factory_tag" });
+    return;
+  }
+  const { pool, cacheStatus } = await fetchPassageIdPool({
+    status,
+    languageCode,
+    factoryTag,
+  });
 
   res.setHeader("x-cache", cacheStatus);
   res.json({
@@ -846,12 +893,14 @@ router.get("/passages/ids", async (req, res) => {
     version: pool.version,
     status,
     language_code: languageCode ?? null,
+    factory_tag: pool.factory_tag,
   });
 });
 
 router.get("/passages/feed-bootstrap", async (req, res) => {
   const status = firstValue(req.query.status) ?? "active";
   const languageCode = firstValue(req.query.language_code);
+  const factoryTag = parseFactoryTag(firstValue(req.query.factory_tag));
   const includeAnswerKey = includeAnswerKeyFromQuery(
     firstValue(req.query.include_answer_key),
   );
@@ -861,9 +910,12 @@ router.get("/passages/feed-bootstrap", async (req, res) => {
     max: MAX_FEED_BOOTSTRAP_LIMIT,
   });
 
-  if (limit === null) {
+  if (limit === null || factoryTag === null) {
     res.status(400).json({
-      error: `limit must be between 1 and ${MAX_FEED_BOOTSTRAP_LIMIT}`,
+      error:
+        factoryTag === null
+          ? "Invalid factory_tag"
+          : `limit must be between 1 and ${MAX_FEED_BOOTSTRAP_LIMIT}`,
     });
     return;
   }
@@ -871,6 +923,7 @@ router.get("/passages/feed-bootstrap", async (req, res) => {
   const { pool, cacheStatus: idPoolCacheStatus } = await fetchPassageIdPool({
     status,
     languageCode,
+    factoryTag,
   });
   const selectedIds = sampleIds(pool.ids, limit);
   const detailResult = await fetchPassageDetailResponsesByIds({
@@ -886,6 +939,7 @@ router.get("/passages/feed-bootstrap", async (req, res) => {
     all_passage_ids: pool.ids,
     total: pool.total,
     version: pool.version,
+    factory_tag: pool.factory_tag,
   });
 });
 

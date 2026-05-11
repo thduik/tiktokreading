@@ -1,6 +1,8 @@
 type CacheScalar = string | number | boolean | null | undefined;
 
-const CACHE_NAMESPACE = process.env.REDIS_CACHE_NAMESPACE?.trim() || "readtok:api:v1";
+const CACHE_NAMESPACE_BASE =
+  process.env.REDIS_CACHE_NAMESPACE?.trim() || "readtok:api";
+const CACHE_NAMESPACE = `${CACHE_NAMESPACE_BASE}:v2`;
 
 function serializePart(value: CacheScalar) {
   if (value === undefined) {

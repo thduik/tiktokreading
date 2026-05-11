@@ -12,6 +12,16 @@ export type QuestionTypeIndex =
   | "short_answer";
 
 export type AnswerType = "label" | "option_key" | "text";
+export type PassageFactoryTag = "v1" | "v2" | "v3" | "v4";
+
+export const PASSAGE_FACTORY_TAG_VALUES: PassageFactoryTag[] = [
+  "v1",
+  "v2",
+  "v3",
+  "v4",
+];
+export const PASSAGE_FACTORY_TAG_STORAGE_KEY =
+  "readtok_active_factory_tag_filter_v1";
 
 export interface PassageListItem {
   id: string;
@@ -24,6 +34,7 @@ export interface PassageListItem {
   topic_index: string;
   topic_label: string;
   title: string;
+  factory_tag: string;
   language_code: string;
   status: string;
   question_count: number;
@@ -84,6 +95,7 @@ export interface PassageDetail {
   topic_index: string;
   topic_label: string;
   title: string;
+  factory_tag: string;
   language_code: string;
   status: string;
   passage: string;
@@ -101,6 +113,7 @@ export interface PassageListFilters {
   band_index?: number;
   question_set_type_index?: QuestionSetTypeIndex;
   question_type_index?: QuestionTypeIndex;
+  factory_tag?: PassageFactoryTag;
   topic_index?: string;
   status?: string;
   language_code?: string;
@@ -138,6 +151,7 @@ interface PassageIdsResponse {
   version: string;
   status: string;
   language_code: string | null;
+  factory_tag: string | null;
 }
 
 interface PassageFeedBootstrapResponse {
@@ -146,6 +160,7 @@ interface PassageFeedBootstrapResponse {
   all_passage_ids: string[];
   total: number;
   version: string;
+  factory_tag: string | null;
 }
 
 export interface SubmitPassageReportResponse {
@@ -158,7 +173,7 @@ export interface SubmitPassageReportResponse {
   }>;
 }
 
-const PASSAGE_CACHE_VERSION = "2026-05-10-v3";
+const PASSAGE_CACHE_VERSION = "2026-05-11-v4";
 const LIST_CACHE_PREFIX = `readtok_passage_list_cache_${PASSAGE_CACHE_VERSION}:`;
 const DETAIL_CACHE_PREFIX = `readtok_passage_detail_cache_${PASSAGE_CACHE_VERSION}:`;
 const LEGACY_LIST_CACHE_PREFIX = "readtok_passage_list_cache_";
@@ -205,6 +220,48 @@ function purgeLegacyPassageCaches() {
 }
 
 purgeLegacyPassageCaches();
+
+export function normalizePassageFactoryTag(
+  raw: string | null | undefined,
+): PassageFactoryTag | null {
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (
+    PASSAGE_FACTORY_TAG_VALUES.includes(normalized as PassageFactoryTag)
+  ) {
+    return normalized as PassageFactoryTag;
+  }
+
+  return null;
+}
+
+export function readStoredPassageFactoryTag() {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  return normalizePassageFactoryTag(
+    window.localStorage.getItem(PASSAGE_FACTORY_TAG_STORAGE_KEY),
+  );
+}
+
+export function writeStoredPassageFactoryTag(
+  factoryTag: PassageFactoryTag | null,
+) {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  if (!factoryTag) {
+    window.localStorage.removeItem(PASSAGE_FACTORY_TAG_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(PASSAGE_FACTORY_TAG_STORAGE_KEY, factoryTag);
+}
 
 function readCachedValue<T>(storageKey: string): T | null {
   if (!canUseStorage()) {
@@ -262,6 +319,9 @@ export async function fetchPassageList(filters: PassageListFilters = {}) {
   if (filters.question_type_index !== undefined) {
     searchParams.set("question_type_index", filters.question_type_index);
   }
+  if (filters.factory_tag !== undefined) {
+    searchParams.set("factory_tag", filters.factory_tag);
+  }
   if (filters.topic_index !== undefined) {
     searchParams.set("topic_index", filters.topic_index);
   }
@@ -309,9 +369,11 @@ export async function fetchPassageList(filters: PassageListFilters = {}) {
 export async function fetchPassageIds({
   status = "active",
   languageCode,
+  factoryTag,
 }: {
   status?: string;
   languageCode?: string;
+  factoryTag?: PassageFactoryTag;
 } = {}) {
   const searchParams = new URLSearchParams();
   if (status !== undefined) {
@@ -319,6 +381,9 @@ export async function fetchPassageIds({
   }
   if (languageCode !== undefined) {
     searchParams.set("language_code", languageCode);
+  }
+  if (factoryTag !== undefined) {
+    searchParams.set("factory_tag", factoryTag);
   }
 
   const query = searchParams.toString();
@@ -329,11 +394,13 @@ export async function fetchPassageIds({
 export async function fetchPassageFeedBootstrap({
   status = "active",
   languageCode,
+  factoryTag,
   limit,
   includeAnswerKey = true,
 }: {
   status?: string;
   languageCode?: string;
+  factoryTag?: PassageFactoryTag;
   limit?: number;
   includeAnswerKey?: boolean;
 } = {}) {
@@ -343,6 +410,9 @@ export async function fetchPassageFeedBootstrap({
   }
   if (languageCode !== undefined) {
     searchParams.set("language_code", languageCode);
+  }
+  if (factoryTag !== undefined) {
+    searchParams.set("factory_tag", factoryTag);
   }
   if (limit !== undefined) {
     searchParams.set("limit", String(limit));

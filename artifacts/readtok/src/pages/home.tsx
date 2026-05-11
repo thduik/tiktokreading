@@ -3,6 +3,11 @@ import { Link } from "wouter";
 import { ChevronRight } from "lucide-react";
 import {
   fetchPassageList,
+  normalizePassageFactoryTag,
+  PASSAGE_FACTORY_TAG_VALUES,
+  readStoredPassageFactoryTag,
+  writeStoredPassageFactoryTag,
+  type PassageFactoryTag,
   type PassageListItem,
   type QuestionTypeIndex,
 } from "@/lib/passages-api";
@@ -32,9 +37,22 @@ const typeFilterOptions: Array<{
   { key: "short_answer", label: "Short Answer", type: "short_answer" },
 ];
 
+const versionFilterOptions: Array<{
+  key: "all" | PassageFactoryTag;
+  label: string;
+  factoryTag: PassageFactoryTag | null;
+}> = [
+  { key: "all", label: "All versions", factoryTag: null },
+  ...PASSAGE_FACTORY_TAG_VALUES.map((factoryTag) => ({
+    key: factoryTag,
+    label: factoryTag.toUpperCase(),
+    factoryTag,
+  })),
+];
+
 type FilterMode = "band" | "question_type";
 const PAGE_SIZE = 30;
-const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v1:";
+const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v2:";
 
 function readInitialFilters() {
   if (typeof window === "undefined") {
@@ -42,6 +60,7 @@ function readInitialFilters() {
       filterMode: "band" as FilterMode,
       activeBand: null as number | null,
       activeType: null as QuestionTypeIndex | null,
+      activeFactoryTag: null as PassageFactoryTag | null,
     };
   }
 
@@ -66,11 +85,16 @@ function readInitialFilters() {
     rawType && allowedTypes.includes(rawType as QuestionTypeIndex)
       ? (rawType as QuestionTypeIndex)
       : null;
+  const parsedFactoryTag =
+    normalizePassageFactoryTag(
+      params.get("factoryTag") ?? params.get("factory_tag"),
+    ) ?? readStoredPassageFactoryTag();
 
   return {
     filterMode: mode,
     activeBand: parsedBand,
     activeType: parsedType,
+    activeFactoryTag: parsedFactoryTag,
   };
 }
 
@@ -114,6 +138,9 @@ export default function Home() {
   const [activeType, setActiveType] = useState<QuestionTypeIndex | null>(
     () => readInitialFilters().activeType,
   );
+  const [activeFactoryTag, setActiveFactoryTag] = useState<PassageFactoryTag | null>(
+    () => readInitialFilters().activeFactoryTag,
+  );
   const [items, setItems] = useState<PassageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -124,8 +151,11 @@ export default function Home() {
   const queryKeyRef = useRef<string>("");
 
   const queryKey = useMemo(
-    () => `${filterMode}|${activeBand ?? "all"}|${activeType ?? "all"}`,
-    [filterMode, activeBand, activeType],
+    () =>
+      `${filterMode}|${activeBand ?? "all"}|${activeType ?? "all"}|${
+        activeFactoryTag ?? "all"
+      }`,
+    [filterMode, activeBand, activeType, activeFactoryTag],
   );
 
   useEffect(() => {
@@ -159,6 +189,7 @@ export default function Home() {
             filterMode === "band" ? (activeBand ?? undefined) : undefined,
           question_type_index:
             filterMode === "question_type" ? (activeType ?? undefined) : undefined,
+          factory_tag: activeFactoryTag ?? undefined,
           limit: PAGE_SIZE,
           offset: 0,
         });
@@ -217,6 +248,7 @@ export default function Home() {
             filterMode === "band" ? (activeBand ?? undefined) : undefined,
           question_type_index:
             filterMode === "question_type" ? (activeType ?? undefined) : undefined,
+          factory_tag: activeFactoryTag ?? undefined,
           limit: PAGE_SIZE,
           offset: nextOffset,
         })
@@ -266,11 +298,13 @@ export default function Home() {
     filterMode,
     activeBand,
     activeType,
+    activeFactoryTag,
     queryKey,
   ]);
 
   const selectedBandValue = activeBand === null ? "all" : String(activeBand);
   const selectedTypeValue = activeType ?? "all";
+  const selectedFactoryTagValue = activeFactoryTag ?? "all";
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -281,6 +315,30 @@ export default function Home() {
     window.sessionStorage.setItem("readtok_feed_ids", JSON.stringify(ids));
   }, [items]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    writeStoredPassageFactoryTag(activeFactoryTag);
+
+    const params = new URLSearchParams();
+    params.set("filterMode", filterMode);
+    if (filterMode === "band" && activeBand !== null) {
+      params.set("band", String(activeBand));
+    }
+    if (filterMode === "question_type" && activeType !== null) {
+      params.set("questionType", activeType);
+    }
+    if (activeFactoryTag) {
+      params.set("factoryTag", activeFactoryTag);
+    }
+
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, [activeBand, activeFactoryTag, activeType, filterMode]);
+
   return (
     <div className="min-h-full w-full px-4 pb-24 pt-6" data-testid="page-list">
       <AppPageHeader title="Passage List" />
@@ -289,7 +347,7 @@ export default function Home() {
         className="mb-4 rounded-lg border border-border bg-card p-3"
         aria-label="filters"
       >
-        <div className="flex items-center gap-2">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="min-w-0 flex-1">
             <select
               value={filterMode}
@@ -334,6 +392,26 @@ export default function Home() {
               </select>
             )}
           </div>
+
+          <div className="min-w-0 sm:col-span-2">
+            <select
+              value={selectedFactoryTagValue}
+              onChange={(event) => {
+                const nextFactoryTag =
+                  event.target.value === "all"
+                    ? null
+                    : (event.target.value as PassageFactoryTag);
+                setActiveFactoryTag(nextFactoryTag);
+              }}
+              className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+            >
+              {versionFilterOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </section>
 
@@ -365,7 +443,11 @@ export default function Home() {
           {items.map((item) => (
             <Link
               key={item.id}
-              href={`/?start=${encodeURIComponent(item.id)}`}
+              href={`/?start=${encodeURIComponent(item.id)}${
+                activeFactoryTag
+                  ? `&factoryTag=${encodeURIComponent(activeFactoryTag)}`
+                  : ""
+              }`}
               className="block rounded-lg border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-muted/60"
               data-testid={`card-passage-${item.id}`}
             >
@@ -388,6 +470,9 @@ export default function Home() {
                 </span>
                 <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
                   {item.question_count} Questions
+                </span>
+                <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
+                  {item.factory_tag.toUpperCase()}
                 </span>
               </div>
             </Link>

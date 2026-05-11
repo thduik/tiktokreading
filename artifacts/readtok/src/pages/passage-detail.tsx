@@ -26,6 +26,9 @@ import {
   fetchPassageFeedBootstrap,
   fetchPassageIds,
   getCachedPassageDetail,
+  normalizePassageFactoryTag,
+  readStoredPassageFactoryTag,
+  type PassageFactoryTag,
   type PassageAnswerKey,
   type PassageDetail,
   type PassageQuestion,
@@ -76,6 +79,7 @@ type SelectedVocabContext = {
 };
 
 type FeedRuntimeSession = {
+  factoryTagFilter: PassageFactoryTag | null;
   passages: PassageDetail[];
   currentIndex: number;
   answersByPassageId: Record<string, Record<string, string>>;
@@ -535,12 +539,13 @@ function TopStatusRow({
 }
 
 function PassageMetaTags({ passage }: { passage: PassageDetail }) {
+  const factoryTagQuery = `&factoryTag=${encodeURIComponent(passage.factory_tag)}`;
   const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
     passage.question_set_type_index,
-  )}`;
+  )}${factoryTagQuery}`;
   const bandFilterHref = `/list?filterMode=band&band=${encodeURIComponent(
     String(passage.band_index),
-  )}`;
+  )}${factoryTagQuery}`;
 
   return (
     <div className="mt-4 flex flex-wrap gap-2">
@@ -556,6 +561,9 @@ function PassageMetaTags({ passage }: { passage: PassageDetail }) {
       >
         Band {passage.band_label}
       </Link>
+      <span className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground md:px-3 md:text-[11px] md:tracking-[0.04em]">
+        {passage.factory_tag.toUpperCase()}
+      </span>
     </div>
   );
 }
@@ -1270,12 +1278,17 @@ export default function PassageDetailPage() {
   const MAX_PREFETCH_COUNT = 3;
   const PREFETCH_TRIGGER_REMAINING = 8;
   const WINDOW_RADIUS = 3;
-  const RANDOM_POOL_STORAGE_KEY = "readtok_random_pool_ids_v3";
-  const RANDOM_SHOWN_STORAGE_KEY = "readtok_random_shown_ids_v3";
-
   const [, params] = useRoute("/passages/:id");
   const search = useSearch();
-  const startPassageId = new URLSearchParams(search).get("start")?.trim() ?? "";
+  const searchParams = new URLSearchParams(search);
+  const startPassageId = searchParams.get("start")?.trim() ?? "";
+  const activeFactoryTag =
+    normalizePassageFactoryTag(
+      searchParams.get("factoryTag") ?? searchParams.get("factory_tag"),
+    ) ?? readStoredPassageFactoryTag();
+  const feedFilterKey = activeFactoryTag ?? "all";
+  const RANDOM_POOL_STORAGE_KEY = `readtok_random_pool_ids_v4:${feedFilterKey}`;
+  const RANDOM_SHOWN_STORAGE_KEY = `readtok_random_shown_ids_v4:${feedFilterKey}`;
   const routePassageId = (params?.id ?? startPassageId).trim();
   const {
     isCardSaved,
@@ -1497,6 +1510,9 @@ export default function PassageDetailPage() {
     if (!feedRuntimeSession || feedRuntimeSession.passages.length === 0) {
       return false;
     }
+    if (feedRuntimeSession.factoryTagFilter !== activeFactoryTag) {
+      return false;
+    }
 
     const {
       passages: cachedPassages,
@@ -1543,6 +1559,8 @@ export default function PassageDetailPage() {
     setCurrentIndex(0);
     setAnswersByPassageId({});
     setRevealedByPassageId({});
+    setFeedIds([]);
+    setListOffset(0);
     setSelectedVocabContext(null);
     prefetchCountRef.current = 0;
 
@@ -1568,6 +1586,7 @@ export default function PassageDetailPage() {
       try {
         const bootstrapResponse = await fetchPassageFeedBootstrap({
           status: "active",
+          factoryTag: activeFactoryTag ?? undefined,
           limit: routePassageId ? INITIAL_STACK_SIZE - 1 : INITIAL_STACK_SIZE,
           includeAnswerKey: false,
         });
@@ -1657,7 +1676,7 @@ export default function PassageDetailPage() {
         window.speechSynthesis.cancel();
       }
     };
-  }, [routePassageId]);
+  }, [routePassageId, activeFactoryTag]);
 
   async function appendPassageBatch(targetCount = RANDOM_BATCH_SIZE) {
     if (isAppending) {
@@ -1670,6 +1689,7 @@ export default function PassageDetailPage() {
       if (poolIds.length === 0) {
         const poolResponse = await fetchPassageIds({
           status: "active",
+          factoryTag: activeFactoryTag ?? undefined,
         });
         poolIds = uniqueIds(poolResponse.ids);
         setFeedIds(poolIds);
@@ -1810,6 +1830,7 @@ export default function PassageDetailPage() {
     }
 
     feedRuntimeSession = {
+      factoryTagFilter: activeFactoryTag,
       passages,
       currentIndex,
       answersByPassageId,
@@ -1825,6 +1846,7 @@ export default function PassageDetailPage() {
     revealedByPassageId,
     feedIds,
     listOffset,
+    activeFactoryTag,
   ]);
 
   useEffect(() => {
