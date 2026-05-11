@@ -222,6 +222,29 @@ export async function saveVocabToBank(request: SaveVocabBankRequest) {
   });
 }
 
+export interface VocabBankItem {
+  term: string;
+  normalized_term: string;
+  meaning_en: string | null;
+  meaning_vi: string | null;
+  example_sentence_en: string | null;
+  sentence_index: number | null;
+  source_passage_id: string | null;
+  source_passage_title: string | null;
+  source_band_label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VocabBankEnvelope {
+  items: VocabBankItem[];
+}
+
+export async function fetchMyVocabBank(limit = 200) {
+  const safeLimit = Math.max(1, Math.min(500, Math.trunc(limit)));
+  return requestJson<VocabBankEnvelope>(`${API_BASE}/me/vocab-bank?limit=${safeLimit}`);
+}
+
 export type AnswerStatBandGroup = "Band6" | "Band7" | "Band75" | "Band8Plus";
 export type AnswerStatQuestionType =
   | "MCQ"

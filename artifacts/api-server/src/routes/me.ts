@@ -731,6 +731,44 @@ router.post("/me/submit-answer", async (req, res) => {
   });
 });
 
+router.get("/me/vocab-bank", async (req, res) => {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
+    return;
+  }
+
+  const rawLimit =
+    typeof req.query.limit === "string" ? Number.parseInt(req.query.limit, 10) : NaN;
+  const limit = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(500, Math.trunc(rawLimit)))
+    : 200;
+
+  await ensureUserProfileForAuth({ auth });
+
+  const rows = await db
+    .select()
+    .from(userVocabBank)
+    .where(eq(userVocabBank.userId, auth.userId))
+    .orderBy(desc(userVocabBank.createdAt))
+    .limit(limit);
+
+  res.json({
+    items: rows.map((item) => ({
+      term: item.term,
+      normalized_term: item.normalizedTerm,
+      meaning_en: item.meaningEn,
+      meaning_vi: item.meaningVi,
+      example_sentence_en: item.exampleSentenceEn,
+      sentence_index: item.sentenceIndex,
+      source_passage_id: item.sourcePassageId,
+      source_passage_title: item.sourcePassageTitle,
+      source_band_label: item.sourceBandLabel,
+      created_at: item.createdAt.toISOString(),
+      updated_at: item.updatedAt.toISOString(),
+    })),
+  });
+});
+
 router.post("/me/vocab-bank", async (req, res) => {
   const auth = getAuthOrRespondUnauthorized(req, res);
   if (!auth) {

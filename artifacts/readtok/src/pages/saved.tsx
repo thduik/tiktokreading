@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { AlertTriangle, BookmarkX, Trash2 } from "lucide-react";
+import { AlertTriangle, BookText, BookmarkX, Trash2 } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
 import { fetchPassageList, type PassageListItem } from "@/lib/passages-api";
+import { fetchMyVocabBank, type VocabBankItem } from "@/lib/profile-api";
+import { authEnabled } from "@/lib/runtime-config";
 import { AppPageHeader } from "@/components/app-page-header";
 
 export default function Saved() {
   const { savedCardIds, toggleSaveCard, mistakes, clearMistakes } = useAppState();
   const [savedPassages, setSavedPassages] = useState<PassageListItem[]>([]);
-  const [activeTab, setActiveTab] = useState<"saved" | "mistakes">("saved");
+  const [activeTab, setActiveTab] = useState<"saved" | "mistakes" | "vocab">("saved");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vocabItems, setVocabItems] = useState<VocabBankItem[]>([]);
+  const [isLoadingVocab, setIsLoadingVocab] = useState(false);
+  const [vocabError, setVocabError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +69,56 @@ export default function Saved() {
     };
   }, [savedCardIds]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVocabBank() {
+      if (activeTab !== "vocab") {
+        return;
+      }
+
+      if (!authEnabled) {
+        setVocabItems([]);
+        setVocabError("Sign in is required to use personal vocab bank.");
+        return;
+      }
+
+      setIsLoadingVocab(true);
+      setVocabError(null);
+      try {
+        const response = await fetchMyVocabBank(300);
+        if (cancelled) {
+          return;
+        }
+        setVocabItems(response.items);
+      } catch (fetchError) {
+        if (cancelled) {
+          return;
+        }
+        const message =
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Failed to load vocab bank.";
+        if (message.includes("401") || message.toLowerCase().includes("unauthorized")) {
+          setVocabError("Sign in to view your personal vocab bank.");
+        } else {
+          setVocabError(message);
+        }
+        setVocabItems([]);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingVocab(false);
+        }
+      }
+    }
+
+    void loadVocabBank();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
   const emptyState = useMemo(
     () => savedCardIds.length === 0 && !isLoading,
     [isLoading, savedCardIds.length],
@@ -76,7 +131,7 @@ export default function Saved() {
       <AppPageHeader title="Saved & Mistakes" />
 
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="grid h-11 flex-1 grid-cols-2 rounded-lg border border-border bg-card p-1">
+        <div className="grid h-11 flex-1 grid-cols-3 rounded-lg border border-border bg-card p-1">
           <button
             type="button"
             onClick={() => setActiveTab("saved")}
@@ -98,6 +153,17 @@ export default function Saved() {
             }`}
           >
             Mistakes ({mistakes.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("vocab")}
+            className={`rounded-md text-sm font-semibold transition-colors ${
+              activeTab === "vocab"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Vocab ({vocabItems.length})
           </button>
         </div>
 
@@ -243,6 +309,83 @@ export default function Saved() {
                     {mistake.correctAnswer || "Unavailable"}
                   </p>
                 </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "vocab" && vocabError && (
+        <div className="mb-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {vocabError}
+        </div>
+      )}
+
+      {activeTab === "vocab" && isLoadingVocab && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-28 animate-pulse rounded-lg border border-border bg-card"
+            />
+          ))}
+        </div>
+      )}
+
+      {activeTab === "vocab" && !isLoadingVocab && vocabItems.length === 0 && !vocabError && (
+        <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">
+          <BookText className="mx-auto mb-3 h-10 w-10 opacity-70" />
+          <p className="text-base font-semibold text-foreground">No vocab saved yet</p>
+          <p className="mt-1 text-sm">
+            Tap a highlighted word in passages, then use “Add to Vocab Bank”.
+          </p>
+        </div>
+      )}
+
+      {activeTab === "vocab" && !isLoadingVocab && vocabItems.length > 0 && (
+        <div className="space-y-3">
+          {vocabItems.map((item) => (
+            <div
+              key={item.normalized_term}
+              className="rounded-lg border border-border bg-card px-4 py-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-semibold leading-tight text-foreground">
+                    {item.term}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {item.meaning_en || "No English meaning"}
+                  </p>
+                  {item.meaning_vi ? (
+                    <p className="mt-1 text-sm text-foreground/90">{item.meaning_vi}</p>
+                  ) : null}
+                </div>
+                <p className="shrink-0 text-xs text-muted-foreground">
+                  {new Date(item.created_at).toLocaleDateString()}
+                </p>
+              </div>
+
+              {item.example_sentence_en ? (
+                <div className="mt-3 rounded-lg border border-border bg-muted px-3 py-2.5">
+                  <p className="text-xs text-muted-foreground">{item.example_sentence_en}</p>
+                </div>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                {item.source_band_label ? (
+                  <span className="rounded-md border border-primary/50 bg-primary/15 px-2.5 py-1 font-semibold text-primary">
+                    Band {item.source_band_label}
+                  </span>
+                ) : null}
+                {item.source_passage_id && item.source_passage_title ? (
+                  <Link
+                    href={`/passages/${encodeURIComponent(item.source_passage_id)}`}
+                    className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                  >
+                    {item.source_passage_title}
+                  </Link>
+                ) : null}
               </div>
             </div>
           ))}
