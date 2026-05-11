@@ -29,9 +29,13 @@ This calls:
 `scripts/deploy-readtok-vps.sh`
 
 Do not publish `artifacts/readtok/dist/public/` manually with a raw `rsync`.
-Use the script below so `/var/www/readtok/runtime-config.js` is rewritten from
-the VPS env and verified after publish. The checked-in `public/runtime-config.js`
-is only a placeholder.
+Use the script below so:
+- repo files are synced from the local workspace to the VPS
+- `/var/www/readtok/runtime-config.js` is rewritten from VPS env
+- the API service is restarted in the same guarded path
+- Nginx cache headers are refreshed from the repo-managed config
+
+The checked-in `public/runtime-config.js` is only a placeholder.
 
 Hosted app guard: if Clerk runtime config is missing on a non-local hostname,
 the frontend now shows a production config error instead of falling back to
@@ -40,21 +44,35 @@ splitting again.
 
 ## What the Script Does
 
-1. SSH into VPS.
-2. `git pull --ff-only`.
-3. Enable Corepack and activate `pnpm@10.33.2`.
-4. Run the repo toolchain check.
-5. `corepack pnpm install --frozen-lockfile`.
-6. Typecheck and build `@workspace/readtok`.
-7. Write `runtime-config.js` with Clerk runtime keys.
-8. `rsync` built assets into `/var/www/readtok`.
-9. Rewrite and verify live `runtime-config.js` again after `rsync`.
-10. Print first lines of live `index.html`.
-11. Curl live URL and live `runtime-config.js` for quick checks.
+1. Sync the local repo to `/opt/readtok` on the VPS with guarded excludes.
+2. Load `.env.production` on the VPS.
+3. Refuse deploy if Clerk public or secret keys are missing.
+4. Enable Corepack and activate `pnpm@10.33.2`.
+5. Run the repo toolchain check.
+6. `corepack pnpm install --frozen-lockfile`.
+7. Build `@workspace/api-server`.
+8. Typecheck and build `@workspace/readtok`.
+9. Write `runtime-config.js` with Clerk runtime keys.
+10. Publish built frontend to `/var/www/readtok`.
+11. Install the repo-managed Nginx site config with cache rules.
+12. Reload Nginx and restart the API service.
+13. Verify API health, `index.html`, and live `runtime-config.js`.
 
 If deploy stops at the toolchain check, update Node on the VPS before trying
 again. This prevents the app from building with the wrong Vite/Rollup native
 package set.
+
+## Cache Policy
+
+The repo-managed Nginx config now ships explicit cache headers:
+
+- `index.html` -> `Cache-Control: no-cache, no-store, must-revalidate`
+- `runtime-config.js` -> `Cache-Control: no-cache, no-store, must-revalidate`
+- `/assets/*` hashed bundles -> `Cache-Control: public, max-age=31536000, immutable`
+
+Canonical config lives at:
+
+`ops/nginx/readtok.conf`
 
 ## Database Migrations
 

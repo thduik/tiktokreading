@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import {
   fetchPassageList,
   normalizePassageFactoryTag,
@@ -147,6 +147,14 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(() => {
+    const initial = readInitialFilters();
+    return (
+      initial.activeBand !== null ||
+      initial.activeType !== null ||
+      initial.activeFactoryTag !== null
+    );
+  });
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const queryKeyRef = useRef<string>("");
 
@@ -305,6 +313,15 @@ export default function Home() {
   const selectedBandValue = activeBand === null ? "all" : String(activeBand);
   const selectedTypeValue = activeType ?? "all";
   const selectedFactoryTagValue = activeFactoryTag ?? "all";
+  const hasActiveFilters =
+    activeBand !== null || activeType !== null || activeFactoryTag !== null;
+  const filterSummary = [
+    filterMode === "band"
+      ? bandFilterOptions.find((option) => option.band === activeBand)?.label ?? "All bands"
+      : typeFilterOptions.find((option) => option.type === activeType)?.label ??
+        "All types",
+    activeFactoryTag ? activeFactoryTag.toUpperCase() : "All versions",
+  ].join(" · ");
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -347,72 +364,104 @@ export default function Home() {
         className="mb-4 rounded-lg border border-border bg-card p-3"
         aria-label="filters"
       >
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="min-w-0 flex-1">
-            <select
-              value={filterMode}
-              onChange={(event) => setFilterMode(event.target.value as FilterMode)}
-              className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-            >
-              <option value="band">Band score</option>
-              <option value="question_type">Question type</option>
-            </select>
+        <button
+          type="button"
+          onClick={() => setIsFiltersOpen((current) => !current)}
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-muted/60 px-3 py-2.5 text-left transition-colors hover:border-primary"
+          aria-expanded={isFiltersOpen}
+          aria-controls="passage-list-filters-panel"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
+              <SlidersHorizontal className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Filters</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {hasActiveFilters ? filterSummary : "Show filters"}
+              </p>
+            </div>
           </div>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+              isFiltersOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
 
-          <div className="min-w-0 flex-1">
-            {filterMode === "band" ? (
+        {isFiltersOpen ? (
+          <div
+            id="passage-list-filters-panel"
+            className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+          >
+            <div className="min-w-0 flex-1">
               <select
-                value={selectedBandValue}
+                value={filterMode}
                 onChange={(event) => {
-                  const value = event.target.value;
-                  setActiveBand(value === "all" ? null : Number(value));
+                  setFilterMode(event.target.value as FilterMode);
                 }}
                 className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               >
-                {bandFilterOptions.map((option) => (
+                <option value="band">Band score</option>
+                <option value="question_type">Question type</option>
+              </select>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              {filterMode === "band" ? (
+                <select
+                  value={selectedBandValue}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setActiveBand(value === "all" ? null : Number(value));
+                  }}
+                  className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                >
+                  {bandFilterOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={selectedTypeValue}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
+                  }}
+                  className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                >
+                  {typeFilterOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="min-w-0 sm:col-span-2">
+              <select
+                value={selectedFactoryTagValue}
+                onChange={(event) => {
+                  const nextFactoryTag =
+                    event.target.value === "all"
+                      ? null
+                      : (event.target.value as PassageFactoryTag);
+                  setActiveFactoryTag(nextFactoryTag);
+                }}
+                className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+              >
+                {versionFilterOptions.map((option) => (
                   <option key={option.key} value={option.key}>
                     {option.label}
                   </option>
                 ))}
               </select>
-            ) : (
-              <select
-                value={selectedTypeValue}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
-                }}
-                className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-              >
-                {typeFilterOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            )}
+            </div>
           </div>
-
-          <div className="min-w-0 sm:col-span-2">
-            <select
-              value={selectedFactoryTagValue}
-              onChange={(event) => {
-                const nextFactoryTag =
-                  event.target.value === "all"
-                    ? null
-                    : (event.target.value as PassageFactoryTag);
-                setActiveFactoryTag(nextFactoryTag);
-              }}
-              className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-            >
-              {versionFilterOptions.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        ) : null}
       </section>
 
       {error && (

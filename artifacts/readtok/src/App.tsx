@@ -1,16 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { SignIn, SignUp, ClerkProvider, useUser } from "@clerk/react";
 import { Switch, Route, Router as WouterRouter, useLocation, useRoute } from "wouter";
 import { Award, Swords, Target, TrendingUp, Zap } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
-import Saved from "@/pages/saved";
-import Profile from "@/pages/profile";
-import AdminPage from "@/pages/admin";
-import LeaderboardPage from "@/pages/leaderboard";
 import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
 import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
@@ -28,6 +22,13 @@ import {
   clerkPublishableKey,
   runtimeHostname,
 } from "@/lib/runtime-config";
+
+const Home = lazy(() => import("@/pages/home"));
+const Saved = lazy(() => import("@/pages/saved"));
+const Profile = lazy(() => import("@/pages/profile"));
+const AdminPage = lazy(() => import("@/pages/admin"));
+const LeaderboardPage = lazy(() => import("@/pages/leaderboard"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const pendingDisplayNameStorageKey = "readtok_pending_display_name";
@@ -306,20 +307,32 @@ function Router() {
           isFeedExperience ? "overflow-hidden" : "overflow-y-auto"
         } ${isFeedExperience || isList || isAuthPage || isAdminPage ? "" : "pb-[60px]"}`}
       >
-        <Switch>
-          <Route path="/" component={PassageDetailPage} />
-          <Route path="/list" component={Home} />
-          <Route path="/passages/:id" component={LegacyPassageRouteRedirect} />
-          <Route path="/saved" component={Saved} />
-          <Route path="/profile" component={Profile} />
-          <Route path="/leaderboard" component={LeaderboardPage} />
-          <Route path="/admin" component={AdminPage} />
-          <Route path="/sign-in/*?" component={SignInPage} />
-          <Route path="/sign-up/*?" component={SignUpPage} />
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Switch>
+            <Route path="/" component={PassageDetailPage} />
+            <Route path="/list" component={Home} />
+            <Route path="/passages/:id" component={LegacyPassageRouteRedirect} />
+            <Route path="/saved" component={Saved} />
+            <Route path="/profile" component={Profile} />
+            <Route path="/leaderboard" component={LeaderboardPage} />
+            <Route path="/admin" component={AdminPage} />
+            <Route path="/sign-in/*?" component={SignInPage} />
+            <Route path="/sign-up/*?" component={SignUpPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </main>
       {!isAuthPage && !isAdminPage && <BottomNav />}
+    </div>
+  );
+}
+
+function RouteLoadingFallback() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-background">
+      <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+        Loading...
+      </div>
     </div>
   );
 }

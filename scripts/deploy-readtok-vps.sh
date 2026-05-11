@@ -1,89 +1,172 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deploy ReadTok frontend by building on VPS and publishing to Nginx web root.
-# Expected remote layout:
-#   repo:     /opt/readtok
-#   web root: /var/www/readtok
-#
-# Usage:
-#   scripts/deploy-readtok-vps.sh
-#   VPS_HOST=debian@34.143.183.246 scripts/deploy-readtok-vps.sh
+# Deploy ReadTok app bundle and API to the VPS using the current rsync-based
+# workflow. This keeps runtime-config.js and Nginx cache behavior in the same
+# guarded path instead of relying on ad hoc manual publish steps.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_REPO_DIR="${LOCAL_REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
 VPS_HOST="${VPS_HOST:-debian@34.143.183.246}"
-REPO_DIR="${REPO_DIR:-/opt/readtok}"
-WEBROOT_DIR="${WEBROOT_DIR:-/var/www/readtok}"
+REMOTE_REPO_DIR="${REMOTE_REPO_DIR:-/opt/readtok}"
+REMOTE_WEBROOT_DIR="${REMOTE_WEBROOT_DIR:-/var/www/readtok}"
+REMOTE_API_SERVICE="${REMOTE_API_SERVICE:-readtok-api.service}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_rsa}"
+SSH_PASSWORD="${SSH_PASSWORD:-}"
+SUDO_PASSWORD="${SUDO_PASSWORD:-${SSH_PASSWORD}}"
 
+echo "[deploy] source dir:  ${LOCAL_REPO_DIR}"
 echo "[deploy] target host: ${VPS_HOST}"
-echo "[deploy] repo dir:    ${REPO_DIR}"
-echo "[deploy] webroot dir: ${WEBROOT_DIR}"
-echo "[deploy] ssh key:     ${SSH_KEY_PATH}"
+echo "[deploy] repo dir:    ${REMOTE_REPO_DIR}"
+echo "[deploy] webroot dir: ${REMOTE_WEBROOT_DIR}"
+echo "[deploy] api service: ${REMOTE_API_SERVICE}"
 
-ssh -F /dev/null -o IdentityAgent=none -o IdentitiesOnly=yes -o PreferredAuthentications=publickey -i "${SSH_KEY_PATH}" "${VPS_HOST}" "bash -lc '
-  set -euo pipefail
-  cd \"${REPO_DIR}\"
-  if [ -f .env.production ]; then
-    set -a
-    . ./.env.production
-    set +a
+SSH_COMMON_ARGS=(
+  -F /dev/null
+  -o StrictHostKeyChecking=no
+  -o PreferredAuthentications=publickey,password
+)
+
+if [[ -n "${SSH_PASSWORD}" ]]; then
+  if ! command -v sshpass >/dev/null 2>&1; then
+    echo "[deploy] SSH_PASSWORD is set but sshpass is not installed"
+    exit 1
   fi
-  git pull --ff-only
-  corepack enable
-  corepack prepare pnpm@10.33.2 --activate
-  node ./scripts/check-toolchain.mjs --pnpm
-  corepack pnpm install --frozen-lockfile
-  if [ -z \"\${VITE_CLERK_PUBLISHABLE_KEY:-}\" ] && [ -z \"\${CLERK_PUBLISHABLE_KEY:-}\" ]; then
-    echo \"[deploy] missing Clerk publishable key; refusing to build frontend in local mode\"
+  export SSHPASS="${SSH_PASSWORD}"
+  SSH_CMD=(sshpass -e ssh "${SSH_COMMON_ARGS[@]}")
+  RSYNC_RSH="sshpass -e ssh ${SSH_COMMON_ARGS[*]}"
+  echo "[deploy] auth mode: password"
+else
+  SSH_CMD=(ssh "${SSH_COMMON_ARGS[@]}" -o IdentitiesOnly=yes -i "${SSH_KEY_PATH}")
+  RSYNC_RSH="ssh ${SSH_COMMON_ARGS[*]} -o IdentitiesOnly=yes -i ${SSH_KEY_PATH}"
+  echo "[deploy] auth mode: key"
+  echo "[deploy] ssh key:   ${SSH_KEY_PATH}"
+fi
+
+if [[ ! -d "${LOCAL_REPO_DIR}" ]]; then
+  echo "[deploy] source repo directory not found"
+  exit 1
+fi
+
+"${SSH_CMD[@]}" "${VPS_HOST}" "mkdir -p '${REMOTE_REPO_DIR}' '${REMOTE_WEBROOT_DIR}'"
+
+rsync -az --partial --delete \
+  --exclude '.git' \
+  --exclude '.env*' \
+  --exclude 'node_modules' \
+  --exclude 'artifacts/readtok/node_modules' \
+  --exclude 'artifacts/api-server/node_modules' \
+  --exclude 'lib/db/node_modules' \
+  -e "${RSYNC_RSH}" \
+  "${LOCAL_REPO_DIR}/" "${VPS_HOST}:${REMOTE_REPO_DIR}/"
+
+"${SSH_CMD[@]}" "${VPS_HOST}" \
+  "REMOTE_REPO_DIR='${REMOTE_REPO_DIR}' REMOTE_WEBROOT_DIR='${REMOTE_WEBROOT_DIR}' REMOTE_API_SERVICE='${REMOTE_API_SERVICE}' SUDO_PASSWORD='${SUDO_PASSWORD}' bash -s" <<'REMOTE'
+set -euo pipefail
+
+cd "${REMOTE_REPO_DIR}"
+
+run_sudo() {
+  if sudo -n true 2>/dev/null; then
+    sudo "$@"
+    return
+  fi
+
+  if [ -z "${SUDO_PASSWORD:-}" ]; then
+    echo "[deploy] sudo password required but not provided"
     exit 1
   fi
 
-  CLERK_PUBLISHABLE_KEY_RUNTIME=\"\${VITE_CLERK_PUBLISHABLE_KEY:-\${CLERK_PUBLISHABLE_KEY:-}}\"
-  CLERK_PROXY_URL_RUNTIME=\"\${VITE_CLERK_PROXY_URL:-\${CLERK_PROXY_URL:-}}\"
+  printf '%s\n' "${SUDO_PASSWORD}" | sudo -S "$@"
+}
 
-  corepack pnpm --filter @workspace/readtok run typecheck
-  corepack pnpm --filter @workspace/readtok run build
+if [ -f .env.production ]; then
+  set -a
+  . ./.env.production
+  set +a
+fi
 
-  cat > \"${REPO_DIR}/artifacts/readtok/dist/public/runtime-config.js\" <<EOF
+if [ -z "${VITE_CLERK_PUBLISHABLE_KEY:-}" ] && [ -z "${CLERK_PUBLISHABLE_KEY:-}" ]; then
+  echo "[deploy] missing Clerk publishable key; refusing to publish hosted app"
+  exit 1
+fi
+
+if [ -z "${CLERK_SECRET_KEY:-}" ]; then
+  echo "[deploy] missing Clerk secret key; refusing to restart hosted auth stack"
+  exit 1
+fi
+
+CLERK_PUBLISHABLE_KEY_RUNTIME="${VITE_CLERK_PUBLISHABLE_KEY:-${CLERK_PUBLISHABLE_KEY:-}}"
+CLERK_PROXY_URL_RUNTIME="${VITE_CLERK_PROXY_URL:-${CLERK_PROXY_URL:-}}"
+
+node ./scripts/check-toolchain.mjs --pnpm
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @workspace/api-server run build
+corepack pnpm --filter @workspace/readtok run typecheck
+corepack pnpm --filter @workspace/readtok run build
+
+cat > "${REMOTE_REPO_DIR}/artifacts/readtok/dist/public/runtime-config.js" <<EOF
 window.__READTOK_CONFIG = Object.assign({}, window.__READTOK_CONFIG, {
-  clerkPublishableKey: \"\${CLERK_PUBLISHABLE_KEY_RUNTIME}\",
-  clerkProxyUrl: \"\${CLERK_PROXY_URL_RUNTIME}\"
+  clerkPublishableKey: "${CLERK_PUBLISHABLE_KEY_RUNTIME}",
+  clerkProxyUrl: "${CLERK_PROXY_URL_RUNTIME}"
 });
 EOF
 
-  rsync -avc --delete \"${REPO_DIR}/artifacts/readtok/dist/public/\" \"${WEBROOT_DIR}/\"
+rsync -avc --delete "${REMOTE_REPO_DIR}/artifacts/readtok/dist/public/" "${REMOTE_WEBROOT_DIR}/"
 
-  # Rewrite after rsync as a hard guard against the checked-in placeholder ever
-  # being the final live file. If this file is empty, Profile would otherwise
-  # silently fall back to local mode.
-  cat > \"${WEBROOT_DIR}/runtime-config.js\" <<EOF
+cat > "${REMOTE_WEBROOT_DIR}/runtime-config.js" <<EOF
 window.__READTOK_CONFIG = Object.assign({}, window.__READTOK_CONFIG, {
-  clerkPublishableKey: \"\${CLERK_PUBLISHABLE_KEY_RUNTIME}\",
-  clerkProxyUrl: \"\${CLERK_PROXY_URL_RUNTIME}\"
+  clerkPublishableKey: "${CLERK_PUBLISHABLE_KEY_RUNTIME}",
+  clerkProxyUrl: "${CLERK_PROXY_URL_RUNTIME}"
 });
 EOF
 
-  if grep -q \"window.__READTOK_CONFIG = window.__READTOK_CONFIG || {}\" \"${WEBROOT_DIR}/runtime-config.js\"; then
-    echo \"[deploy] runtime-config.js is still the placeholder; refusing deploy\"
-    exit 1
-  fi
+if [ -f "${REMOTE_REPO_DIR}/ops/nginx/readtok.conf" ]; then
+  run_sudo cp "${REMOTE_REPO_DIR}/ops/nginx/readtok.conf" /etc/nginx/sites-available/readtok
+  run_sudo ln -sf /etc/nginx/sites-available/readtok /etc/nginx/sites-enabled/readtok
+  run_sudo nginx -t
+  run_sudo systemctl reload nginx
+fi
 
-  if ! grep -q \"clerkPublishableKey: \\\".\" \"${WEBROOT_DIR}/runtime-config.js\"; then
-    echo \"[deploy] runtime-config.js does not contain a Clerk publishable key; refusing deploy\"
-    exit 1
-  fi
+run_sudo systemctl restart "${REMOTE_API_SERVICE}"
 
-  echo \"[deploy] published bundle:\"
-  head -n 20 \"${WEBROOT_DIR}/index.html\"
-  echo \"[deploy] runtime config: verified Clerk key present\"
-'"
+if grep -q "window.__READTOK_CONFIG = window.__READTOK_CONFIG || {}" "${REMOTE_WEBROOT_DIR}/runtime-config.js"; then
+  echo "[deploy] runtime-config.js is still the placeholder; refusing deploy"
+  exit 1
+fi
+
+if ! grep -q 'clerkPublishableKey: ".' "${REMOTE_WEBROOT_DIR}/runtime-config.js"; then
+  echo "[deploy] runtime-config.js does not contain a Clerk publishable key; refusing deploy"
+  exit 1
+fi
+
+systemctl is-active "${REMOTE_API_SERVICE}"
+
+api_ready=0
+for attempt in 1 2 3 4 5; do
+  if curl -fsSL http://127.0.0.1:3000/api/passages?limit=1 >/dev/null 2>&1; then
+    api_ready=1
+    break
+  fi
+  sleep 1
+done
+
+if [ "${api_ready}" -ne 1 ]; then
+  echo "[deploy] API health check failed after restart"
+  exit 1
+fi
+
+echo "[deploy] published bundle:"
+head -n 20 "${REMOTE_WEBROOT_DIR}/index.html"
+echo "[deploy] runtime config: verified Clerk key present"
+REMOTE
 
 echo "[deploy] live check:"
 curl -fsSL "https://ieltstok.online" | sed -n '1,20p'
 
 echo "[deploy] live runtime config check:"
-curl -fsSL "https://ieltstok.online/runtime-config.js" \
-  | grep -q "clerkPublishableKey: \"."
+curl -fsSL "https://ieltstok.online/runtime-config.js" | grep -q 'clerkPublishableKey: ".'
 echo "[deploy] live runtime config: verified Clerk key present"
 
 echo "[deploy] done"
