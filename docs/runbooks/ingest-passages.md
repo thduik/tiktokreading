@@ -36,13 +36,20 @@ Answer key anomaly audit:
 pnpm --filter @workspace/db run audit:answer-keys
 ```
 
-V2 NDJSON mixed-card ingest:
+V3 NDJSON mixed-card ingest (current production default):
 
 ```bash
-pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v2
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson
 ```
 
 Notes:
+
+- `factory_tag` now defaults to `v3` in `ingest-ndjson-cards.ts`.
+- You can still override explicitly when needed:
+
+```bash
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v3
+```
 
 - Matching Heading and Matching Information currently store as MCQ-style
   questions with labels preserved.

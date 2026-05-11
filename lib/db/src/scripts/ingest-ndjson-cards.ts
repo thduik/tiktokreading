@@ -442,12 +442,15 @@ async function run() {
   if (!inputPath) {
     throw new Error("Usage: tsx ingest-ndjson-cards.ts <input.ndjson>");
   }
+  const defaultFactoryTag =
+    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v3") || "v3";
   const factoryTagArg = process.argv
     .slice(3)
     .find((arg) => arg.startsWith("--factory-tag="));
   const factoryTag =
-    normalizeFactoryTag(factoryTagArg?.slice("--factory-tag=".length) ?? "v2") ||
-    "v2";
+    normalizeFactoryTag(
+      factoryTagArg?.slice("--factory-tag=".length) ?? defaultFactoryTag,
+    ) || defaultFactoryTag;
 
   const absInputPath = path.resolve(process.cwd(), inputPath);
   const raw = await readFile(absInputPath, "utf8");
@@ -599,7 +602,7 @@ async function run() {
   const created = inserted;
 
   console.log(`Input cards: ${parsedCards.length}`);
-  console.log(`Factory tag: ${factoryTag || "(none)"}`);
+  console.log(`Factory tag: ${factoryTag || "(none)"} (default=${defaultFactoryTag})`);
   console.log(`Upserted passages: ${inserted} (created: ${created}, updated: ${updated})`);
   console.log(`Ingest anomalies auto-fixed: ${anomalies.length}`);
   for (const anomaly of anomalies) {
