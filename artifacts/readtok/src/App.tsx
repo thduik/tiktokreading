@@ -13,9 +13,7 @@ import AdminPage from "@/pages/admin";
 import LeaderboardPage from "@/pages/leaderboard";
 import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
-import Onboarding from "@/components/onboarding";
 import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
-import { fetchPassageFeedBootstrap } from "@/lib/passages-api";
 import { bootstrapMyProfile } from "@/lib/profile-api";
 import {
   QUESTION_TYPE_DISPLAY_LABELS,
@@ -274,11 +272,6 @@ function AuthProfileBootstrapper() {
   return null;
 }
 
-interface RouterProps {
-  hasCompletedOnboarding: boolean;
-  completeOnboarding: () => void;
-}
-
 function LegacyPassageRouteRedirect() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/passages/:id");
@@ -296,46 +289,14 @@ function LegacyPassageRouteRedirect() {
   return null;
 }
 
-function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
-  const [location, setLocation] = useLocation();
-  const [isLaunchingFromOnboarding, setIsLaunchingFromOnboarding] = useState(false);
+function Router() {
+  const [location] = useLocation();
   const isFeed = location === "/";
   const isList = location === "/list";
   const isPassage = location.startsWith("/passages/");
   const isFeedExperience = isFeed || isPassage;
   const isAuthPage = location.startsWith("/sign-in") || location.startsWith("/sign-up");
   const isAdminPage = location.startsWith("/admin");
-  const isOnboarding = isFeed && !hasCompletedOnboarding;
-
-  async function completeOnboardingAndOpenRandomPassage() {
-    if (isLaunchingFromOnboarding) {
-      return;
-    }
-
-    setIsLaunchingFromOnboarding(true);
-    let nextPath = "/";
-    try {
-      const response = await fetchPassageFeedBootstrap({
-        status: "active",
-        limit: 1,
-        includeAnswerKey: false,
-      });
-      const randomPassage = response.random_passages[0];
-      if (randomPassage) {
-        nextPath = `/?start=${encodeURIComponent(randomPassage.id)}`;
-      }
-    } catch {
-      nextPath = "/";
-    } finally {
-      completeOnboarding();
-      setLocation(nextPath);
-      setIsLaunchingFromOnboarding(false);
-    }
-  }
-
-  if (isOnboarding) {
-    return <Onboarding onComplete={completeOnboardingAndOpenRandomPassage} />;
-  }
 
   return (
     <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
@@ -363,15 +324,7 @@ function Router({ hasCompletedOnboarding, completeOnboarding }: RouterProps) {
   );
 }
 
-interface ClerkProviderWithRoutesProps {
-  hasCompletedOnboarding: boolean;
-  completeOnboarding: () => void;
-}
-
-function ClerkProviderWithRoutes({
-  hasCompletedOnboarding,
-  completeOnboarding,
-}: ClerkProviderWithRoutesProps) {
+function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
   return (
@@ -382,26 +335,17 @@ function ClerkProviderWithRoutes({
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <TooltipProvider>
-        <Router
-          hasCompletedOnboarding={hasCompletedOnboarding}
-          completeOnboarding={completeOnboarding}
-        />
+        <Router />
         <Toaster />
       </TooltipProvider>
     </ClerkProvider>
   );
 }
 
-function AppRoutes({
-  hasCompletedOnboarding,
-  completeOnboarding,
-}: ClerkProviderWithRoutesProps) {
+function AppRoutes() {
   return (
     <TooltipProvider>
-      <Router
-        hasCompletedOnboarding={hasCompletedOnboarding}
-        completeOnboarding={completeOnboarding}
-      />
+      <Router />
       <Toaster />
     </TooltipProvider>
   );
@@ -605,7 +549,7 @@ function HostedAuthConfigError() {
 }
 
 function AppContent() {
-  const { isLoaded, hasCompletedOnboarding, completeOnboarding } = useAppState();
+  const { isLoaded } = useAppState();
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {
@@ -640,15 +584,9 @@ function AppContent() {
   return (
     <WouterRouter base={basePath}>
       {authEnabled ? (
-        <ClerkProviderWithRoutes
-          hasCompletedOnboarding={hasCompletedOnboarding}
-          completeOnboarding={completeOnboarding}
-        />
+        <ClerkProviderWithRoutes />
       ) : (
-        <AppRoutes
-          hasCompletedOnboarding={hasCompletedOnboarding}
-          completeOnboarding={completeOnboarding}
-        />
+        <AppRoutes />
       )}
       <SessionSummaryDialog />
     </WouterRouter>
