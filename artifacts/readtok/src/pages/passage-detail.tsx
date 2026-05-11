@@ -391,7 +391,7 @@ function TopStatusRow({
 
   return (
     <>
-      <div className="relative flex min-w-0 flex-1 md:hidden">
+      <div className="relative flex h-9 min-w-0 flex-1 md:hidden">
         {!isExpanded ? (
           <div
             role="button"
@@ -427,7 +427,7 @@ function TopStatusRow({
           <div
             role="button"
             tabIndex={0}
-            className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 pr-10 text-left"
+            className="absolute left-0 right-0 top-0 z-20 flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background/95 p-2 pr-12 text-left shadow-lg backdrop-blur"
             onClick={() => setIsExpanded(false)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -482,7 +482,7 @@ function TopStatusRow({
 
         <button
           type="button"
-          className="absolute right-0 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/95 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-primary hover:text-primary"
+          className="absolute right-0 top-0 z-30 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/95 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:border-primary hover:text-primary"
           onClick={(event) => {
             event.stopPropagation();
             setIsExpanded((current) => !current);

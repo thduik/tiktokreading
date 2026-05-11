@@ -443,7 +443,7 @@ async function run() {
     throw new Error("Usage: tsx ingest-ndjson-cards.ts <input.ndjson>");
   }
   const defaultFactoryTag =
-    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v3") || "v3";
+    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v4") || "v4";
   const factoryTagArg = process.argv
     .slice(3)
     .find((arg) => arg.startsWith("--factory-tag="));
