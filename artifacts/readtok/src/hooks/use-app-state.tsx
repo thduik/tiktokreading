@@ -11,9 +11,13 @@ import {
   applyRankedAchievementProgress,
   applyReportAchievementProgress,
   applySavedPassageAchievementProgress,
+  calculateAchievementXpFromKeys,
+  getAchievementLevelProgress,
+  mergeAchievementUnlockKeys,
   sanitizeAchievementProgress,
   unlockAchievementsForTriggers,
   type AchievementDefinition,
+  type AchievementLevelProgress,
   type AnswerAchievementContext,
   type RankedAchievementContext,
   type UserAchievementProgress,
@@ -38,6 +42,7 @@ import {
   type SessionSummaryProgress,
   type SessionSummarySnapshot,
 } from "@/lib/practice-tracking";
+import { authEnabled } from "@/lib/runtime-config";
 
 export interface UserStats {
   totalQuestionsCompleted: number;
@@ -53,6 +58,7 @@ export interface UserStats {
     }
   >;
   achievementProgress: UserAchievementProgress;
+  achievementLevelProgress: AchievementLevelProgress;
 }
 
 interface AppStateValue {
@@ -84,6 +90,10 @@ interface AppStateValue {
   recordRankedResult: (context: RankedAchievementContext) => void;
   recordPassageReport: () => void;
   recordMistake: (entry: MistakeEntry) => void;
+  mergeSyncedAchievements: (payload: {
+    unlockedKeys: string[];
+    levelProgress?: AchievementLevelProgress | null;
+  }) => void;
   syncRankedIdentity: (
     progress: UserProgress | null | undefined,
     rankTiers?: RankTierThreshold[] | null,
@@ -101,6 +111,19 @@ const STORAGE_KEYS = {
   mistakes: "readtok_mistakes",
 } as const;
 
+function shouldPersistSyncedUserState() {
+  return !authEnabled;
+}
+
+function purgeSyncedUserStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(STORAGE_KEYS.stats);
+  window.localStorage.removeItem(STORAGE_KEYS.rankedIdentity);
+}
+
 const defaultStats: UserStats = {
   totalQuestionsCompleted: 0,
   streak: 0,
@@ -109,6 +132,7 @@ const defaultStats: UserStats = {
   totalIncorrect: 0,
   dailyStats: {},
   achievementProgress: sanitizeAchievementProgress(null),
+  achievementLevelProgress: getAchievementLevelProgress(0),
 };
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -150,6 +174,7 @@ function sanitizeStats(value: unknown): UserStats {
       ...defaultStats,
       dailyStats: {},
       achievementProgress: sanitizeAchievementProgress(null),
+      achievementLevelProgress: getAchievementLevelProgress(0),
     };
   }
 
@@ -199,6 +224,20 @@ function sanitizeStats(value: unknown): UserStats {
     }
   }
 
+  const achievementProgress = sanitizeAchievementProgress(stats.achievementProgress, {
+    totalQuestionsAnswered: Math.max(0, Math.trunc(totalQuestionsCompleted)),
+    totalCorrectAnswers: Math.max(0, Math.trunc(totalCorrect)),
+    totalWrongAnswers: Math.max(0, Math.trunc(totalIncorrect)),
+    currentPracticeStreakDays:
+      typeof stats.streak === "number" ? Math.max(0, Math.trunc(stats.streak)) : 0,
+    lastPracticeDateLocal: parseStoredDayKey(
+      stats.lastPracticedDay ?? stats.lastPracticed,
+    ),
+  });
+  const achievementLevelProgress = getAchievementLevelProgress(
+    calculateAchievementXpFromKeys(achievementProgress.unlockedAchievementKeys),
+  );
+
   return {
     totalQuestionsCompleted: Math.max(0, Math.trunc(totalQuestionsCompleted)),
     streak: typeof stats.streak === "number" ? stats.streak : 0,
@@ -208,17 +247,13 @@ function sanitizeStats(value: unknown): UserStats {
     totalCorrect: Math.max(0, Math.trunc(totalCorrect)),
     totalIncorrect: Math.max(0, Math.trunc(totalIncorrect)),
     dailyStats: parsedDailyStats,
-    achievementProgress: sanitizeAchievementProgress(stats.achievementProgress, {
-      totalQuestionsAnswered: Math.max(0, Math.trunc(totalQuestionsCompleted)),
-      totalCorrectAnswers: Math.max(0, Math.trunc(totalCorrect)),
-      totalWrongAnswers: Math.max(0, Math.trunc(totalIncorrect)),
-      currentPracticeStreakDays:
-        typeof stats.streak === "number" ? Math.max(0, Math.trunc(stats.streak)) : 0,
-      lastPracticeDateLocal: parseStoredDayKey(
-        stats.lastPracticedDay ?? stats.lastPracticed,
-      ),
-    }),
+    achievementProgress,
+    achievementLevelProgress,
   };
+}
+
+function deriveAchievementLevelProgress(unlockedKeys: string[]) {
+  return getAchievementLevelProgress(calculateAchievementXpFromKeys(unlockedKeys));
 }
 
 function readSavedCardIds() {
@@ -240,9 +275,14 @@ function readHydratedState() {
     localStorage.getItem(STORAGE_KEYS.onboarding) === "true";
 
   const savedCardIds = readSavedCardIds();
-  const storedStats = sanitizeStats(
-    JSON.parse(localStorage.getItem(STORAGE_KEYS.stats) ?? "null"),
-  );
+  const storedStats = shouldPersistSyncedUserState()
+    ? sanitizeStats(JSON.parse(localStorage.getItem(STORAGE_KEYS.stats) ?? "null"))
+    : {
+        ...defaultStats,
+        dailyStats: {},
+        achievementProgress: sanitizeAchievementProgress(null),
+        achievementLevelProgress: getAchievementLevelProgress(0),
+      };
   storedStats.achievementProgress.savedPassageCount = Math.max(
     storedStats.achievementProgress.savedPassageCount,
     savedCardIds.length,
@@ -260,9 +300,11 @@ function readHydratedState() {
     hasCompletedOnboarding,
     savedCardIds,
     stats: storedStats,
-    rankedIdentity: sanitizeRankedIdentitySnapshot(
-      JSON.parse(localStorage.getItem(STORAGE_KEYS.rankedIdentity) ?? "null"),
-    ),
+    rankedIdentity: shouldPersistSyncedUserState()
+      ? sanitizeRankedIdentitySnapshot(
+          JSON.parse(localStorage.getItem(STORAGE_KEYS.rankedIdentity) ?? "null"),
+        )
+      : null,
     feedbackPreferences: sanitizeFeedbackPreferences(
       JSON.parse(localStorage.getItem(STORAGE_KEYS.feedbackPreferences) ?? "null"),
     ),
@@ -298,6 +340,10 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    if (!shouldPersistSyncedUserState()) {
+      purgeSyncedUserStorage();
+    }
+
     try {
       const hydratedState = readHydratedState();
       setHasCompletedOnboarding(hydratedState.hasCompletedOnboarding);
@@ -323,11 +369,15 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       hasCompletedOnboarding ? "true" : "false",
     );
     localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(savedCardIds));
-    localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats));
-    localStorage.setItem(
-      STORAGE_KEYS.rankedIdentity,
-      JSON.stringify(rankedIdentity),
-    );
+    if (shouldPersistSyncedUserState()) {
+      localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats));
+      localStorage.setItem(
+        STORAGE_KEYS.rankedIdentity,
+        JSON.stringify(rankedIdentity),
+      );
+    } else {
+      purgeSyncedUserStorage();
+    }
     localStorage.setItem(
       STORAGE_KEYS.feedbackPreferences,
       JSON.stringify(feedbackPreferences),
@@ -345,12 +395,15 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
 
   useEffect(() => {
     function handleStorage(event: StorageEvent) {
+      const syncedStateKeyAllowed =
+        shouldPersistSyncedUserState() &&
+        (event.key === STORAGE_KEYS.stats || event.key === STORAGE_KEYS.rankedIdentity);
+
       if (
         !event.key ||
         (event.key !== STORAGE_KEYS.onboarding &&
           event.key !== STORAGE_KEYS.saved &&
-          event.key !== STORAGE_KEYS.stats &&
-          event.key !== STORAGE_KEYS.rankedIdentity &&
+          !syncedStateKeyAllowed &&
           event.key !== STORAGE_KEYS.feedbackPreferences &&
           event.key !== STORAGE_KEYS.mistakes)
       ) {
@@ -397,6 +450,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
         return {
           ...previousStats,
           achievementProgress: unlocked.progress,
+          achievementLevelProgress: deriveAchievementLevelProgress(
+            unlocked.progress.unlockedAchievementKeys,
+          ),
         };
       });
       return nextIds;
@@ -450,6 +506,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
         totalIncorrect: previousStats.totalIncorrect + (isCorrect ? 0 : 1),
         dailyStats: nextDailyStats,
         achievementProgress: unlocked.progress,
+        achievementLevelProgress: deriveAchievementLevelProgress(
+          unlocked.progress.unlockedAchievementKeys,
+        ),
       };
     });
     },
@@ -508,6 +567,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       return {
         ...previousStats,
         achievementProgress: unlocked.progress,
+        achievementLevelProgress: deriveAchievementLevelProgress(
+          unlocked.progress.unlockedAchievementKeys,
+        ),
       };
     });
     setRankedIdentity((previousIdentity) => {
@@ -538,6 +600,9 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       return {
         ...previousStats,
         achievementProgress: unlocked.progress,
+        achievementLevelProgress: deriveAchievementLevelProgress(
+          unlocked.progress.unlockedAchievementKeys,
+        ),
       };
     });
   }, []);
@@ -553,6 +618,42 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   const clearMistakes = useCallback(() => {
     setMistakes([]);
   }, []);
+
+  const mergeSyncedAchievements = useCallback(
+    ({
+      unlockedKeys,
+      levelProgress,
+    }: {
+      unlockedKeys: string[];
+      levelProgress?: AchievementLevelProgress | null;
+    }) => {
+      setStats((previousStats) => {
+        const mergedKeys = mergeAchievementUnlockKeys(
+          previousStats.achievementProgress.unlockedAchievementKeys ?? [],
+          unlockedKeys,
+        );
+        const previousKeys = previousStats.achievementProgress.unlockedAchievementKeys ?? [];
+        const isSameLength = mergedKeys.length === previousKeys.length;
+        const isSameKeys =
+          isSameLength && mergedKeys.every((key) => previousKeys.includes(key));
+
+        if (isSameKeys && !levelProgress) {
+          return previousStats;
+        }
+
+        return {
+          ...previousStats,
+          achievementProgress: {
+            ...previousStats.achievementProgress,
+            unlockedAchievementKeys: mergedKeys,
+          },
+          achievementLevelProgress:
+            levelProgress ?? deriveAchievementLevelProgress(mergedKeys),
+        };
+      });
+    },
+    [],
+  );
 
   const syncRankedIdentity = useCallback(
     (progress: UserProgress | null | undefined, rankTiers?: RankTierThreshold[] | null) => {
@@ -597,6 +698,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
             previousStats.totalIncorrect + Math.max(0, totalQuestions - correctAnswers),
           dailyStats: nextDailyStats,
           achievementProgress: previousStats.achievementProgress,
+          achievementLevelProgress: previousStats.achievementLevelProgress,
         };
       });
     },
@@ -641,6 +743,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     recordRankedResult,
     recordPassageReport,
     recordMistake,
+    mergeSyncedAchievements,
     syncRankedIdentity,
     updateStats,
     updateFeedbackPreferences,

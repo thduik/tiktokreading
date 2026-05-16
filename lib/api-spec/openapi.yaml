@@ -1,22 +1,22 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: ReadTok API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: passages
+  - name: profile
+  - name: leaderboard
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +24,1445 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /passages:
+    get:
+      operationId: listPassages
+      tags: [passages]
+      summary: List passages
+      parameters:
+        - $ref: "#/components/parameters/BandIndexQuery"
+        - $ref: "#/components/parameters/QuestionSetTypeQuery"
+        - $ref: "#/components/parameters/QuestionTypeQuery"
+        - $ref: "#/components/parameters/FactoryTagQuery"
+        - $ref: "#/components/parameters/TopicIndexQuery"
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/LanguageCodeQuery"
+        - $ref: "#/components/parameters/IdsQuery"
+        - $ref: "#/components/parameters/TitleContainsQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - $ref: "#/components/parameters/OffsetQuery"
+      responses:
+        "200":
+          description: Passage list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassageListResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /passages/ids:
+    get:
+      operationId: listPassageIds
+      tags: [passages]
+      summary: Get active passage id pool
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/LanguageCodeQuery"
+        - $ref: "#/components/parameters/FactoryTagQuery"
+      responses:
+        "200":
+          description: Passage id pool
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassageIdsResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /passages/feed-bootstrap:
+    get:
+      operationId: bootstrapPassageFeed
+      tags: [passages]
+      summary: Bootstrap the feed with a random set and full id pool
+      parameters:
+        - $ref: "#/components/parameters/StatusQuery"
+        - $ref: "#/components/parameters/LanguageCodeQuery"
+        - $ref: "#/components/parameters/FactoryTagQuery"
+        - $ref: "#/components/parameters/IncludeAnswerKeyQuery"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 80
+      responses:
+        "200":
+          description: Feed bootstrap payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassageFeedBootstrapResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /passages/{id}:
+    get:
+      operationId: getPassageDetail
+      tags: [passages]
+      summary: Get one passage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/IncludeAnswerKeyQuery"
+      responses:
+        "200":
+          description: Passage detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassageDetail"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /passages/{id}/report:
+    post:
+      operationId: reportPassage
+      tags: [passages]
+      summary: Submit a passage report
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reportType:
+                  $ref: "#/components/schemas/PassageReportType"
+              required: [reportType]
+      responses:
+        "200":
+          description: Report accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassageReportResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me:
+    get:
+      operationId: getMyProfile
+      tags: [profile]
+      summary: Get signed-in profile and ranked progress
+      responses:
+        "200":
+          description: Profile envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+    patch:
+      operationId: updateMyProfile
+      tags: [profile]
+      summary: Update profile display name or onboarding flag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  nullable: true
+                onboarding_completed:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated profile envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/bootstrap:
+    post:
+      operationId: bootstrapMyProfile
+      tags: [profile]
+      summary: Ensure profile/progress exists for the signed-in user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                display_name:
+                  type: string
+                  nullable: true
+              required: [email]
+      responses:
+        "200":
+          description: Bootstrapped profile envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileEnvelope"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/achievements:
+    get:
+      operationId: getMyAchievements
+      tags: [profile]
+      summary: Get achievement unlocks and achievement XP summary
+      responses:
+        "200":
+          description: Achievement envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAchievementsEnvelope"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/achievements/unlock-batch:
+    post:
+      operationId: syncMyAchievements
+      tags: [profile]
+      summary: Sync achievement unlocks from the client to the backend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unlocks:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AchievementUnlockInput"
+              required: [unlocks]
+      responses:
+        "200":
+          description: Synced achievement envelope
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/UserAchievementsEnvelope"
+                  - type: object
+                    properties:
+                      inserted:
+                        type: array
+                        items:
+                          type: string
+                    required: [inserted]
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/dashboard-stats:
+    get:
+      operationId: getMyDashboardStats
+      tags: [profile]
+      summary: Get synced profile stats and weak-area aggregates
+      parameters:
+        - $ref: "#/components/parameters/LocalDateQuery"
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStatsEnvelope"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/answer-stats:
+    get:
+      operationId: getMyAnswerStats
+      tags: [profile]
+      summary: Get answer aggregates by timeframe
+      parameters:
+        - $ref: "#/components/parameters/LocalDateQuery"
+      responses:
+        "200":
+          description: Answer stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnswerStatsEnvelope"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/question-timing-summary:
+    get:
+      operationId: getMyQuestionTimingSummary
+      tags: [profile]
+      summary: Get timing summary by question position
+      parameters:
+        - $ref: "#/components/parameters/LocalDateQuery"
+      responses:
+        "200":
+          description: Question timing summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionTimingSummaryResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/submit-answer:
+    post:
+      operationId: submitRankedAnswer
+      tags: [profile]
+      summary: Submit one answer and update LP/XP/progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAnswerRequest"
+      responses:
+        "200":
+          description: Answer result and updated progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitAnswerResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /me/vocab-bank:
+    get:
+      operationId: getMyVocabBank
+      tags: [profile]
+      summary: Get personal vocab bank
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Vocab bank
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VocabBankEnvelope"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+    post:
+      operationId: saveToMyVocabBank
+      tags: [profile]
+      summary: Save one vocab term to the personal vocab bank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveVocabBankRequest"
+      responses:
+        "200":
+          description: Saved vocab response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveVocabBankResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get global or per-rank leaderboard
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [global, rank]
+        - name: rank
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Leaderboard rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardEnvelope"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+
+  /leaderboard/users/{publicUserId}/stats:
+    get:
+      operationId: getPublicLeaderboardUserStats
+      tags: [leaderboard]
+      summary: Get public leaderboard stats for one user
+      parameters:
+        - name: publicUserId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^reader_[a-z0-9]{12}$"
+        - $ref: "#/components/parameters/LocalDateQuery"
+      responses:
+        "200":
+          description: Public leaderboard user stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicLeaderboardUserStatsEnvelope"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+
 components:
+  parameters:
+    BandIndexQuery:
+      name: band_index
+      in: query
+      schema:
+        type: integer
+    QuestionSetTypeQuery:
+      name: question_set_type_index
+      in: query
+      schema:
+        $ref: "#/components/schemas/QuestionSetTypeIndex"
+    QuestionTypeQuery:
+      name: question_type_index
+      in: query
+      schema:
+        $ref: "#/components/schemas/QuestionTypeIndex"
+    FactoryTagQuery:
+      name: factory_tag
+      in: query
+      schema:
+        $ref: "#/components/schemas/PassageFactoryTag"
+    TopicIndexQuery:
+      name: topic_index
+      in: query
+      schema:
+        type: string
+    StatusQuery:
+      name: status
+      in: query
+      schema:
+        type: string
+    LanguageCodeQuery:
+      name: language_code
+      in: query
+      schema:
+        type: string
+    IdsQuery:
+      name: ids
+      in: query
+      schema:
+        type: string
+    TitleContainsQuery:
+      name: title_contains
+      in: query
+      schema:
+        type: string
+    LimitQuery:
+      name: limit
+      in: query
+      schema:
+        type: integer
+    OffsetQuery:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+    IncludeAnswerKeyQuery:
+      name: include_answer_key
+      in: query
+      schema:
+        type: boolean
+    LocalDateQuery:
+      name: local_date
+      in: query
+      schema:
+        type: string
+        format: date
+
+  responses:
+    ErrorResponse:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    QuestionSetTypeIndex:
+      type: string
+      enum: [tfng, mcq, sentence_completion, short_answer, mixed]
+
+    QuestionTypeIndex:
+      type: string
+      enum: [tfng, mcq, sentence_completion, short_answer]
+
+    AnswerType:
+      type: string
+      enum: [label, option_key, text]
+
+    PassageFactoryTag:
+      type: string
+      enum: [v1, v2, v3, v4, v4_5]
+
+    PassageReportType:
+      type: string
+      enum:
+        - wrong_answer_key
+        - question_unclear
+        - questions_too_easy
+        - passage_text_issue
+        - formatting_issue
+        - other
+
+    PassageListItem:
+      type: object
+      properties:
+        id: { type: string }
+        exam_index: { type: string }
+        exam_label: { type: string }
+        band_index: { type: integer }
+        band_label: { type: string }
+        question_set_type_index: { $ref: "#/components/schemas/QuestionSetTypeIndex" }
+        question_set_type_label: { type: string }
+        topic_index: { type: string }
+        topic_label: { type: string }
+        title: { type: string }
+        factory_tag: { type: string }
+        language_code: { type: string }
+        status: { type: string }
+        question_count: { type: integer }
+      required:
+        - id
+        - exam_index
+        - exam_label
+        - band_index
+        - band_label
+        - question_set_type_index
+        - question_set_type_label
+        - topic_index
+        - topic_label
+        - title
+        - factory_tag
+        - language_code
+        - status
+        - question_count
+
+    PassageListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageListItem"
+        pagination:
+          type: object
+          properties:
+            limit: { type: integer }
+            offset: { type: integer }
+            count: { type: integer }
+            total: { type: integer }
+          required: [limit, offset, count]
+      required: [items, pagination]
+
+    PassageIdsResponse:
+      type: object
+      properties:
+        ids:
+          type: array
+          items: { type: string }
+        total: { type: integer }
+        version: { type: string }
+        status: { type: string }
+        language_code:
+          type: string
+          nullable: true
+        factory_tag:
+          type: string
+          nullable: true
+      required: [ids, total, version, status, language_code, factory_tag]
+
+    PassageSentence:
+      type: object
+      properties:
+        sentence_index: { type: integer }
+        text: { type: string }
+      required: [sentence_index, text]
+
+    PassageVocabItem:
+      type: object
+      properties:
+        term: { type: string }
+        definition: { type: string }
+        simple_meaning_en:
+          type: string
+          nullable: true
+        example_sentence_en:
+          type: string
+          nullable: true
+        meaning_vi:
+          type: string
+          nullable: true
+        sentence_index:
+          type: integer
+          nullable: true
+      required: [term, definition]
+
+    PassageEvidenceItem:
+      type: object
+      properties:
+        sentence_index: { type: integer }
+        evidence_type: { type: string }
+        highlight_text:
+          type: string
+          nullable: true
+        explanation_role:
+          type: string
+          nullable: true
+      required: [sentence_index, evidence_type]
+
+    PassageQuestion:
+      type: object
+      properties:
+        id: { type: integer }
+        order_index: { type: integer }
+        question_type_index: { $ref: "#/components/schemas/QuestionTypeIndex" }
+        question_type_label: { type: string }
+        prompt: { type: string }
+        payload:
+          type: object
+          additionalProperties: true
+      required: [id, order_index, question_type_index, question_type_label, prompt, payload]
+
+    PassageAnswerKey:
+      type: object
+      properties:
+        question_id: { type: integer }
+        answer_type: { $ref: "#/components/schemas/AnswerType" }
+        answer_value: { type: string }
+        accepted_values:
+          type: array
+          nullable: true
+          items: { type: string }
+        explanation: { type: string }
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageEvidenceItem"
+      required: [question_id, answer_type, answer_value, explanation, evidence]
+
+    PassageDetail:
+      type: object
+      properties:
+        id: { type: string }
+        schema_version: { type: string }
+        exam_index: { type: string }
+        exam_label: { type: string }
+        band_index: { type: integer }
+        band_label: { type: string }
+        question_set_type_index: { $ref: "#/components/schemas/QuestionSetTypeIndex" }
+        question_set_type_label: { type: string }
+        topic_index: { type: string }
+        topic_label: { type: string }
+        title: { type: string }
+        factory_tag: { type: string }
+        language_code: { type: string }
+        status: { type: string }
+        passage: { type: string }
+        passage_meta:
+          type: object
+          properties:
+            sentence_count: { type: integer }
+            word_count: { type: integer }
+          required: [sentence_count, word_count]
+        vocab:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageVocabItem"
+        passage_sentences:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageSentence"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageQuestion"
+        answer_key:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageAnswerKey"
+      required:
+        - id
+        - schema_version
+        - exam_index
+        - exam_label
+        - band_index
+        - band_label
+        - question_set_type_index
+        - question_set_type_label
+        - topic_index
+        - topic_label
+        - title
+        - factory_tag
+        - language_code
+        - status
+        - passage
+        - passage_meta
+        - vocab
+        - passage_sentences
+        - questions
+        - answer_key
+
+    PassageFeedBootstrapResponse:
+      type: object
+      properties:
+        random_passages:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageDetail"
+        selected_ids:
+          type: array
+          items: { type: string }
+        all_passage_ids:
+          type: array
+          items: { type: string }
+        total: { type: integer }
+        version: { type: string }
+        factory_tag:
+          type: string
+          nullable: true
+      required:
+        - random_passages
+        - selected_ids
+        - all_passage_ids
+        - total
+        - version
+        - factory_tag
+
+    PassageReportAggregate:
+      type: object
+      properties:
+        report_type:
+          $ref: "#/components/schemas/PassageReportType"
+        count:
+          type: integer
+      required: [report_type, count]
+
+    PassageReportResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        passage_id: { type: string }
+        report_type:
+          $ref: "#/components/schemas/PassageReportType"
+        aggregates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PassageReportAggregate"
+      required: [ok, passage_id, report_type, aggregates]
+
+    UserProfile:
+      type: object
+      properties:
+        user_id: { type: string }
+        public_user_id: { type: string }
+        email: { type: string }
+        display_name:
+          type: string
+          nullable: true
+        onboarding_completed: { type: boolean }
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - public_user_id
+        - email
+        - display_name
+        - onboarding_completed
+        - created_at
+        - updated_at
+
+    UserProgress:
+      type: object
+      properties:
+        user_id: { type: string }
+        lifetime_xp: { type: integer }
+        ranked_points: { type: integer }
+        current_rank: { type: string }
+        total_questions_answered: { type: integer }
+        total_correct: { type: integer }
+        total_incorrect: { type: integer }
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - lifetime_xp
+        - ranked_points
+        - current_rank
+        - total_questions_answered
+        - total_correct
+        - total_incorrect
+        - created_at
+        - updated_at
+
+    RankTierThreshold:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string }
+        min_points: { type: integer }
+        sort_order: { type: integer }
+      required: [key, label, min_points, sort_order]
+
+    NextRankProgress:
+      type: object
+      properties:
+        currentRank: { type: string }
+        nextRank:
+          type: string
+          nullable: true
+        pointsIntoCurrentRank: { type: integer }
+        pointsNeededForNextRank: { type: integer }
+        progressPercent: { type: integer }
+      required:
+        - currentRank
+        - nextRank
+        - pointsIntoCurrentRank
+        - pointsNeededForNextRank
+        - progressPercent
+
+    ProfileEnvelope:
+      type: object
+      properties:
+        profile:
+          anyOf:
+            - $ref: "#/components/schemas/UserProfile"
+            - type: "null"
+        progress:
+          anyOf:
+            - $ref: "#/components/schemas/UserProgress"
+            - type: "null"
+        rank_tiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankTierThreshold"
+        next_rank_progress:
+          anyOf:
+            - $ref: "#/components/schemas/NextRankProgress"
+            - type: "null"
+      required: [profile, progress, rank_tiers, next_rank_progress]
+
+    AchievementItem:
+      type: object
+      properties:
+        achievement_key: { type: string }
+        achievement_title: { type: string }
+        achievement_category: { type: string }
+        achievement_tier: { type: string }
+        achievement_xp: { type: integer }
+        unlocked_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - achievement_key
+        - achievement_title
+        - achievement_category
+        - achievement_tier
+        - achievement_xp
+        - unlocked_at
+        - created_at
+        - updated_at
+
+    AchievementUnlockInput:
+      type: object
+      properties:
+        key: { type: string }
+        title: { type: string }
+        category: { type: string }
+        tier: { type: string }
+        xp: { type: integer }
+      required: [key, title, category, tier, xp]
+
+    UserAchievementSummary:
+      type: object
+      properties:
+        total_xp: { type: integer }
+        current_level: { type: integer }
+        current_level_xp_floor: { type: integer }
+        next_level_xp_floor:
+          type: integer
+          nullable: true
+        xp_into_level: { type: integer }
+        xp_needed_for_next_level: { type: integer }
+        progress_percent: { type: integer }
+      required:
+        - total_xp
+        - current_level
+        - current_level_xp_floor
+        - next_level_xp_floor
+        - xp_into_level
+        - xp_needed_for_next_level
+        - progress_percent
+
+    UserAchievementsEnvelope:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AchievementItem"
+        unlocked_keys:
+          type: array
+          items: { type: string }
+        summary:
+          $ref: "#/components/schemas/UserAchievementSummary"
+      required: [items, unlocked_keys, summary]
+
+    AnswerStatCell:
+      type: object
+      properties:
+        total: { type: integer }
+        correct: { type: integer }
+        wrong: { type: integer }
+        accuracy: { type: number }
+      required: [total, correct, wrong, accuracy]
+
+    AnswerStatsPeriod:
+      type: object
+      properties:
+        overall:
+          $ref: "#/components/schemas/AnswerStatCell"
+        byBandAndType:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              $ref: "#/components/schemas/AnswerStatCell"
+      required: [overall, byBandAndType]
+
+    AnswerStatsEnvelope:
+      type: object
+      properties:
+        localDate:
+          type: string
+          format: date
+        categories:
+          type: object
+          properties:
+            bandGroups:
+              type: array
+              items: { type: string }
+            questionTypes:
+              type: array
+              items: { type: string }
+          required: [bandGroups, questionTypes]
+        todayData:
+          $ref: "#/components/schemas/AnswerStatsPeriod"
+        last7dayData:
+          $ref: "#/components/schemas/AnswerStatsPeriod"
+        last30dayData:
+          $ref: "#/components/schemas/AnswerStatsPeriod"
+        lifetimeData:
+          $ref: "#/components/schemas/AnswerStatsPeriod"
+      required:
+        - localDate
+        - categories
+        - todayData
+        - last7dayData
+        - last30dayData
+        - lifetimeData
+
+    DashboardStatsEnvelope:
+      allOf:
+        - $ref: "#/components/schemas/AnswerStatsEnvelope"
+        - type: object
+          properties:
+            local_date:
+              type: string
+              format: date
+            progress:
+              $ref: "#/components/schemas/UserProgress"
+            current_streak_days:
+              type: integer
+            daily_goal:
+              type: object
+              properties:
+                goal: { type: integer }
+                attempted_today: { type: integer }
+                remaining: { type: integer }
+                progress_percent: { type: integer }
+                is_complete: { type: boolean }
+              required:
+                - goal
+                - attempted_today
+                - remaining
+                - progress_percent
+                - is_complete
+            headline:
+              type: object
+              properties:
+                total_questions_completed: { type: integer }
+                total_correct: { type: integer }
+                total_incorrect: { type: integer }
+                lifetime_accuracy: { type: integer }
+                last7_accuracy: { type: number }
+                today_accuracy: { type: number }
+                last7_correct: { type: integer }
+                last7_attempted: { type: integer }
+                today_correct: { type: integer }
+                today_attempted: { type: integer }
+              required:
+                - total_questions_completed
+                - total_correct
+                - total_incorrect
+                - lifetime_accuracy
+                - last7_accuracy
+                - today_accuracy
+                - last7_correct
+                - last7_attempted
+                - today_correct
+                - today_attempted
+          required: [local_date, progress, current_streak_days, daily_goal, headline]
+
+    QuestionTimingPositionSummary:
+      type: object
+      properties:
+        display_position: { type: integer }
+        attempts: { type: integer }
+        correct: { type: integer }
+        wrong: { type: integer }
+        average_elapsed_seconds: { type: number }
+        fastest_elapsed_seconds: { type: integer }
+        slowest_elapsed_seconds: { type: integer }
+      required:
+        - display_position
+        - attempts
+        - correct
+        - wrong
+        - average_elapsed_seconds
+        - fastest_elapsed_seconds
+        - slowest_elapsed_seconds
+
+    QuestionTimingSummaryBucket:
+      type: object
+      properties:
+        first_four:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionTimingPositionSummary"
+        positions:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              attempts: { type: integer }
+              correct: { type: integer }
+              wrong: { type: integer }
+              average_elapsed_seconds: { type: number }
+              fastest_elapsed_seconds: { type: integer }
+              slowest_elapsed_seconds: { type: integer }
+            required:
+              - attempts
+              - correct
+              - wrong
+              - average_elapsed_seconds
+              - fastest_elapsed_seconds
+              - slowest_elapsed_seconds
+      required: [first_four, positions]
+
+    QuestionTimingSummaryResponse:
+      type: object
+      properties:
+        localDate:
+          type: string
+          format: date
+        today:
+          $ref: "#/components/schemas/QuestionTimingSummaryBucket"
+        last7day:
+          $ref: "#/components/schemas/QuestionTimingSummaryBucket"
+        last30day:
+          $ref: "#/components/schemas/QuestionTimingSummaryBucket"
+        lifetime:
+          $ref: "#/components/schemas/QuestionTimingSummaryBucket"
+      required: [localDate, today, last7day, last30day, lifetime]
+
+    SubmitAnswerRequest:
+      type: object
+      properties:
+        passage_id: { type: string }
+        question_id: { type: integer }
+        selected_answer: { type: string }
+        local_date:
+          type: string
+          format: date
+        elapsed_seconds:
+          type: integer
+          minimum: 0
+          maximum: 14400
+        display_position:
+          type: integer
+          minimum: 1
+          maximum: 99
+      required: [passage_id, question_id, selected_answer]
+
+    AnswerResult:
+      type: object
+      properties:
+        isCorrect: { type: boolean }
+        selectedAnswer: { type: string }
+        correctAnswer: { type: string }
+        rankedPointsBefore: { type: integer }
+        rankedPointsAfter: { type: integer }
+        rankedPointDelta: { type: integer }
+        lifetimeXpBefore: { type: integer }
+        lifetimeXpAfter: { type: integer }
+        xpDelta: { type: integer }
+        rankBefore: { type: string }
+        rankAfter: { type: string }
+        rankedUp: { type: boolean }
+        rankedDown: { type: boolean }
+      required:
+        - isCorrect
+        - selectedAnswer
+        - correctAnswer
+        - rankedPointsBefore
+        - rankedPointsAfter
+        - rankedPointDelta
+        - lifetimeXpBefore
+        - lifetimeXpAfter
+        - xpDelta
+        - rankBefore
+        - rankAfter
+        - rankedUp
+        - rankedDown
+
+    QuestionTimingAck:
+      type: object
+      properties:
+        elapsed_seconds: { type: integer }
+        display_position: { type: integer }
+        source_question_id: { type: integer }
+        order_index: { type: integer }
+
+    SubmitAnswerResponse:
+      type: object
+      properties:
+        progress:
+          $ref: "#/components/schemas/UserProgress"
+        next_rank_progress:
+          $ref: "#/components/schemas/NextRankProgress"
+        answer_result:
+          $ref: "#/components/schemas/AnswerResult"
+        question_timing:
+          allOf:
+            - $ref: "#/components/schemas/QuestionTimingAck"
+          nullable: true
+      required: [progress, next_rank_progress, answer_result, question_timing]
+
+    SaveVocabBankRequest:
+      type: object
+      properties:
+        term: { type: string }
+        meaning_en:
+          type: string
+          nullable: true
+        meaning_vi:
+          type: string
+          nullable: true
+        example_sentence_en:
+          type: string
+          nullable: true
+        sentence_index:
+          type: integer
+          nullable: true
+        source_passage_id:
+          type: string
+          nullable: true
+        source_passage_title:
+          type: string
+          nullable: true
+        source_band_label:
+          type: string
+          nullable: true
+      required: [term]
+
+    VocabBankItem:
+      type: object
+      properties:
+        term: { type: string }
+        normalized_term: { type: string }
+        meaning_en:
+          type: string
+          nullable: true
+        meaning_vi:
+          type: string
+          nullable: true
+        example_sentence_en:
+          type: string
+          nullable: true
+        sentence_index:
+          type: integer
+          nullable: true
+        source_passage_id:
+          type: string
+          nullable: true
+        source_passage_title:
+          type: string
+          nullable: true
+        source_band_label:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - term
+        - normalized_term
+        - meaning_en
+        - meaning_vi
+        - example_sentence_en
+        - sentence_index
+        - source_passage_id
+        - source_passage_title
+        - source_band_label
+        - created_at
+        - updated_at
+
+    VocabBankEnvelope:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VocabBankItem"
+      required: [items]
+
+    SaveVocabBankResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        already_exists: { type: boolean }
+        item:
+          $ref: "#/components/schemas/VocabBankItem"
+      required: [ok, already_exists, item]
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        public_user_id: { type: string }
+        display_name: { type: string }
+        current_rank: { type: string }
+        ranked_points: { type: integer }
+        lifetime_xp: { type: integer }
+        total_questions_answered: { type: integer }
+        total_correct: { type: integer }
+        total_incorrect: { type: integer }
+        accuracy_percent: { type: integer }
+        position: { type: integer }
+        is_viewer: { type: boolean }
+      required:
+        - public_user_id
+        - display_name
+        - current_rank
+        - ranked_points
+        - lifetime_xp
+        - total_questions_answered
+        - total_correct
+        - total_incorrect
+        - accuracy_percent
+        - position
+        - is_viewer
+
+    LeaderboardEnvelope:
+      type: object
+      properties:
+        scope:
+          type: string
+          enum: [global, rank]
+        rank:
+          type: string
+          nullable: true
+        rank_tiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankTierThreshold"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+        viewer:
+          anyOf:
+            - $ref: "#/components/schemas/LeaderboardEntry"
+            - type: "null"
+      required: [scope, rank, rank_tiers, items, viewer]
+
+    PublicAchievementItem:
+      type: object
+      properties:
+        achievement_key: { type: string }
+        achievement_title: { type: string }
+        achievement_category: { type: string }
+        achievement_tier: { type: string }
+        achievement_xp: { type: integer }
+        unlocked_at:
+          type: string
+          format: date-time
+      required:
+        - achievement_key
+        - achievement_title
+        - achievement_category
+        - achievement_tier
+        - achievement_xp
+        - unlocked_at
+
+    PublicLeaderboardUserStatsEnvelope:
+      type: object
+      properties:
+        local_date:
+          type: string
+          format: date
+        localDate:
+          type: string
+          format: date
+        user:
+          type: object
+          properties:
+            public_user_id: { type: string }
+            display_name: { type: string }
+          required: [public_user_id, display_name]
+        progress:
+          type: object
+          properties:
+            current_rank: { type: string }
+            ranked_points: { type: integer }
+            lifetime_xp: { type: integer }
+            total_questions_answered: { type: integer }
+            total_correct: { type: integer }
+            total_incorrect: { type: integer }
+            accuracy_percent: { type: integer }
+          required:
+            - current_rank
+            - ranked_points
+            - lifetime_xp
+            - total_questions_answered
+            - total_correct
+            - total_incorrect
+            - accuracy_percent
+        positions:
+          type: object
+          properties:
+            global:
+              type: integer
+              nullable: true
+            rank:
+              type: integer
+              nullable: true
+          required: [global, rank]
+        periods:
+          type: object
+          properties:
+            today:
+              $ref: "#/components/schemas/AnswerStatsPeriod"
+            last7:
+              $ref: "#/components/schemas/AnswerStatsPeriod"
+            last30:
+              $ref: "#/components/schemas/AnswerStatsPeriod"
+            lifetime:
+              $ref: "#/components/schemas/AnswerStatsPeriod"
+          required: [today, last7, last30, lifetime]
+        achievements:
+          type: object
+          properties:
+            total_unlocked:
+              type: integer
+            top:
+              type: array
+              items:
+                $ref: "#/components/schemas/PublicAchievementItem"
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/PublicAchievementItem"
+          required: [total_unlocked, top, items]
+      required:
+        - local_date
+        - localDate
+        - user
+        - progress
+        - positions
+        - periods
+        - achievements

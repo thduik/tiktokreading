@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, BookText, BookmarkX, Trash2 } from "lucide-react";
 import { useAppState } from "@/hooks/use-app-state";
-import { fetchPassageList, type PassageListItem } from "@/lib/passages-api";
+import {
+  ensurePassageContentNamespace,
+  fetchPassageList,
+  type PassageListItem,
+} from "@/lib/passages-api";
 import { fetchMyVocabBank, type VocabBankItem } from "@/lib/profile-api";
 import { authEnabled } from "@/lib/runtime-config";
 import { AppPageHeader } from "@/components/app-page-header";
+import { SavedPageContentSkeleton } from "@/components/page-skeletons";
 
 export default function Saved() {
   const { savedCardIds, toggleSaveCard, mistakes, clearMistakes } = useAppState();
@@ -16,6 +21,8 @@ export default function Saved() {
   const [vocabItems, setVocabItems] = useState<VocabBankItem[]>([]);
   const [isLoadingVocab, setIsLoadingVocab] = useState(false);
   const [vocabError, setVocabError] = useState<string | null>(null);
+  const lastLoadedSavedIdsKeyRef = useRef<string>("");
+  const savedIdsKey = useMemo(() => savedCardIds.join("|"), [savedCardIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,10 +34,15 @@ export default function Saved() {
         return;
       }
 
+      if (lastLoadedSavedIdsKeyRef.current === savedIdsKey) {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
+        await ensurePassageContentNamespace({ status: "active" });
         const response = await fetchPassageList({
           ids: savedCardIds,
           status: "active",
@@ -47,6 +59,7 @@ export default function Saved() {
         );
 
         setSavedPassages(sortedItems);
+        lastLoadedSavedIdsKeyRef.current = savedIdsKey;
       } catch (fetchError) {
         if (!cancelled) {
           const message =
@@ -67,7 +80,7 @@ export default function Saved() {
     return () => {
       cancelled = true;
     };
-  }, [savedCardIds]);
+  }, [savedCardIds, savedIdsKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +148,7 @@ export default function Saved() {
           <button
             type="button"
             onClick={() => setActiveTab("saved")}
-            className={`rounded-md text-sm font-semibold transition-colors ${
+            className={`rounded-md text-sm font-semibold ${
               activeTab === "saved"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -146,7 +159,7 @@ export default function Saved() {
           <button
             type="button"
             onClick={() => setActiveTab("mistakes")}
-            className={`rounded-md text-sm font-semibold transition-colors ${
+            className={`rounded-md text-sm font-semibold ${
               activeTab === "mistakes"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -157,7 +170,7 @@ export default function Saved() {
           <button
             type="button"
             onClick={() => setActiveTab("vocab")}
-            className={`rounded-md text-sm font-semibold transition-colors ${
+            className={`rounded-md text-sm font-semibold ${
               activeTab === "vocab"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -185,16 +198,7 @@ export default function Saved() {
         </div>
       )}
 
-      {activeTab === "saved" && isLoading && (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-lg border border-border bg-card"
-            />
-          ))}
-        </div>
-      )}
+      {activeTab === "saved" && isLoading && <SavedPageContentSkeleton />}
 
       {activeTab === "saved" && emptyState && (
         <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">

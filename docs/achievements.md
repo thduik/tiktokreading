@@ -2,13 +2,46 @@
 
 ## Current Status
 
-- Implementation mode: UI/local-first.
-- Active phase: `v1`.
-- Definition source: `artifacts/readtok/src/lib/achievements.ts`.
-- Local unlock storage:
-  `readtok_stats.achievementProgress.unlockedAchievementKeys`.
-- Backend persistence:
-  not required for the current ship; see `docs/adr/0002-ui-first-achievements.md`.
+- Definitions source:
+  `/Users/linhnguyen/Documents/New project 2/tiktokreadingv1/artifacts/readtok/src/lib/achievements.ts`
+- Active unlock phase:
+  `v1` shipped, `v2` definitions still gated.
+- Source of truth:
+  - signed-in users: backend `user_achievements` plus `/api/me/achievements`
+  - local/no-auth mode: `readtok_stats.achievementProgress.unlockedAchievementKeys`
+- Public display:
+  leaderboard user detail panels can show unlocked achievements and achievement XP
+  through public-safe API payloads.
+
+## What Is Backend-Synced Now
+
+For signed-in users, achievement unlocks are no longer local-device only.
+
+Backend persistence:
+
+```sql
+user_achievements
+- user_id
+- achievement_key
+- achievement_title
+- achievement_category
+- achievement_tier
+- achievement_xp
+- unlocked_at
+```
+
+Uniqueness:
+
+```sql
+UNIQUE(user_id, achievement_key)
+```
+
+This means:
+
+- unlocked achievements should survive device switches
+- profile achievement XP/level is backend-derived for authenticated users
+- leaderboard public profile views can safely expose unlocked achievements
+  without leaking private account identifiers
 
 ## Naming Rule
 
@@ -20,101 +53,87 @@ Examples:
 - Good: `Daily Quest Clockwork`
 - Avoid: `Mythic`
 
-This keeps achievements readable, searchable, and easier to reason about in logs/UI.
-
 ## Active V1 Families
 
 - `First Quest / Quest Grinder`:
-  total questions answered.
+  total questions answered
 - `Answer Slayer`:
-  total correct answers.
+  total correct answers
 - `Combo Chain`:
-  best correct-answer streak.
+  best correct-answer streak
 - `Daily Quest`:
-  daily goal completions.
+  daily quest / goal completions
 - `Login Streak`:
-  practice days in a row.
+  practice days in a row
 - `Ranked Climber`:
-  highest reached rank by LP.
+  highest reached rank by LP
 - `Knowledge Vault`:
-  saved passages.
+  saved passages
 - `Mode Completionist`:
-  coverage across question types.
+  coverage across question types
 - `Difficulty Completionist`:
-  coverage across band groups.
+  coverage across band groups
 
-## V2 Definitions Already Prepared
+## V2 Definitions Still Gated
 
-V2 definitions exist behind the `phase: "v2"` flag and are not unlocked by the current UI pass.
+Definitions already exist in code, but they are not fully surfaced as the
+shipping unlock set yet.
 
-- Lifetime accuracy.
-- Rolling accuracy windows: `last20`, `last50`, `last100`.
-- Question type mastery.
-- Question type accuracy.
-- Band-level grinding.
-- LP momentum.
-- Comeback and damage-control achievements.
-- Bug Hunter report achievements.
-- Time-based achievements.
+- Lifetime accuracy
+- Rolling window accuracy
+- Question type mastery
+- Question type accuracy
+- Band-level grind achievements
+- LP momentum
+- Comeback / damage-control achievements
+- Report / QA achievements
+- Time-based achievements
 
 ## Progress Counters
 
-Progress is stored under `UserAchievementProgress`.
+Frontend achievement evaluation still relies on `UserAchievementProgress`.
 
 Important counters:
 
-- `totalQuestionsAnswered`, `totalCorrectAnswers`, `totalWrongAnswers`.
-- `currentCorrectStreak`, `bestCorrectStreak`.
+- `totalQuestionsAnswered`, `totalCorrectAnswers`, `totalWrongAnswers`
+- `currentCorrectStreak`, `bestCorrectStreak`
 - `currentWrongStreak`, `lastWrongStreakBeforeRecovery`,
-  `currentRecoveryCorrectStreak`, `damageControlCount`.
-- `dailyGoalHits`, `dailyAnsweredCount`, `lastDailyGoalDateLocal`.
-- `currentPracticeStreakDays`, `bestPracticeStreakDays`.
-- `questionTypeAttempts`, `questionTypeCorrect`.
-- `bandAttempts`, `bandCorrect`.
-- `currentRank`, `currentLP`, `dailyLPGained`, `bestSingleDayLPGain`.
-- `savedPassageCount`, `reportCount`.
-- `rollingWindows.last20`, `rollingWindows.last50`, `rollingWindows.last100`.
+  `currentRecoveryCorrectStreak`, `damageControlCount`
+- `dailyGoalHits`, `dailyAnsweredCount`, `lastDailyGoalDateLocal`
+- `currentPracticeStreakDays`, `bestPracticeStreakDays`
+- `questionTypeAttempts`, `questionTypeCorrect`
+- `bandAttempts`, `bandCorrect`
+- `currentRank`, `currentLP`, `dailyLPGained`, `bestSingleDayLPGain`
+- `savedPassageCount`, `reportCount`
+- rolling windows for short-term accuracy checks
 
 ## Event Mechanics
 
 ### Answer Submitted
 
-Called from the normal answer reveal flow.
+The normal answer flow updates frontend progress counters immediately for UI
+responsiveness, then signed-in mode can sync unlock batches to the backend.
 
 Updates:
 
-- total answered/correct/wrong counters.
-- daily stats and practice streak.
-- correct streak and wrong streak.
-- comeback counters.
-- question type counters.
-- band group counters.
-- rolling windows.
-- time-of-day counters.
-
-Then checks V1 achievements with trigger:
-
-`ANSWER_SUBMITTED`
-
-If the daily goal crosses `20 questions` for the local date, it also checks:
-
-`DAILY_GOAL_COMPLETED`
+- total answered/correct/wrong counters
+- daily stats and practice streak
+- correct streak / wrong streak
+- comeback counters
+- question type counters
+- band group counters
+- rolling windows
 
 ### Ranked Result
 
-Called after `/me/submit-answer` returns.
+Called after `/api/me/submit-answer` returns.
 
 Updates:
 
-- `currentRank`.
-- `currentLP`.
-- positive-only daily LP gain.
-- best single-day LP gain.
-
-Then checks:
-
-- `RANK_UPDATED`
-- `LP_GAINED` if LP delta is positive
+- `currentRank`
+- `currentLP`
+- positive-only daily LP gain
+- best single-day LP gain
 
 ### Passage Saved
 
@@ -122,11 +141,7 @@ Called when a passage is newly saved.
 
 Updates:
 
-- `savedPassageCount` as the highest known saved-count value.
-
-Then checks:
-
-`PASSAGE_SAVED`
+- `savedPassageCount`
 
 ### Report Submitted
 
@@ -134,63 +149,26 @@ Called only after the official report API succeeds.
 
 Updates:
 
-- `reportCount`.
+- `reportCount`
 
-Then checks:
+## Achievement XP and Level
 
-`REPORT_SUBMITTED`
+Signed-in profile level for achievements is backend-backed from unlocked
+achievement rows:
 
-Report achievements are V2-gated for now.
+- total achievement XP = sum of unlocked `achievement_xp`
+- current achievement level = threshold lookup from total XP
 
-## Normalization
+That value should be treated as the canonical profile display when authenticated.
 
-Question type normalization:
+## Public Identity
 
-- `mcq`, `multiple_choice` => `MCQ`
-- `tfng`, `true_false_not_given` => `TFNG`
-- `sentence_completion` => `SentenceCompletion`
-- `short_answer` => `ShortAnswer`
-- `matching`, `matching_heading`, `matching_information` => `Matching`
+Achievement-related public views must use `user_profiles.public_user_id`, not
+raw Clerk user IDs.
 
-Band group normalization:
+## Operational Rule
 
-- `6`, `6.0`, `Band 6.0` => `Band6`
-- `7`, `7.0`, `Band 7.0` => `Band7`
-- `7.5`, `Band 7.5` => `Band75`
-- `8`, `8.0`, `8.0+`, `Band 8.0+` => `Band8Plus`
+If a future feature changes unlock criteria, update both:
 
-## Rolling Window Mechanism
-
-Rolling windows store compact strings:
-
-- `R` = correct answer
-- `W` = wrong answer
-
-Each new answer appends one character and trims the string:
-
-- `last20`: max 20 chars
-- `last50`: max 50 chars
-- `last100`: max 100 chars
-
-Accuracy is calculated from the string at evaluation time.
-
-This is intentionally simple and local-first. If backend persistence is added later,
-the same compact strings can be stored as text columns or reconstructed from an
-answer-attempt event table.
-
-## Future DB Shape
-
-When cross-device achievement persistence is needed, add:
-
-```sql
-CREATE TABLE user_achievements (
-  user_id text NOT NULL,
-  achievement_key text NOT NULL,
-  unlocked_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (user_id, achievement_key)
-);
-```
-
-Progress can be stored either as explicit columns or as a JSON snapshot. If the
-app needs auditability for rolling windows and achievement replays, add a
-`user_answer_attempts` event table instead of only storing aggregate counters.
+1. the frontend achievement definitions / logic
+2. this document and any public API payload docs that expose achievement data

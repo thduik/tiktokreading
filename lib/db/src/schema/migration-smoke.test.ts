@@ -61,3 +61,30 @@ test("vocab bank migration creates a user-scoped dictionary table", async () => 
   assert.match(sql, /source_passage_id TEXT NULL REFERENCES passages\(id\) ON DELETE SET NULL/i);
   assert.match(sql, /CREATE INDEX IF NOT EXISTS user_vocab_bank_user_created_idx/i);
 });
+
+test("public user id migration backfills and enforces a unique public identifier", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0015_user_profiles_public_user_id.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS public_user_id TEXT/i);
+  assert.match(sql, /UPDATE user_profiles/i);
+  assert.match(sql, /CONCAT\('reader_', SUBSTRING\(md5\(user_id\) FROM 1 FOR 12\)\)/i);
+  assert.match(sql, /ALTER COLUMN public_user_id SET NOT NULL/i);
+  assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS user_profiles_public_user_id_uidx/i);
+});
+
+test("question timing migration creates an append-only timing events table", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0016_user_question_timing_events.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS user_question_timing_events/i);
+  assert.match(sql, /elapsed_seconds INTEGER NOT NULL/i);
+  assert.match(sql, /display_position INTEGER NOT NULL/i);
+  assert.match(sql, /CHECK \(elapsed_seconds >= 0 AND elapsed_seconds <= 14400\)/i);
+  assert.match(sql, /CHECK \(display_position >= 1\)/i);
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS user_question_timing_events_user_date_idx/i);
+});

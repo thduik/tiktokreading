@@ -12,13 +12,14 @@ export type QuestionTypeIndex =
   | "short_answer";
 
 export type AnswerType = "label" | "option_key" | "text";
-export type PassageFactoryTag = "v1" | "v2" | "v3" | "v4";
+export type PassageFactoryTag = "v1" | "v2" | "v3" | "v4" | "v4_5";
 
 export const PASSAGE_FACTORY_TAG_VALUES: PassageFactoryTag[] = [
   "v1",
   "v2",
   "v3",
   "v4",
+  "v4_5",
 ];
 export const PASSAGE_FACTORY_TAG_STORAGE_KEY =
   "readtok_active_factory_tag_filter_v1";
@@ -173,13 +174,29 @@ export interface SubmitPassageReportResponse {
   }>;
 }
 
-const PASSAGE_CACHE_VERSION = "2026-05-11-v4";
-const LIST_CACHE_PREFIX = `readtok_passage_list_cache_${PASSAGE_CACHE_VERSION}:`;
-const DETAIL_CACHE_PREFIX = `readtok_passage_detail_cache_${PASSAGE_CACHE_VERSION}:`;
+const PASSAGE_CACHE_NAMESPACE_STORAGE_PREFIX = "readtok_passage_cache_namespace_v1:";
+const LIST_CACHE_PREFIX = "readtok_passage_list_cache:";
+const DETAIL_CACHE_PREFIX = "readtok_passage_detail_cache:";
+const IDS_CACHE_PREFIX = "readtok_passage_ids_cache:";
+const FEED_BOOTSTRAP_CACHE_PREFIX = "readtok_passage_feed_bootstrap_cache:";
 const LEGACY_LIST_CACHE_PREFIX = "readtok_passage_list_cache_";
 const LEGACY_DETAIL_CACHE_PREFIX = "readtok_passage_detail_cache_";
-const listMemoryCache = new Map<string, PassageListResponse>();
-const detailMemoryCache = new Map<string, PassageDetail>();
+const PASSAGE_API_CACHE_TTL_MS = 10 * 60 * 1000;
+const listMemoryCache = new Map<string, CachedPayloadRecord<PassageListResponse>>();
+const detailMemoryCache = new Map<string, CachedPayloadRecord<PassageDetail>>();
+const idsMemoryCache = new Map<string, CachedPayloadRecord<PassageIdsResponse>>();
+const feedBootstrapMemoryCache = new Map<
+  string,
+  CachedPayloadRecord<PassageFeedBootstrapResponse>
+>();
+const passageNamespaceInflight = new Map<string, Promise<string>>();
+const PASSAGE_CACHE_NAMESPACE_TTL_MS = 5 * 60 * 1000;
+type CachedPayloadRecord<T> = {
+  version: 1;
+  cachedAt: number;
+  expiresAt: number;
+  payload: T;
+};
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -190,7 +207,7 @@ function purgeLegacyPassageCaches() {
     return;
   }
 
-  const markerKey = `readtok_passage_cache_migrated_${PASSAGE_CACHE_VERSION}`;
+  const markerKey = "readtok_passage_cache_migrated_namespace_v1";
   if (window.localStorage.getItem(markerKey) === "true") {
     return;
   }
@@ -221,6 +238,80 @@ function purgeLegacyPassageCaches() {
 
 purgeLegacyPassageCaches();
 
+type PassageContentNamespaceRecord = {
+  version: string;
+  checkedAt: number;
+};
+
+function buildPassageNamespaceScopeKey({
+  status = "active",
+  languageCode,
+  factoryTag,
+}: {
+  status?: string;
+  languageCode?: string;
+  factoryTag?: PassageFactoryTag | null;
+}) {
+  return `${status}|${languageCode ?? "all"}|${factoryTag ?? "all"}`;
+}
+
+function buildPassageNamespaceStorageKey(scopeKey: string) {
+  return `${PASSAGE_CACHE_NAMESPACE_STORAGE_PREFIX}${scopeKey}`;
+}
+
+function readPassageContentNamespace(scopeKey: string) {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(buildPassageNamespaceStorageKey(scopeKey));
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as PassageContentNamespaceRecord | null;
+    if (
+      !parsed ||
+      typeof parsed.version !== "string" ||
+      typeof parsed.checkedAt !== "number"
+    ) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writePassageContentNamespace(scopeKey: string, version: string) {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    buildPassageNamespaceStorageKey(scopeKey),
+    JSON.stringify({
+      version,
+      checkedAt: Date.now(),
+    } satisfies PassageContentNamespaceRecord),
+  );
+}
+
+function getPassageCacheNamespace(scopeKey: string) {
+  return readPassageContentNamespace(scopeKey)?.version ?? "bootstrap";
+}
+
+function buildListCacheStorageKey(cacheKey: string, scopeKey: string) {
+  return `${LIST_CACHE_PREFIX}${getPassageCacheNamespace(scopeKey)}:${cacheKey}`;
+}
+
+function buildDetailCacheStorageKey(cacheKey: string) {
+  const globalScopeKey = buildPassageNamespaceScopeKey({ status: "active" });
+  return `${DETAIL_CACHE_PREFIX}${getPassageCacheNamespace(globalScopeKey)}:${cacheKey}`;
+}
+
 export function normalizePassageFactoryTag(
   raw: string | null | undefined,
 ): PassageFactoryTag | null {
@@ -228,7 +319,7 @@ export function normalizePassageFactoryTag(
     return null;
   }
 
-  const normalized = raw.trim().toLowerCase();
+  const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
   if (
     PASSAGE_FACTORY_TAG_VALUES.includes(normalized as PassageFactoryTag)
   ) {
@@ -236,6 +327,16 @@ export function normalizePassageFactoryTag(
   }
 
   return null;
+}
+
+export function formatPassageFactoryTagLabel(factoryTag: string | null | undefined) {
+  if (!factoryTag) {
+    return "";
+  }
+
+  const normalized = factoryTag.trim().toLowerCase().replace(/^v/, "");
+  const labelValue = normalized.replace(/_/g, ".");
+  return `V${labelValue}`;
 }
 
 export function readStoredPassageFactoryTag() {
@@ -273,22 +374,80 @@ function readCachedValue<T>(storageKey: string): T | null {
     if (!raw) {
       return null;
     }
-    return JSON.parse(raw) as T;
+    const parsed = JSON.parse(raw) as CachedPayloadRecord<T> | null;
+    if (
+      !parsed ||
+      parsed.version !== 1 ||
+      typeof parsed.cachedAt !== "number" ||
+      typeof parsed.expiresAt !== "number" ||
+      !("payload" in parsed)
+    ) {
+      window.localStorage.removeItem(storageKey);
+      return null;
+    }
+    if (!Number.isFinite(parsed.expiresAt) || parsed.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(storageKey);
+      return null;
+    }
+    return parsed.payload;
   } catch {
     return null;
   }
 }
 
-function writeCachedValue<T>(storageKey: string, value: T) {
+function writeCachedValue<T>(
+  storageKey: string,
+  value: T,
+  ttlMs = PASSAGE_API_CACHE_TTL_MS,
+) {
   if (!canUseStorage()) {
     return;
   }
 
   try {
-    window.localStorage.setItem(storageKey, JSON.stringify(value));
+    const now = Date.now();
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        version: 1,
+        cachedAt: now,
+        expiresAt: now + ttlMs,
+        payload: value,
+      } satisfies CachedPayloadRecord<T>),
+    );
   } catch {
     // Ignore storage write failures and continue with in-memory cache.
   }
+}
+
+function readMemoryCachedValue<T>(
+  cache: Map<string, CachedPayloadRecord<T>>,
+  key: string,
+) {
+  const record = cache.get(key);
+  if (!record) {
+    return null;
+  }
+  if (!Number.isFinite(record.expiresAt) || record.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+  return record.payload;
+}
+
+function writeMemoryCachedValue<T>(
+  cache: Map<string, CachedPayloadRecord<T>>,
+  key: string,
+  payload: T,
+  ttlMs = PASSAGE_API_CACHE_TTL_MS,
+) {
+  const now = Date.now();
+  cache.set(key, {
+    version: 1,
+    cachedAt: now,
+    expiresAt: now + ttlMs,
+    payload,
+  });
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -305,6 +464,94 @@ async function fetchJson<T>(url: string): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+async function fetchPassageIdsUncached({
+  status = "active",
+  languageCode,
+  factoryTag,
+}: {
+  status?: string;
+  languageCode?: string;
+  factoryTag?: PassageFactoryTag;
+} = {}) {
+  const searchParams = new URLSearchParams();
+  if (status !== undefined) {
+    searchParams.set("status", status);
+  }
+  if (languageCode !== undefined) {
+    searchParams.set("language_code", languageCode);
+  }
+  if (factoryTag !== undefined) {
+    searchParams.set("factory_tag", factoryTag);
+  }
+
+  const query = searchParams.toString();
+  const url = `${API_BASE}/passages/ids${query ? `?${query}` : ""}`;
+  return fetchJson<PassageIdsResponse>(url);
+}
+
+function syncPassageContentNamespace({
+  status = "active",
+  languageCode,
+  factoryTag,
+  version,
+}: {
+  status?: string;
+  languageCode?: string;
+  factoryTag?: PassageFactoryTag | null;
+  version: string;
+}) {
+  writePassageContentNamespace(
+    buildPassageNamespaceScopeKey({ status, languageCode, factoryTag }),
+    version,
+  );
+  writePassageContentNamespace(
+    buildPassageNamespaceScopeKey({ status: "active" }),
+    version,
+  );
+}
+
+export async function ensurePassageContentNamespace({
+  status = "active",
+  languageCode,
+  factoryTag,
+}: {
+  status?: string;
+  languageCode?: string;
+  factoryTag?: PassageFactoryTag | null;
+} = {}) {
+  const scopeKey = buildPassageNamespaceScopeKey({ status, languageCode, factoryTag });
+  const existing = readPassageContentNamespace(scopeKey);
+  if (existing && Date.now() - existing.checkedAt < PASSAGE_CACHE_NAMESPACE_TTL_MS) {
+    return existing.version;
+  }
+
+  const inflight = passageNamespaceInflight.get(scopeKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const request = fetchPassageIdsUncached({
+    status,
+    languageCode,
+    factoryTag: factoryTag ?? undefined,
+  })
+    .then((response) => {
+      syncPassageContentNamespace({
+        status,
+        languageCode,
+        factoryTag,
+        version: response.version,
+      });
+      return response.version;
+    })
+    .finally(() => {
+      passageNamespaceInflight.delete(scopeKey);
+    });
+
+  passageNamespaceInflight.set(scopeKey, request);
+  return request;
 }
 
 export async function fetchPassageList(filters: PassageListFilters = {}) {
@@ -347,21 +594,26 @@ export async function fetchPassageList(filters: PassageListFilters = {}) {
   const query = searchParams.toString();
   const url = `${API_BASE}/passages${query ? `?${query}` : ""}`;
   const cacheKey = query || "__default__";
-  const storageKey = `${LIST_CACHE_PREFIX}${cacheKey}`;
+  const scopeKey = buildPassageNamespaceScopeKey({
+    status: filters.status ?? "active",
+    languageCode: filters.language_code,
+    factoryTag: filters.factory_tag,
+  });
+  const storageKey = buildListCacheStorageKey(cacheKey, scopeKey);
 
-  const cachedMemory = listMemoryCache.get(cacheKey);
+  const cachedMemory = readMemoryCachedValue(listMemoryCache, storageKey);
   if (cachedMemory) {
     return cachedMemory;
   }
 
   const cachedStorage = readCachedValue<PassageListResponse>(storageKey);
   if (cachedStorage) {
-    listMemoryCache.set(cacheKey, cachedStorage);
+    writeMemoryCachedValue(listMemoryCache, storageKey, cachedStorage);
     return cachedStorage;
   }
 
   const response = await fetchJson<PassageListResponse>(url);
-  listMemoryCache.set(cacheKey, response);
+  writeMemoryCachedValue(listMemoryCache, storageKey, response);
   writeCachedValue(storageKey, response);
   return response;
 }
@@ -385,10 +637,42 @@ export async function fetchPassageIds({
   if (factoryTag !== undefined) {
     searchParams.set("factory_tag", factoryTag);
   }
+  const query = searchParams.toString() || "__default__";
+  const storageKey = `${IDS_CACHE_PREFIX}${query}`;
 
-  const query = searchParams.toString();
-  const url = `${API_BASE}/passages/ids${query ? `?${query}` : ""}`;
-  return fetchJson<PassageIdsResponse>(url);
+  const cachedMemory = readMemoryCachedValue(idsMemoryCache, storageKey);
+  if (cachedMemory) {
+    syncPassageContentNamespace({
+      status,
+      languageCode,
+      factoryTag: factoryTag ?? null,
+      version: cachedMemory.version,
+    });
+    return cachedMemory;
+  }
+
+  const cachedStorage = readCachedValue<PassageIdsResponse>(storageKey);
+  if (cachedStorage) {
+    writeMemoryCachedValue(idsMemoryCache, storageKey, cachedStorage);
+    syncPassageContentNamespace({
+      status,
+      languageCode,
+      factoryTag: factoryTag ?? null,
+      version: cachedStorage.version,
+    });
+    return cachedStorage;
+  }
+
+  const response = await fetchPassageIdsUncached({ status, languageCode, factoryTag });
+  writeMemoryCachedValue(idsMemoryCache, storageKey, response);
+  writeCachedValue(storageKey, response);
+  syncPassageContentNamespace({
+    status,
+    languageCode,
+    factoryTag: factoryTag ?? null,
+    version: response.version,
+  });
+  return response;
 }
 
 export async function fetchPassageFeedBootstrap({
@@ -423,7 +707,41 @@ export async function fetchPassageFeedBootstrap({
 
   const query = searchParams.toString();
   const url = `${API_BASE}/passages/feed-bootstrap${query ? `?${query}` : ""}`;
-  return fetchJson<PassageFeedBootstrapResponse>(url);
+  const storageKey = `${FEED_BOOTSTRAP_CACHE_PREFIX}${query || "__default__"}`;
+
+  const cachedMemory = readMemoryCachedValue(feedBootstrapMemoryCache, storageKey);
+  if (cachedMemory) {
+    syncPassageContentNamespace({
+      status,
+      languageCode,
+      factoryTag: factoryTag ?? null,
+      version: cachedMemory.version,
+    });
+    return cachedMemory;
+  }
+
+  const cachedStorage = readCachedValue<PassageFeedBootstrapResponse>(storageKey);
+  if (cachedStorage) {
+    writeMemoryCachedValue(feedBootstrapMemoryCache, storageKey, cachedStorage);
+    syncPassageContentNamespace({
+      status,
+      languageCode,
+      factoryTag: factoryTag ?? null,
+      version: cachedStorage.version,
+    });
+    return cachedStorage;
+  }
+
+  const response = await fetchJson<PassageFeedBootstrapResponse>(url);
+  writeMemoryCachedValue(feedBootstrapMemoryCache, storageKey, response);
+  writeCachedValue(storageKey, response);
+  syncPassageContentNamespace({
+    status,
+    languageCode,
+    factoryTag: factoryTag ?? null,
+    version: response.version,
+  });
+  return response;
 }
 
 export async function fetchPassageDetail(id: string, includeAnswerKey = true) {
@@ -437,37 +755,37 @@ export async function fetchPassageDetail(id: string, includeAnswerKey = true) {
     query ? `?${query}` : ""
   }`;
   const cacheKey = `${id}|${includeAnswerKey ? "1" : "0"}`;
-  const storageKey = `${DETAIL_CACHE_PREFIX}${cacheKey}`;
+  const storageKey = buildDetailCacheStorageKey(cacheKey);
 
-  const cachedMemory = detailMemoryCache.get(cacheKey);
+  const cachedMemory = readMemoryCachedValue(detailMemoryCache, storageKey);
   if (cachedMemory) {
     return cachedMemory;
   }
 
   const cachedStorage = readCachedValue<PassageDetail>(storageKey);
   if (cachedStorage) {
-    detailMemoryCache.set(cacheKey, cachedStorage);
+    writeMemoryCachedValue(detailMemoryCache, storageKey, cachedStorage);
     return cachedStorage;
   }
 
   const response = await fetchJson<PassageDetail>(url);
-  detailMemoryCache.set(cacheKey, response);
+  writeMemoryCachedValue(detailMemoryCache, storageKey, response);
   writeCachedValue(storageKey, response);
   return response;
 }
 
 export function getCachedPassageDetail(id: string, includeAnswerKey = true) {
   const cacheKey = `${id}|${includeAnswerKey ? "1" : "0"}`;
-  const storageKey = `${DETAIL_CACHE_PREFIX}${cacheKey}`;
+  const storageKey = buildDetailCacheStorageKey(cacheKey);
 
-  const cachedMemory = detailMemoryCache.get(cacheKey);
+  const cachedMemory = readMemoryCachedValue(detailMemoryCache, storageKey);
   if (cachedMemory) {
     return cachedMemory;
   }
 
   const cachedStorage = readCachedValue<PassageDetail>(storageKey);
   if (cachedStorage) {
-    detailMemoryCache.set(cacheKey, cachedStorage);
+    writeMemoryCachedValue(detailMemoryCache, storageKey, cachedStorage);
     return cachedStorage;
   }
 

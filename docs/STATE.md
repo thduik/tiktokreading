@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-05-10 (UTC)
+Last updated: 2026-05-14 (UTC)
 
 ## Product Snapshot
 
@@ -34,8 +34,9 @@ Last updated: 2026-05-10 (UTC)
 - Feedback settings:
   Profile includes optional sound and haptics toggles for answer reactions.
 - Achievements:
-  V1 achievement engine is UI/local-first, with Profile progress display and
-  Feed unlock toast. V2 definitions are present behind a phase flag.
+  Unlock definitions still live in the frontend, but signed-in unlocks now sync
+  to backend `user_achievements`. Profile and leaderboard achievement views
+  should treat the API as the source of truth for unlocked achievements and XP.
 - Rank identity:
   ranked LP now renders as subdivision plates such as `Bronze IV` through
   `Bronze I`, with a compact plate in Feed and a fuller plate in Profile.
@@ -53,11 +54,19 @@ Last updated: 2026-05-10 (UTC)
   Feed bootstrap now receives `40` random passage details plus the full active
   passage ID pool. The UI owns the random queue and excludes already-shown IDs
   locally, so Feed is no longer capped to the first ordered `500` passages.
+- Passage cache versioning:
+  client passage list/detail caches no longer rely on manual hardcoded version
+  bumps. The frontend derives a cache namespace from `/api/passages/ids` or
+  `/api/passages/feed-bootstrap` `version` values and stores cache entries under
+  that namespace.
 - Redis cache policy:
   Public read-heavy data uses Redis when `REDIS_URL` is configured: passage
   lists, passage details, passage ID pools, rank tiers, and short-lived
   leaderboard rows. Private/user/admin mutation routes are intentionally not
   shared-cacheable.
+- Public identity:
+  leaderboard and public user profile lookups use `user_profiles.public_user_id`
+  instead of exposing raw Clerk IDs.
 - Admin reports:
   `/admin` uses env-based admin auth and reads aggregated
   `passage_report_counts` from `/api/admin/reports`.
@@ -70,6 +79,10 @@ Last updated: 2026-05-10 (UTC)
   Signed-in answer submissions upsert `user_daily_answer_stats` rows by
   `user + local_date + band_group + question_type`. Today, last 7 days,
   last 30 days, and lifetime stats are calculated from those daily rows.
+- Question timing:
+  signed-in answer submissions can also append `user_question_timing_events`
+  with `elapsed_seconds` and visible `display_position`. `/api/me/question-timing-summary`
+  aggregates those events for profile pacing views.
 - Synced profile stats:
   Signed-in Profile headline cards now read from `/api/me/dashboard-stats`
   instead of device-local storage. Current streak, daily goal, lifetime
@@ -77,6 +90,15 @@ Last updated: 2026-05-10 (UTC)
   backend-backed for cross-device consistency. Authenticated profile stats and
   answer submission routes ensure the profile row exists before reading/writing,
   so a new device cannot miss writes while profile bootstrap is still racing.
+- Local-vs-server state boundary:
+  for hosted auth mode, backend-owned user state must not be persisted in
+  browser localStorage. `use-app-state` now treats only onboarding flags, feed
+  runtime/session preferences, feedback settings, saved IDs, and local-only
+  mistake/session UX as client-owned.
+- API contracts:
+  `lib/api-spec/openapi.yaml` now documents the main production surface
+  (`/me`, `/passages`, `/leaderboard`, vocab, achievements, timing, reports),
+  and Orval generation targets `lib/api-client-react` plus `lib/api-zod`.
 - Production auth guard:
   On non-local hostnames, missing Clerk runtime config now shows a production
   config error instead of silently falling Profile back to local mode. The VPS
@@ -88,7 +110,8 @@ Last updated: 2026-05-10 (UTC)
   debugging.
 - Tests:
   `corepack pnpm run test` covers ranking, answer analytics helpers, daily goal,
-  rank plates, migration smoke checks, and ingest normalization.
+  rank plates, passage feed runtime helpers, profile-store helpers, migration
+  smoke checks, and ingest normalization.
 - Passage ingestion:
   NDJSON ingest scripts with anomaly checks/fixes in DB tooling. V2 mixed-card
   ingest supports matching-style option keys beyond `D`.
@@ -107,16 +130,19 @@ Last updated: 2026-05-10 (UTC)
 ## Known Constraints
 
 - Some build logs include non-blocking source-map warnings from upstream packages.
-- Frontend state is intentionally local-first for gamification UX speed.
-- Achievement unlocks are local-device only until backend persistence is added.
+- Some UX/session state remains intentionally local-first for responsiveness,
+  but signed-in profile/achievement/rank data should be treated as backend-owned.
 - Answer analytics are backend-backed for signed-in users only; local mode still
-  uses local Profile counters.
+  uses local Profile counters and should be considered best-effort only.
 - Agent sessions should use docs in this directory as source of truth, not removed legacy files.
 
 ## Next Priorities
 
-1. Use answer analytics for a lightweight "Next Best Practice" suggestion.
-2. Optional backend persistence for achievement snapshots/unlocks.
-3. Mistakes flow or lightweight mistake-saving layer.
+1. Add API integration tests for `/api/me/submit-answer`, dashboard stats, and
+   leaderboard public profile stats.
+2. Add Playwright smoke coverage for feed open, answer submit, profile load,
+   and leaderboard floating detail.
+3. Continue splitting `passage-detail.tsx` and `routes/me.ts` into narrower
+   services/hooks now that shared helpers are extracted.
 4. Restore production `REDIS_URL` and verify live `x-cache` headers show
    `MISS -> HIT` for cacheable endpoints.

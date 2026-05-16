@@ -114,6 +114,7 @@ export interface AchievementDefinition {
   condition: AchievementCondition;
   icon: string;
   phase: AchievementPhase;
+  achievementXp: number;
 }
 
 export interface UserAchievementProgress {
@@ -172,6 +173,16 @@ export interface RankedAchievementContext {
   now?: Date;
 }
 
+export interface AchievementLevelProgress {
+  totalXp: number;
+  currentLevel: number;
+  currentLevelXpFloor: number;
+  nextLevelXpFloor: number | null;
+  xpIntoLevel: number;
+  xpNeededForNextLevel: number;
+  progressPercent: number;
+}
+
 export const RANK_ORDER: Record<Rank, number> = {
   Bronze: 1,
   Silver: 2,
@@ -182,6 +193,10 @@ export const RANK_ORDER: Record<Rank, number> = {
   Grandmaster: 7,
   Challenger: 8,
 };
+
+const ACHIEVEMENT_LEVEL_THRESHOLDS = [
+  0, 120, 280, 480, 740, 1060, 1440, 1880, 2380, 2940, 3560, 4240,
+] as const;
 
 const zeroQuestionTypeRecord = (): Record<QuestionType, number> => ({
   MCQ: 0,
@@ -699,7 +714,70 @@ const bandAchievements: Array<[BandGroup, string, string, string, Array<[string,
   ],
 ];
 
-export const ACHIEVEMENTS: AchievementDefinition[] = [
+type AchievementDefinitionBase = Omit<AchievementDefinition, "achievementXp">;
+
+function resolveTierWeight(tier: string) {
+  const normalized = normalizeString(tier);
+  if (["tutorial", "first", "sampler", "spark", "scout", "trail", "basecamp", "bronze"].some((token) => normalized.includes(token))) {
+    return 1;
+  }
+  if (["rookie", "adept", "explorer", "silver", "striker", "chase"].some((token) => normalized.includes(token))) {
+    return 1.25;
+  }
+  if (["runner", "specialist", "gold", "claim", "summit", "hard_mode", "precision"].some((token) => normalized.includes(token))) {
+    return 1.55;
+  }
+  if (["veteran", "master", "elite", "platinum", "nightmare", "momentum", "legend"].some((token) => normalized.includes(token))) {
+    return 1.95;
+  }
+  if (["machine", "mythic", "diamond", "surgical", "rocket", "grandmaster", "challenger", "overlord"].some((token) => normalized.includes(token))) {
+    return 2.5;
+  }
+  return 1.35;
+}
+
+function resolveCategoryWeight(category: AchievementCategory) {
+  switch (category) {
+    case "core_progress":
+    case "correct_answers":
+      return 1.2;
+    case "streak":
+    case "practice_streak":
+    case "exploration":
+      return 1.35;
+    case "daily_goal":
+    case "collection":
+    case "quality":
+      return 1.1;
+    case "ranked":
+    case "lp_momentum":
+    case "accuracy":
+      return 1.65;
+    case "comeback":
+    case "question_type_accuracy":
+    case "band_level":
+      return 1.8;
+    case "question_type_mastery":
+      return 1.5;
+    case "time_based":
+      return 1.4;
+    default:
+      return 1.25;
+  }
+}
+
+function resolvePhaseWeight(phase: AchievementPhase) {
+  return phase === "v2" ? 1.25 : 1;
+}
+
+function computeAchievementXp(definition: AchievementDefinitionBase) {
+  const baseXp = 24;
+  const weighted = baseXp * resolveTierWeight(definition.tier) * resolveCategoryWeight(definition.category) * resolvePhaseWeight(definition.phase);
+  const rounded = Math.round(weighted / 5) * 5;
+  return Math.max(20, rounded);
+}
+
+const ACHIEVEMENT_DEFINITIONS: AchievementDefinitionBase[] = [
   ...coreProgress.map(([key, tier, title, target]) => ({
     key,
     family: "First Quest / Quest Grinder",
@@ -1018,6 +1096,13 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
   })),
 ];
 
+export const ACHIEVEMENTS: AchievementDefinition[] = ACHIEVEMENT_DEFINITIONS.map(
+  (achievement) => ({
+    ...achievement,
+    achievementXp: computeAchievementXp(achievement),
+  }),
+);
+
 export function evaluateAchievementCondition(
   achievement: AchievementDefinition,
   progress: UserAchievementProgress,
@@ -1065,12 +1150,17 @@ export function evaluateAchievementCondition(
 export function unlockAchievementsForTriggers(
   progress: UserAchievementProgress,
   triggers: AchievementTrigger[],
-  activePhase: AchievementPhase = "v1",
+  activePhase: AchievementPhase = "v2",
 ) {
+  const phaseOrder: Record<AchievementPhase, number> = {
+    v1: 1,
+    v2: 2,
+  };
+  const activePhaseOrder = phaseOrder[activePhase] ?? 1;
   const unlockedKeySet = new Set(progress.unlockedAchievementKeys);
   const newlyUnlocked = ACHIEVEMENTS.filter(
     (achievement) =>
-      achievement.phase === activePhase &&
+      phaseOrder[achievement.phase] <= activePhaseOrder &&
       triggers.includes(achievement.trigger) &&
       !unlockedKeySet.has(achievement.key) &&
       evaluateAchievementCondition(achievement, progress),
@@ -1300,5 +1390,86 @@ export function applyReportAchievementProgress(previousProgress: UserAchievement
       reportCount: previousProgress.reportCount + 1,
     },
     triggers: ["REPORT_SUBMITTED"] satisfies AchievementTrigger[],
+  };
+}
+
+export function getAchievementDefinitionByKey(key: string) {
+  return ACHIEVEMENTS.find((achievement) => achievement.key === key) ?? null;
+}
+
+export function mergeAchievementUnlockKeys(
+  localKeys: string[],
+  remoteKeys: string[],
+) {
+  const merged = new Set<string>();
+  for (const key of [...localKeys, ...remoteKeys]) {
+    if (typeof key !== "string") continue;
+    const normalized = key.trim();
+    if (!normalized) continue;
+    merged.add(normalized);
+  }
+  return [...merged];
+}
+
+export function buildAchievementUnlockSyncPayload(unlockedKeys: string[]) {
+  const uniqueKeys = new Set(unlockedKeys);
+  const payload: Array<{
+    key: string;
+    title: string;
+    category: string;
+    tier: string;
+    xp: number;
+  }> = [];
+  for (const achievement of ACHIEVEMENTS) {
+    if (!uniqueKeys.has(achievement.key)) continue;
+    payload.push({
+      key: achievement.key,
+      title: achievement.title,
+      category: achievement.category,
+      tier: achievement.tier,
+      xp: achievement.achievementXp,
+    });
+  }
+  return payload;
+}
+
+export function calculateAchievementXpFromKeys(unlockedKeys: string[]) {
+  const keySet = new Set(unlockedKeys);
+  return ACHIEVEMENTS.reduce((sum, achievement) => {
+    if (!keySet.has(achievement.key)) {
+      return sum;
+    }
+    return sum + Math.max(0, achievement.achievementXp);
+  }, 0);
+}
+
+export function getAchievementLevelProgress(totalXp: number): AchievementLevelProgress {
+  const safeXp = Number.isFinite(totalXp) ? Math.max(0, Math.trunc(totalXp)) : 0;
+  let levelIndex = 0;
+  for (let index = 0; index < ACHIEVEMENT_LEVEL_THRESHOLDS.length; index += 1) {
+    if (safeXp >= ACHIEVEMENT_LEVEL_THRESHOLDS[index]) {
+      levelIndex = index;
+    } else {
+      break;
+    }
+  }
+  const currentLevelXpFloor = ACHIEVEMENT_LEVEL_THRESHOLDS[levelIndex] ?? 0;
+  const nextLevelXpFloor = ACHIEVEMENT_LEVEL_THRESHOLDS[levelIndex + 1] ?? null;
+  const xpIntoLevel = safeXp - currentLevelXpFloor;
+  const xpRange = nextLevelXpFloor === null ? 1 : Math.max(1, nextLevelXpFloor - currentLevelXpFloor);
+  const progressPercent =
+    nextLevelXpFloor === null
+      ? 100
+      : Math.max(0, Math.min(100, Math.round((xpIntoLevel / xpRange) * 100)));
+
+  return {
+    totalXp: safeXp,
+    currentLevel: levelIndex + 1,
+    currentLevelXpFloor,
+    nextLevelXpFloor,
+    xpIntoLevel: Math.max(0, xpIntoLevel),
+    xpNeededForNextLevel:
+      nextLevelXpFloor === null ? 0 : Math.max(0, nextLevelXpFloor - safeXp),
+    progressPercent,
   };
 }

@@ -35,6 +35,10 @@ export function passageIdsCacheKey(params: Record<string, CacheScalar>) {
   return `${CACHE_NAMESPACE}:passages:ids:${stableParamString(params)}`;
 }
 
+export function passagesSearchCatalogCacheKey(params: Record<string, CacheScalar>) {
+  return `${CACHE_NAMESPACE}:passages:search-catalog:${stableParamString(params)}`;
+}
+
 export function passageDetailCacheKey({
   id,
   includeAnswerKey,
@@ -49,6 +53,10 @@ export function passageDetailCacheKey({
 
 export function leaderboardRowsCacheKey(params: Record<string, CacheScalar>) {
   return `${CACHE_NAMESPACE}:leaderboard:rows:${stableParamString(params)}`;
+}
+
+export function leaderboardUserStatsCacheKey(params: Record<string, CacheScalar>) {
+  return `${CACHE_NAMESPACE}:leaderboard:user-stats:${stableParamString(params)}`;
 }
 
 export function rankTiersCacheKey() {
