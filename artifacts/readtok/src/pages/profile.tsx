@@ -1,6 +1,6 @@
 import { useAppState } from "@/hooks/use-app-state";
 import { useUser, useClerk } from "@clerk/react";
-import { useEffect, useMemo, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
   BarChart3,
@@ -25,12 +25,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { AppPageHeader } from "@/components/app-page-header";
-import {
-  DAILY_QUESTION_GOAL,
-  formatLocalDayKey,
-  getDailyGoalProgress,
-} from "@/lib/daily-goal";
+import { formatLocalDayKey } from "@/lib/daily-goal";
 import { ACHIEVEMENTS } from "@/lib/achievements";
+import {
+  DAILY_QUEST_MILESTONE_BONUS_XP,
+  DAILY_QUEST_PROGRESS_MILESTONES,
+  DAILY_QUEST_PROGRESS_POINTS_PER_QUEST,
+  buildDailyQuestBoard,
+} from "@/lib/daily-quests";
 import {
   bootstrapMyProfile,
   fetchMyDashboardStats,
@@ -52,6 +54,62 @@ import {
   normalizeRankTiers,
 } from "@/lib/rank-visual";
 import { authEnabled } from "@/lib/runtime-config";
+
+const APP_PROFILE_VERSION = "v1.0.6";
+
+type ProfileCrashGuardProps = {
+  children: ReactNode;
+};
+
+type ProfileCrashGuardState = {
+  hasError: boolean;
+  errorMessage: string;
+};
+
+class ProfileCrashGuard extends Component<ProfileCrashGuardProps, ProfileCrashGuardState> {
+  state: ProfileCrashGuardState = { hasError: false, errorMessage: "" };
+
+  static getDerivedStateFromError(error: unknown) {
+    let errorMessage = "Unknown profile error";
+    if (error instanceof Error && typeof error.message === "string" && error.message.length > 0) {
+      errorMessage = error.message;
+    } else if (typeof error === "string" && error.length > 0) {
+      errorMessage = error;
+    }
+    return { hasError: true, errorMessage };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Profile page crashed", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10">
+          <AppPageHeader title="Your Stats" />
+          <Card className="relative mb-3 overflow-hidden rounded-lg border-destructive/35 bg-card">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-destructive">
+                Profile temporarily unavailable
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Reload once. If this repeats, report this build version to admin: {APP_PROFILE_VERSION}
+              </p>
+              {this.state.errorMessage ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Error: {this.state.errorMessage}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function formatDayKey(date: Date) {
   return formatLocalDayKey(date);
@@ -75,12 +133,83 @@ function clampAccuracy(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+type DailyQuestProgressState = {
+  totalPoints: number;
+  awardedByDay: Record<string, string[]>;
+  awardedMilestones: number[];
+};
+
+const defaultDailyQuestProgressState: DailyQuestProgressState = {
+  totalPoints: 0,
+  awardedByDay: {},
+  awardedMilestones: [],
+};
+
+function readDailyQuestProgressState(): DailyQuestProgressState {
+  if (typeof window === "undefined") {
+    return defaultDailyQuestProgressState;
+  }
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(DAILY_QUEST_PROGRESS_STORAGE_KEY) ?? "null",
+    ) as Partial<DailyQuestProgressState> | null;
+    if (!parsed || typeof parsed !== "object") {
+      return defaultDailyQuestProgressState;
+    }
+    const awardedByDayRaw =
+      parsed.awardedByDay && typeof parsed.awardedByDay === "object"
+        ? parsed.awardedByDay
+        : {};
+    const awardedByDay: Record<string, string[]> = {};
+    for (const [dayKey, value] of Object.entries(awardedByDayRaw)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey) || !Array.isArray(value)) continue;
+      awardedByDay[dayKey] = value.filter(
+        (item): item is string => typeof item === "string" && item.length > 0,
+      );
+    }
+    const awardedMilestones = Array.isArray(parsed.awardedMilestones)
+      ? parsed.awardedMilestones.filter(
+          (value): value is number =>
+            typeof value === "number" &&
+            Number.isInteger(value) &&
+            DAILY_QUEST_PROGRESS_MILESTONES.includes(value as (typeof DAILY_QUEST_PROGRESS_MILESTONES)[number]),
+        )
+      : [];
+    return {
+      totalPoints:
+        typeof parsed.totalPoints === "number" && Number.isFinite(parsed.totalPoints)
+          ? Math.max(0, Math.trunc(parsed.totalPoints))
+          : 0,
+      awardedByDay,
+      awardedMilestones,
+    };
+  } catch {
+    return defaultDailyQuestProgressState;
+  }
+}
+
+function writeDailyQuestProgressState(nextState: DailyQuestProgressState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      DAILY_QUEST_PROGRESS_STORAGE_KEY,
+      JSON.stringify(nextState),
+    );
+  } catch {
+    // ignore local storage write failures
+  }
+}
+
 const answerStatsPeriodOptions = [
   { key: "todayData", label: "Today" },
   { key: "last7dayData", label: "7 Days" },
   { key: "last30dayData", label: "30 Days" },
   { key: "lifetimeData", label: "Lifetime" },
 ] as const;
+
+const DAILY_QUEST_PROGRESS_STORAGE_KEY = "readtok_daily_quest_progress_v1";
 
 type AnswerStatsPeriodKey = (typeof answerStatsPeriodOptions)[number]["key"];
 
@@ -190,6 +319,11 @@ function ProfileStats({ source = "local" }: { source?: "local" | "synced" }) {
   );
   const [isDashboardLoading, setIsDashboardLoading] = useState(source === "synced");
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [isDailyQuestExpanded, setIsDailyQuestExpanded] = useState(false);
+  const [dailyQuestProgress, setDailyQuestProgress] = useState<DailyQuestProgressState>(
+    () => readDailyQuestProgressState(),
+  );
+  const dailyQuestPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (source !== "synced") {
@@ -239,37 +373,8 @@ function ProfileStats({ source = "local" }: { source?: "local" | "synced" }) {
     };
   }, [source]);
 
-  if (source === "synced" && isDashboardLoading) {
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Card
-            key={index}
-            className={`relative overflow-hidden rounded-lg border-border bg-card ${
-              index === 0 || index === 2 ? "col-span-2" : ""
-            }`}
-          >
-            <CardContent className="p-4">
-              <div className="h-20 animate-pulse rounded-lg bg-muted" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  if (source === "synced" && dashboardError) {
-    return (
-      <Card className="relative overflow-hidden rounded-lg border-destructive/35 bg-card">
-        <CardContent className="p-4">
-          <p className="text-sm font-semibold text-destructive">
-            Synced stats are unavailable
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">{dashboardError}</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const showSyncedLoading = source === "synced" && isDashboardLoading;
+  const showSyncedError = source === "synced" && !!dashboardError;
 
   const today = new Date();
   const todayKey = formatDayKey(today);
@@ -299,16 +404,6 @@ function ProfileStats({ source = "local" }: { source?: "local" | "synced" }) {
     source === "synced" && dashboardStats
       ? clampAccuracy(dashboardStats.headline.today_accuracy)
       : percent(todayStats.correct, todayStats.attempted);
-  const dailyGoal =
-    source === "synced" && dashboardStats
-      ? {
-          attemptedToday: dashboardStats.daily_goal.attempted_today,
-          goal: dashboardStats.daily_goal.goal,
-          remaining: dashboardStats.daily_goal.remaining,
-          progressPercent: dashboardStats.daily_goal.progress_percent,
-          isComplete: dashboardStats.daily_goal.is_complete,
-        }
-      : getDailyGoalProgress(todayStats.attempted, DAILY_QUESTION_GOAL);
   const currentStreak =
     source === "synced" && dashboardStats
       ? dashboardStats.current_streak_days
@@ -329,6 +424,12 @@ function ProfileStats({ source = "local" }: { source?: "local" | "synced" }) {
     source === "synced" && dashboardStats
       ? dashboardStats.headline.today_attempted
       : todayStats.attempted;
+  const dailyQuestBoard = buildDailyQuestBoard({
+    localDateKey: todayKey,
+    attemptedToday: todayAttempted,
+    correctToday: todayCorrect,
+    todayPeriod: source === "synced" && dashboardStats ? dashboardStats.todayData : null,
+  });
   const last7CorrectDisplay =
     source === "synced" && dashboardStats
       ? dashboardStats.headline.last7_correct
@@ -337,31 +438,229 @@ function ProfileStats({ source = "local" }: { source?: "local" | "synced" }) {
     source === "synced" && dashboardStats
       ? dashboardStats.headline.last7_attempted
       : last7Attempted;
+  const pendingDailyQuests = dailyQuestBoard.quests.filter((quest) => !quest.isComplete);
+  const highlightedQuest = pendingDailyQuests[0] ?? dailyQuestBoard.quests[0];
+  const remainingDailyQuests = pendingDailyQuests.filter(
+    (quest) => quest.id !== highlightedQuest?.id,
+  );
+  const maxMilestone =
+    DAILY_QUEST_PROGRESS_MILESTONES[DAILY_QUEST_PROGRESS_MILESTONES.length - 1];
+  const pointsToNextMilestone = DAILY_QUEST_PROGRESS_MILESTONES.find(
+    (milestone) => milestone > dailyQuestProgress.totalPoints,
+  );
+  const dailyQuestProgressPercent = Math.max(
+    0,
+    Math.min(100, Math.round((dailyQuestProgress.totalPoints / maxMilestone) * 100)),
+  );
+
+  useEffect(() => {
+    const completedQuestIdsToday = dailyQuestBoard.quests
+      .filter((quest) => quest.isComplete)
+      .map((quest) => quest.id);
+    if (completedQuestIdsToday.length === 0) {
+      return;
+    }
+    setDailyQuestProgress((currentState) => {
+      const awardedToday = currentState.awardedByDay[dailyQuestBoard.localDateKey] ?? [];
+      const newlyCompletedQuestIds = completedQuestIdsToday.filter(
+        (questId) => !awardedToday.includes(questId),
+      );
+      if (newlyCompletedQuestIds.length === 0) {
+        return currentState;
+      }
+      const nextTotalPoints =
+        currentState.totalPoints +
+        newlyCompletedQuestIds.length * DAILY_QUEST_PROGRESS_POINTS_PER_QUEST;
+      const nextMilestones = [...currentState.awardedMilestones];
+      for (const milestone of DAILY_QUEST_PROGRESS_MILESTONES) {
+        if (nextTotalPoints >= milestone && !nextMilestones.includes(milestone)) {
+          nextMilestones.push(milestone);
+        }
+      }
+      const nextState: DailyQuestProgressState = {
+        totalPoints: nextTotalPoints,
+        awardedByDay: {
+          ...currentState.awardedByDay,
+          [dailyQuestBoard.localDateKey]: [...awardedToday, ...newlyCompletedQuestIds],
+        },
+        awardedMilestones: nextMilestones.sort((left, right) => left - right),
+      };
+      writeDailyQuestProgressState(nextState);
+      return nextState;
+    });
+  }, [dailyQuestBoard.localDateKey, dailyQuestBoard.quests]);
+
+  useEffect(() => {
+    if (!isDailyQuestExpanded) {
+      return;
+    }
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        dailyQuestPanelRef.current &&
+        !dailyQuestPanelRef.current.contains(target)
+      ) {
+        setIsDailyQuestExpanded(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsDailyQuestExpanded(false);
+      }
+    }
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isDailyQuestExpanded]);
+
+  if (showSyncedLoading) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card
+            key={index}
+            className={`relative overflow-hidden rounded-lg border-border bg-card ${
+              index === 0 || index === 2 ? "col-span-2" : ""
+            }`}
+          >
+            <CardContent className="p-4">
+              <div className="h-20 animate-pulse rounded-lg bg-muted" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (showSyncedError) {
+    return (
+      <Card className="relative overflow-hidden rounded-lg border-destructive/35 bg-card">
+        <CardContent className="p-4">
+          <p className="text-sm font-semibold text-destructive">
+            Synced stats are unavailable
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{dashboardError}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Card className="relative col-span-2 overflow-hidden rounded-lg border-primary/35 bg-card" data-testid="stat-daily-goal">
+      <Card className="relative col-span-2 overflow-hidden rounded-lg border-primary/35 bg-card" data-testid="stat-daily-quest">
         <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Daily Goal</p>
-              <p className="mt-1 text-2xl font-bold text-foreground">
-                {dailyGoal.attemptedToday}/{dailyGoal.goal}
-                <span className="ml-1 text-sm font-medium text-muted-foreground">questions</span>
-              </p>
+          <button
+            type="button"
+            onClick={() => setIsDailyQuestExpanded((current) => !current)}
+            className="w-full text-left"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">Daily Quest</p>
+                <p className="mt-1 truncate text-2xl font-bold text-foreground">
+                  {highlightedQuest ? highlightedQuest.title : "All quests complete"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {highlightedQuest ? highlightedQuest.requirement : "Come back tomorrow for new quests."}
+                </p>
+              </div>
+              <div className="rounded-lg border border-primary/45 bg-primary/15 px-3 py-2 text-right">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+                  {dailyQuestBoard.completeCount}/{dailyQuestBoard.quests.length} complete
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {highlightedQuest?.progressLabel ?? "Done"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg border border-primary/45 bg-primary/15 px-3 py-2 text-right">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
-                {dailyGoal.isComplete ? "Done" : `${dailyGoal.remaining} left`}
-              </p>
+            <Progress
+              value={highlightedQuest?.progressPercent ?? 100}
+              className="mt-3 h-2 bg-background"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {isDailyQuestExpanded
+                ? "Tap again to collapse."
+                : "Tap to expand daily progress and remaining quests."}
+            </p>
+          </button>
+
+          {isDailyQuestExpanded ? (
+            <div ref={dailyQuestPanelRef} className="mt-4 space-y-3">
+              <div className="rounded-lg border border-border bg-muted px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    Daily Progress
+                  </p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {dailyQuestProgress.totalPoints} / {maxMilestone} points
+                  </p>
+                </div>
+                <Progress value={dailyQuestProgressPercent} className="mt-2 h-2 bg-background" />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {pointsToNextMilestone
+                    ? `${Math.max(0, pointsToNextMilestone - dailyQuestProgress.totalPoints)} points to next milestone (${pointsToNextMilestone})`
+                    : "Top milestone reached. Keep stacking points."}
+                </p>
+                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                  {DAILY_QUEST_PROGRESS_MILESTONES.map((milestone) => {
+                    const reached = dailyQuestProgress.totalPoints >= milestone;
+                    return (
+                      <div
+                        key={milestone}
+                        className={`shrink-0 rounded-lg border px-2.5 py-1.5 ${
+                          reached
+                            ? "border-primary/45 bg-primary/15"
+                            : "border-border bg-card"
+                        }`}
+                      >
+                        <p className="text-[11px] font-bold text-foreground">{milestone}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          +{DAILY_QUEST_MILESTONE_BONUS_XP[milestone] ?? 0} LvXP
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
+                {remainingDailyQuests.length > 0 ? (
+                  remainingDailyQuests.map((quest) => (
+                    <div
+                      key={quest.id}
+                      className="rounded-lg border border-border bg-muted/70 px-3 py-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{quest.title}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {quest.requirement}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-xs font-semibold text-foreground">
+                          {quest.progressLabel}
+                        </p>
+                      </div>
+                      <Progress value={quest.progressPercent} className="mt-2 h-1.5 bg-background" />
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-primary/35 bg-primary/10 px-3 py-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      Daily quest board cleared
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      You finished all quests for today.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <Progress value={dailyGoal.progressPercent} className="mt-3 h-2 bg-background" />
-          <p className="mt-2 text-xs text-muted-foreground">
-            {dailyGoal.isComplete
-              ? "Goal complete for today."
-              : "Answer 20 questions today to complete the goal."}
-          </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -529,6 +828,8 @@ function ProfileWeakAreas() {
     useState<AnswerStatsPeriodKey>("last7dayData");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const floatingPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -564,200 +865,250 @@ function ProfileWeakAreas() {
     };
   }, [stats.totalQuestionsCompleted]);
 
+  useEffect(() => {
+    if (!isExpanded) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        floatingPanelRef.current &&
+        !floatingPanelRef.current.contains(target)
+      ) {
+        setIsExpanded(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsExpanded(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [floatingPanelRef, isExpanded]);
+
   const selectedPeriod = answerStats?.[selectedPeriodKey] ?? null;
   const bandSummaries = selectedPeriod ? buildWeakAreaBandSummaries(selectedPeriod) : [];
+  const canExpandDetails =
+    !isLoading &&
+    !error &&
+    Boolean(selectedPeriod && selectedPeriod.overall.total > 0);
 
   return (
-    <Card
-      className="relative mt-3 overflow-hidden rounded-lg border-border bg-card"
-      data-testid="card-weak-areas"
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-primary">
-              <BarChart3 className="h-3.5 w-3.5" />
-              Weak Areas
-            </p>
-            <h2 className="mt-1 text-lg font-bold text-foreground">
-              Answer patterns
-            </h2>
-          </div>
-          {selectedPeriod && (
-            <div className="rounded-lg border border-primary/35 bg-primary/15 px-3 py-2 text-right">
-              <p className="text-xs font-bold text-primary">
-                {clampAccuracy(selectedPeriod.overall.accuracy)}%
+    <div className="relative mt-3" ref={floatingPanelRef}>
+      <Card
+        className={`relative overflow-hidden rounded-lg border-border bg-card transition-colors ${
+          canExpandDetails ? "cursor-pointer hover:border-primary/40" : ""
+        }`}
+        data-testid="card-weak-areas"
+        onClick={() => {
+          if (canExpandDetails) {
+            setIsExpanded((current) => !current);
+          }
+        }}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Weak Areas
               </p>
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Accuracy
-              </p>
+              <h2 className="mt-1 text-lg font-bold text-foreground">
+                Answer patterns
+              </h2>
             </div>
-          )}
-        </div>
-
-        <div className="mt-3 grid grid-cols-4 gap-1.5">
-          {answerStatsPeriodOptions.map((option) => {
-            const selected = selectedPeriodKey === option.key;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setSelectedPeriodKey(option.key)}
-                className={`h-9 rounded-lg border px-2 text-[11px] font-semibold transition-colors ${
-                  selected
-                    ? "border-primary/45 bg-primary/15 text-primary"
-                    : "border-border bg-muted text-muted-foreground hover:border-primary hover:text-foreground"
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {isLoading ? (
-          <div className="mt-4 space-y-2">
-            <div className="h-12 animate-pulse rounded-lg bg-muted" />
-            <div className="h-12 animate-pulse rounded-lg bg-muted" />
-          </div>
-        ) : error ? (
-          <div className="mt-4 rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-3">
-            <p className="text-sm font-semibold text-destructive">
-              Stats are not ready yet
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{error}</p>
-          </div>
-        ) : selectedPeriod && selectedPeriod.overall.total > 0 ? (
-          <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border bg-muted px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Attempted
-                </p>
-                <p className="mt-1 text-xl font-bold text-foreground">
-                  {selectedPeriod.overall.total}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-muted px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Wrong
-                </p>
-                <p className="mt-1 text-xl font-bold text-foreground">
-                  {selectedPeriod.overall.wrong}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-muted px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Correct
-                </p>
-                <p className="mt-1 text-xl font-bold text-foreground">
-                  {selectedPeriod.overall.correct}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border bg-muted px-3 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Accuracy
-                </p>
-                <p className="mt-1 text-xl font-bold text-primary">
-                  {clampAccuracy(selectedPeriod.overall.accuracy)}%
-                </p>
-              </div>
-            </div>
-
-            {bandSummaries.length > 0 ? (
-              <Accordion
-                type="single"
-                collapsible
-                className="rounded-lg border border-border bg-muted px-3"
-              >
-                {bandSummaries.map((band) => (
-                  <AccordionItem
-                    key={band.bandGroup}
-                    value={band.bandGroup}
-                    className="border-border last:border-b-0"
-                  >
-                    <AccordionTrigger className="py-3 hover:no-underline">
-                      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-3">
-                        <div className="min-w-0 text-left">
-                          <p className="text-sm font-semibold text-foreground">
-                            {answerStatsBandLabels[band.bandGroup]}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {band.correct}/{band.total} correct • {band.wrong} wrong
-                          </p>
-                        </div>
-                        <p className="shrink-0 text-sm font-bold text-primary">
-                          {clampAccuracy(band.accuracy)}%
-                        </p>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1">
-                      <div className="space-y-2">
-                        {band.byType.map((typeRow) => (
-                          <div
-                            key={`${band.bandGroup}:${typeRow.questionType}`}
-                            className="rounded-lg border border-border bg-card px-3 py-3"
-                            data-testid="item-weak-area"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-foreground">
-                                  {answerStatsQuestionTypeLabels[typeRow.questionType]}
-                                </p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {typeRow.correct}/{typeRow.total} correct • {typeRow.wrong} wrong
-                                </p>
-                              </div>
-                              <p className="shrink-0 text-sm font-bold text-primary">
-                                {clampAccuracy(typeRow.accuracy)}%
-                              </p>
-                            </div>
-                            <Progress
-                              value={clampAccuracy(typeRow.accuracy)}
-                              className="mt-2 h-1.5 bg-background"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            ) : (
-              <div className="rounded-lg border border-border bg-muted px-3 py-3">
-                <p className="text-sm font-semibold text-foreground">
-                  No band detail yet
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Keep answering signed-in questions and your band breakdown will fill in here.
-                </p>
+            {selectedPeriod && (
+              <div className="flex shrink-0 items-stretch gap-2">
+                <div className="rounded-lg border border-border bg-muted px-3 py-2 text-right">
+                  <p className="text-xs font-bold text-foreground">
+                    {selectedPeriod.overall.total}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                    Attempted
+                  </p>
+                </div>
+                <div className="rounded-lg border border-primary/35 bg-primary/15 px-3 py-2 text-right">
+                  <p className="text-xs font-bold text-primary">
+                    {clampAccuracy(selectedPeriod.overall.accuracy)}%
+                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                    Accuracy
+                  </p>
+                </div>
               </div>
             )}
           </div>
+
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {answerStatsPeriodOptions.map((option) => {
+              const selected = selectedPeriodKey === option.key;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelectedPeriodKey(option.key);
+                    setIsExpanded(false);
+                  }}
+                  className={`h-9 rounded-lg border px-2 text-[11px] font-semibold transition-colors ${
+                    selected
+                      ? "border-primary/45 bg-primary/15 text-primary"
+                      : "border-border bg-muted text-muted-foreground hover:border-primary hover:text-foreground"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {isLoading ? (
+            <div className="mt-4 space-y-2">
+              <div className="h-12 animate-pulse rounded-lg bg-muted" />
+              <div className="h-12 animate-pulse rounded-lg bg-muted" />
+            </div>
+          ) : error ? (
+            <div className="mt-4 rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-3">
+              <p className="text-sm font-semibold text-destructive">
+                Stats are not ready yet
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+            </div>
+        ) : selectedPeriod && selectedPeriod.overall.total > 0 ? (
+          <div className="sr-only" aria-hidden="true" />
         ) : (
           <div className="mt-4 rounded-lg border border-border bg-muted px-3 py-3">
             <p className="text-sm font-semibold text-foreground">
               No backend answer data yet
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Answer a few signed-in questions and this will start showing your
-              strongest and weakest categories.
-            </p>
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Answer a few signed-in questions and this will start showing your
+                strongest and weakest categories.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {isExpanded && canExpandDetails ? (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-lg border border-border bg-card p-3 shadow-xl">
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                Correct
+              </p>
+              <p className="mt-1 text-xl font-bold text-foreground">
+                {selectedPeriod?.overall.correct ?? 0}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                Wrong
+              </p>
+              <p className="mt-1 text-xl font-bold text-foreground">
+                {selectedPeriod?.overall.wrong ?? 0}
+              </p>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          {bandSummaries.length > 0 ? (
+            <Accordion
+              type="single"
+              collapsible
+              className="rounded-lg border border-border bg-muted px-3"
+            >
+              {bandSummaries.map((band) => (
+                <AccordionItem
+                  key={band.bandGroup}
+                  value={band.bandGroup}
+                  className="border-border last:border-b-0"
+                >
+                  <AccordionTrigger className="py-3 hover:no-underline">
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-3">
+                      <div className="min-w-0 text-left">
+                        <p className="text-sm font-semibold text-foreground">
+                          {answerStatsBandLabels[band.bandGroup]}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {band.correct}/{band.total} correct • {band.wrong} wrong
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold text-primary">
+                        {clampAccuracy(band.accuracy)}%
+                      </p>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-1">
+                    <div className="space-y-2">
+                      {band.byType.map((typeRow) => (
+                        <div
+                          key={`${band.bandGroup}:${typeRow.questionType}`}
+                          className="rounded-lg border border-border bg-card px-3 py-3"
+                          data-testid="item-weak-area"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground">
+                                {answerStatsQuestionTypeLabels[typeRow.questionType]}
+                              </p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {typeRow.correct}/{typeRow.total} correct • {typeRow.wrong} wrong
+                              </p>
+                            </div>
+                            <p className="shrink-0 text-sm font-bold text-primary">
+                              {clampAccuracy(typeRow.accuracy)}%
+                            </p>
+                          </div>
+                          <Progress
+                            value={clampAccuracy(typeRow.accuracy)}
+                            className="mt-2 h-1.5 bg-background"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <div className="rounded-lg border border-border bg-muted px-3 py-3">
+              <p className="text-sm font-semibold text-foreground">
+                No band detail yet
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Keep answering signed-in questions and your band breakdown will fill in here.
+              </p>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 function ProfileAchievements() {
   const { stats } = useAppState();
+  const achievementProgress = stats.achievementProgress ?? {
+    unlockedAchievementKeys: [],
+  };
+  const achievementLevelProgress = stats.achievementLevelProgress ?? {
+    totalXp: 0,
+    currentLevel: 1,
+  };
   const unlockedKeySet = new Set(
-    stats.achievementProgress.unlockedAchievementKeys ?? [],
+    achievementProgress.unlockedAchievementKeys ?? [],
   );
-  const activeAchievements = ACHIEVEMENTS.filter(
-    (achievement) => achievement.phase === "v1",
-  );
+  const activeAchievements = ACHIEVEMENTS;
   const unlockedAchievements = activeAchievements.filter((achievement) =>
     unlockedKeySet.has(achievement.key),
   );
@@ -782,12 +1133,19 @@ function ProfileAchievements() {
             <h2 className="mt-1 text-lg font-bold text-foreground">
               {unlockedAchievements.length}/{activeAchievements.length} unlocked
             </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Level {achievementLevelProgress.currentLevel} • Achievement XP{" "}
+              {(achievementLevelProgress.totalXp ?? 0).toLocaleString()}
+            </p>
           </div>
           <div className="rounded-lg border border-primary/35 bg-primary/15 px-3 py-2 text-right">
             <p className="text-xs font-bold text-primary">{progressPercent}%</p>
           </div>
         </div>
         <Progress value={progressPercent} className="mt-3 h-2 bg-background" />
+        <Button asChild variant="outline" className="mt-3 h-9 w-full">
+          <Link href="/achievements">Open full achievement vault</Link>
+        </Button>
 
         <div className="mt-4 space-y-2">
           {latestUnlocked.length > 0 ? (
@@ -822,7 +1180,7 @@ function ProfileAchievements() {
 }
 
 function ProfileAccountWithAuth() {
-  const { syncRankedIdentity } = useAppState();
+  const { syncRankedIdentity, stats } = useAppState();
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -838,6 +1196,7 @@ function ProfileAccountWithAuth() {
     user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
     "ReadTok learner";
   const displayName = profile?.display_name || clerkFallbackName;
+  const achievementLevel = Math.max(1, stats.achievementLevelProgress.currentLevel || 1);
   const shouldPromptDisplayName = isSignedIn && !isProfileLoading && profile && !profile.display_name;
 
   useEffect(() => {
@@ -1021,7 +1380,10 @@ function ProfileAccountWithAuth() {
                   Signed in
                 </p>
                 <h2 className="text-xl font-bold text-foreground truncate" data-testid="text-user-name">
-                  {displayName}
+                  {displayName}{" "}
+                  <span className="text-base font-semibold text-primary">
+                    Lv.{achievementLevel}
+                  </span>
                 </h2>
                 {email && (
                   <p className="text-sm text-muted-foreground truncate" data-testid="text-user-email">
@@ -1221,18 +1583,16 @@ function ProfileWithAuthGate() {
       <ProfileAchievements />
 
       <div className="mt-12 text-center">
-        <p className="text-xs text-muted-foreground opacity-50">ReadTok v1.0.0</p>
+        <p className="text-xs text-muted-foreground opacity-50">ReadTok {APP_PROFILE_VERSION}</p>
       </div>
     </div>
   );
 }
 
 export default function Profile() {
-  if (authEnabled) {
-    return <ProfileWithAuthGate />;
-  }
-
-  return (
+  const content = authEnabled ? (
+    <ProfileWithAuthGate />
+  ) : (
     <div className="tablet-portrait-profile h-full w-full overflow-y-auto p-4 pt-10" data-testid="page-profile">
       <AppPageHeader title="Your Stats" />
 
@@ -1244,8 +1604,10 @@ export default function Profile() {
       <ProfileAchievements />
       
       <div className="mt-12 text-center">
-        <p className="text-xs text-muted-foreground opacity-50">ReadTok v1.0.0</p>
+        <p className="text-xs text-muted-foreground opacity-50">ReadTok {APP_PROFILE_VERSION}</p>
       </div>
     </div>
   );
+
+  return <ProfileCrashGuard>{content}</ProfileCrashGuard>;
 }

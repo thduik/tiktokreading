@@ -23,6 +23,11 @@ import {
   writeJsonCache,
   type JsonCacheStatus,
 } from "../lib/cache/json-cache";
+import {
+  readPassageSearchCatalog,
+  tokenizeSearchQuery,
+  type PassageSearchCatalogEntry,
+} from "../lib/cache/passage-search-catalog";
 
 const router: IRouter = Router();
 
@@ -52,12 +57,12 @@ function parseFactoryTag(raw: string | undefined) {
     return undefined;
   }
 
-  const normalized = raw.trim().toLowerCase();
+  const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
   if (normalized.length === 0) {
     return undefined;
   }
 
-  if (!/^v\d+$/.test(normalized)) {
+  if (!/^v\d+(?:_\d+)?$/.test(normalized)) {
     return null;
   }
 
@@ -182,6 +187,20 @@ type PassageIdPoolResponse = {
   factory_tag: string | null;
 };
 
+type PassageCatalogSearchParams = {
+  titleContains: string;
+  bandIndex?: number;
+  questionSetTypeIndex?: string;
+  questionTypeIndex?: string;
+  topicIndex?: string;
+  status?: string;
+  languageCode?: string;
+  factoryTag?: string;
+  idsList?: string[];
+  limit: number;
+  offset: number;
+};
+
 function splitPassageIntoSentences(passage: string) {
   return passage
     .split(/(?<=[.!?])\s+/)
@@ -293,6 +312,125 @@ function parseVocabJson(raw: unknown, sentenceCount: number): VocabItem[] {
   }
 
   return parsedItems;
+}
+
+function scoreCatalogMatch(entry: PassageSearchCatalogEntry, normalizedQuery: string) {
+  if (entry.search_title === normalizedQuery) {
+    return 400;
+  }
+  if (entry.search_title.startsWith(normalizedQuery)) {
+    return 300;
+  }
+  if (entry.search_title.includes(normalizedQuery)) {
+    return 220;
+  }
+  if (entry.search_topic.startsWith(normalizedQuery)) {
+    return 160;
+  }
+  if (entry.search_topic.includes(normalizedQuery)) {
+    return 120;
+  }
+  return 80;
+}
+
+async function searchPassageCatalog(params: PassageCatalogSearchParams) {
+  const {
+    titleContains,
+    bandIndex,
+    questionSetTypeIndex,
+    questionTypeIndex,
+    topicIndex,
+    status,
+    languageCode,
+    factoryTag,
+    idsList,
+    limit,
+    offset,
+  } = params;
+
+  const { catalog, cacheStatus } = await readPassageSearchCatalog({
+    status,
+    languageCode,
+  });
+
+  if (!catalog) {
+    return {
+      items: null,
+      total: 0,
+      cacheStatus,
+    };
+  }
+
+  const tokens = tokenizeSearchQuery(titleContains);
+  const normalizedQuery = tokens.join(" ");
+  const allowedIds = idsList ? new Set(idsList) : null;
+
+  const matched = catalog
+    .filter((entry) => {
+      if (bandIndex !== undefined && entry.band_index !== bandIndex) {
+        return false;
+      }
+      if (
+        questionSetTypeIndex !== undefined &&
+        entry.question_set_type_index !== questionSetTypeIndex
+      ) {
+        return false;
+      }
+      if (
+        questionTypeIndex !== undefined &&
+        !entry.question_type_indexes.includes(questionTypeIndex)
+      ) {
+        return false;
+      }
+      if (topicIndex !== undefined && entry.topic_index !== topicIndex) {
+        return false;
+      }
+      if (factoryTag !== undefined && entry.factory_tag !== factoryTag) {
+        return false;
+      }
+      if (allowedIds && !allowedIds.has(entry.id)) {
+        return false;
+      }
+      return tokens.every((token) => entry.search_text.includes(token));
+    })
+    .map((entry) => ({
+      entry,
+      score: scoreCatalogMatch(entry, normalizedQuery),
+    }))
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+      if (left.entry.band_index !== right.entry.band_index) {
+        return left.entry.band_index - right.entry.band_index;
+      }
+      return left.entry.title.localeCompare(right.entry.title) || left.entry.id.localeCompare(right.entry.id);
+    });
+
+  const page = matched
+    .slice(offset, offset + limit)
+    .map(({ entry }) => ({
+      id: entry.id,
+      exam_index: entry.exam_index,
+      exam_label: entry.exam_label,
+      band_index: entry.band_index,
+      band_label: entry.band_label,
+      question_set_type_index: entry.question_set_type_index,
+      question_set_type_label: entry.question_set_type_label,
+      topic_index: entry.topic_index,
+      topic_label: entry.topic_label,
+      title: entry.title,
+      factory_tag: entry.factory_tag,
+      language_code: entry.language_code,
+      status: entry.status,
+      question_count: entry.question_count,
+    }));
+
+  return {
+    items: page,
+    total: matched.length,
+    cacheStatus,
+  };
 }
 
 function toKeywordTokens(value: string) {
@@ -783,6 +921,52 @@ router.get("/passages", async (req, res) => {
     return;
   }
 
+  if (titleContains !== undefined) {
+    const searchResult = await searchPassageCatalog({
+      titleContains,
+      bandIndex: bandIndex ?? undefined,
+      questionSetTypeIndex: questionSetTypeRaw,
+      questionTypeIndex: questionTypeRaw,
+      topicIndex,
+      status,
+      languageCode,
+      factoryTag: factoryTag ?? undefined,
+      idsList,
+      limit,
+      offset,
+    });
+
+    if (!searchResult.items) {
+      res
+        .status(503)
+        .json({ error: "Search index is warming up. Please try again in a moment." });
+      return;
+    }
+
+    const listResponse = {
+      items: searchResult.items,
+      pagination: {
+        limit,
+        offset,
+        count: searchResult.items.length,
+        total: searchResult.total,
+      },
+    };
+
+    res.setHeader(
+      "x-cache",
+      searchResult.cacheStatus === "BYPASS" ? "BYPASS" : "MISS",
+    );
+    res.setHeader("x-search-source", "cache-catalog");
+    res.json(listResponse);
+    await writeJsonCache({
+      key: listCacheKey,
+      value: listResponse,
+      ttlSeconds: passageCacheTtls.listSeconds,
+    });
+    return;
+  }
+
   const whereConditions = [];
 
   if (bandIndex !== undefined) {
@@ -857,6 +1041,7 @@ router.get("/passages", async (req, res) => {
       limit,
       offset,
       count: rows.length,
+      total: rows.length,
     },
   };
 

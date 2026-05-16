@@ -7,8 +7,22 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import PassageDetailPage from "@/pages/passage-detail";
 import BottomNav from "@/components/bottom-nav";
+import {
+  GenericPageSkeleton,
+  LeaderboardPageSkeleton,
+  PassageListPageSkeleton,
+  ProfilePageSkeleton,
+  SavedPageSkeleton,
+} from "@/components/page-skeletons";
 import { AppStateProvider, useAppState } from "@/hooks/use-app-state";
-import { bootstrapMyProfile } from "@/lib/profile-api";
+import {
+  bootstrapMyProfile,
+  fetchMyProfile,
+  fetchMyAchievements,
+  syncMyAchievements,
+} from "@/lib/profile-api";
+import { setActiveApiCacheUserScope } from "@/lib/api-cache";
+import { buildAchievementUnlockSyncPayload } from "@/lib/achievements";
 import {
   QUESTION_TYPE_DISPLAY_LABELS,
   SESSION_STREAK_BONUS_STREAK,
@@ -26,6 +40,7 @@ import {
 const Home = lazy(() => import("@/pages/home"));
 const Saved = lazy(() => import("@/pages/saved"));
 const Profile = lazy(() => import("@/pages/profile"));
+const AchievementsPage = lazy(() => import("@/pages/achievements"));
 const AdminPage = lazy(() => import("@/pages/admin"));
 const LeaderboardPage = lazy(() => import("@/pages/leaderboard"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -233,6 +248,14 @@ function AuthProfileBootstrapper() {
   const bootstrappedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
+    setActiveApiCacheUserScope(isSignedIn && user ? user.id : null);
+  }, [isLoaded, isSignedIn, user]);
+
+  useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) {
       return;
     }
@@ -248,10 +271,13 @@ function AuthProfileBootstrapper() {
     async function bootstrap() {
       try {
         const pendingDisplayName = readPendingDisplayName();
-        await bootstrapMyProfile({
-          email: currentUser.primaryEmailAddress?.emailAddress,
-          displayName: pendingDisplayName,
-        });
+        const existingProfile = await fetchMyProfile();
+        if (!existingProfile.profile) {
+          await bootstrapMyProfile({
+            email: currentUser.primaryEmailAddress?.emailAddress,
+            displayName: pendingDisplayName,
+          });
+        }
         if (pendingDisplayName) {
           clearPendingDisplayName();
         }
@@ -290,6 +316,119 @@ function LegacyPassageRouteRedirect() {
   return null;
 }
 
+function AchievementSyncBridge() {
+  const { isLoaded, isSignedIn } = useUser();
+  const { stats, mergeSyncedAchievements } = useAppState();
+  const hasHydratedRef = useRef(false);
+  const syncSignatureRef = useRef("");
+  const syncInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      hasHydratedRef.current = false;
+      syncSignatureRef.current = "";
+      syncInFlightRef.current = false;
+      return;
+    }
+
+    let cancelled = false;
+    async function hydrateFromServer() {
+      try {
+        const payload = await fetchMyAchievements();
+        if (cancelled) {
+          return;
+        }
+        mergeSyncedAchievements({
+          unlockedKeys: payload.unlocked_keys ?? [],
+          levelProgress: payload.summary
+            ? {
+                totalXp: payload.summary.total_xp,
+                currentLevel: payload.summary.current_level,
+                currentLevelXpFloor: payload.summary.current_level_xp_floor,
+                nextLevelXpFloor: payload.summary.next_level_xp_floor,
+                xpIntoLevel: payload.summary.xp_into_level,
+                xpNeededForNextLevel: payload.summary.xp_needed_for_next_level,
+                progressPercent: payload.summary.progress_percent,
+              }
+            : null,
+        });
+        hasHydratedRef.current = true;
+      } catch (error) {
+        console.error("Achievement hydration failed", error);
+      }
+    }
+
+    void hydrateFromServer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, mergeSyncedAchievements]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !hasHydratedRef.current || syncInFlightRef.current) {
+      return;
+    }
+    const unlockedKeys = stats.achievementProgress.unlockedAchievementKeys ?? [];
+    if (unlockedKeys.length === 0) {
+      return;
+    }
+
+    const unlocks = buildAchievementUnlockSyncPayload(unlockedKeys);
+    const signature = unlocks
+      .map((item) => `${item.key}:${item.xp}`)
+      .sort()
+      .join("|");
+
+    if (!signature || signature === syncSignatureRef.current) {
+      return;
+    }
+
+    syncInFlightRef.current = true;
+    let cancelled = false;
+
+    async function syncToServer() {
+      try {
+        const response = await syncMyAchievements({ unlocks });
+        if (cancelled) {
+          return;
+        }
+        mergeSyncedAchievements({
+          unlockedKeys: response.unlocked_keys ?? [],
+          levelProgress: response.summary
+            ? {
+                totalXp: response.summary.total_xp,
+                currentLevel: response.summary.current_level,
+                currentLevelXpFloor: response.summary.current_level_xp_floor,
+                nextLevelXpFloor: response.summary.next_level_xp_floor,
+                xpIntoLevel: response.summary.xp_into_level,
+                xpNeededForNextLevel: response.summary.xp_needed_for_next_level,
+                progressPercent: response.summary.progress_percent,
+              }
+            : null,
+        });
+        syncSignatureRef.current = signature;
+      } catch (error) {
+        console.error("Achievement sync failed", error);
+      } finally {
+        syncInFlightRef.current = false;
+      }
+    }
+
+    void syncToServer();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoaded,
+    isSignedIn,
+    mergeSyncedAchievements,
+    stats.achievementProgress.unlockedAchievementKeys,
+  ]);
+
+  return null;
+}
+
 function Router() {
   const [location] = useLocation();
   const isFeed = location === "/";
@@ -302,18 +441,20 @@ function Router() {
   return (
     <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
       {authEnabled && <AuthProfileBootstrapper />}
+      {authEnabled && <AchievementSyncBridge />}
       <main
         className={`min-h-0 flex-1 w-full ${
           isFeedExperience ? "overflow-hidden" : "overflow-y-auto"
         } ${isFeedExperience || isList || isAuthPage || isAdminPage ? "" : "pb-[60px]"}`}
       >
-        <Suspense fallback={<RouteLoadingFallback />}>
+        <Suspense fallback={<RouteLoadingFallback location={location} />}>
           <Switch>
             <Route path="/" component={PassageDetailPage} />
             <Route path="/list" component={Home} />
             <Route path="/passages/:id" component={LegacyPassageRouteRedirect} />
             <Route path="/saved" component={Saved} />
             <Route path="/profile" component={Profile} />
+            <Route path="/achievements" component={AchievementsPage} />
             <Route path="/leaderboard" component={LeaderboardPage} />
             <Route path="/admin" component={AdminPage} />
             <Route path="/sign-in/*?" component={SignInPage} />
@@ -327,14 +468,24 @@ function Router() {
   );
 }
 
-function RouteLoadingFallback() {
-  return (
-    <div className="flex h-full w-full items-center justify-center bg-background">
-      <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-        Loading...
-      </div>
-    </div>
-  );
+function RouteLoadingFallback({ location }: { location: string }) {
+  if (location === "/list") {
+    return <PassageListPageSkeleton />;
+  }
+
+  if (location === "/saved") {
+    return <SavedPageSkeleton />;
+  }
+
+  if (location === "/profile") {
+    return <ProfilePageSkeleton />;
+  }
+
+  if (location === "/leaderboard") {
+    return <LeaderboardPageSkeleton />;
+  }
+
+  return <GenericPageSkeleton />;
 }
 
 function ClerkProviderWithRoutes() {

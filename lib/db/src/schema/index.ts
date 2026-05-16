@@ -64,6 +64,7 @@ export const userProfiles = pgTable(
   "user_profiles",
   {
     userId: text("user_id").primaryKey(),
+    publicUserId: text("public_user_id").notNull(),
     email: text("email").notNull(),
     displayName: text("display_name"),
     onboardingCompleted: boolean("onboarding_completed")
@@ -77,6 +78,7 @@ export const userProfiles = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("user_profiles_public_user_id_uidx").on(table.publicUserId),
     uniqueIndex("user_profiles_email_uidx").on(table.email),
     index("user_profiles_email_idx").on(table.email),
   ],
@@ -287,6 +289,50 @@ export const userVocabBank = pgTable(
   ],
 );
 
+export const userAchievements = pgTable(
+  "user_achievements",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => userProfiles.userId, { onDelete: "cascade" }),
+    achievementKey: text("achievement_key").notNull(),
+    achievementTitle: text("achievement_title").notNull(),
+    achievementCategory: text("achievement_category").notNull(),
+    achievementTier: text("achievement_tier").notNull(),
+    achievementXp: integer("achievement_xp").notNull().default(0),
+    unlockedAt: timestamp("unlocked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "user_achievements_pkey",
+      columns: [table.userId, table.achievementKey],
+    }),
+    index("user_achievements_user_unlocked_idx").on(table.userId, table.unlockedAt),
+    index("user_achievements_user_category_idx").on(
+      table.userId,
+      table.achievementCategory,
+    ),
+    check("user_achievements_key_nonempty_chk", sql`length(trim(${table.achievementKey})) > 0`),
+    check(
+      "user_achievements_title_nonempty_chk",
+      sql`length(trim(${table.achievementTitle})) > 0`,
+    ),
+    check(
+      "user_achievements_tier_nonempty_chk",
+      sql`length(trim(${table.achievementTier})) > 0`,
+    ),
+    check("user_achievements_xp_nonnegative_chk", sql`${table.achievementXp} >= 0`),
+  ],
+);
+
 export const questions = pgTable(
   "questions",
   {
@@ -363,6 +409,60 @@ export const answerKeys = pgTable(
   ],
 );
 
+export const userQuestionTimingEvents = pgTable(
+  "user_question_timing_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userProfiles.userId, { onDelete: "cascade" }),
+    passageId: text("passage_id")
+      .notNull()
+      .references(() => passages.id, { onDelete: "cascade" }),
+    questionId: text("question_id")
+      .notNull()
+      .references(() => questions.id, { onDelete: "cascade" }),
+    sourceQuestionId: integer("source_question_id").notNull(),
+    displayPosition: integer("display_position").notNull(),
+    elapsedSeconds: integer("elapsed_seconds").notNull(),
+    localDate: date("local_date").notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+    bandGroup: text("band_group").notNull().$type<AnswerStatBandGroup>(),
+    questionType: text("question_type").notNull().$type<AnswerStatQuestionType>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("user_question_timing_events_user_date_idx").on(table.userId, table.localDate),
+    index("user_question_timing_events_user_passage_created_idx").on(
+      table.userId,
+      table.passageId,
+      table.createdAt,
+    ),
+    index("user_question_timing_events_passage_position_idx").on(
+      table.passageId,
+      table.displayPosition,
+    ),
+    check(
+      "user_question_timing_events_elapsed_seconds_chk",
+      sql`${table.elapsedSeconds} >= 0 AND ${table.elapsedSeconds} <= 14400`,
+    ),
+    check(
+      "user_question_timing_events_display_position_chk",
+      sql`${table.displayPosition} >= 1`,
+    ),
+    check(
+      "user_question_timing_events_band_group_chk",
+      sql`${table.bandGroup} in ('Band6','Band7','Band75','Band8Plus')`,
+    ),
+    check(
+      "user_question_timing_events_question_type_chk",
+      sql`${table.questionType} in ('MCQ','TFNG','SentenceCompletion','ShortAnswer','Matching')`,
+    ),
+  ],
+);
+
 export const passagesRelations = relations(passages, ({ many }) => ({
   questions: many(questions),
 }));
@@ -385,11 +485,12 @@ export const answerKeysRelations = relations(answerKeys, ({ one }) => ({
   }),
 }));
 
-export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+export const userProfilesRelations = relations(userProfiles, ({ one, many }) => ({
   progress: one(userProgress, {
     fields: [userProfiles.userId],
     references: [userProgress.userId],
   }),
+  achievements: many(userAchievements),
 }));
 
 export const userProgressRelations = relations(userProgress, ({ one }) => ({
@@ -409,6 +510,24 @@ export const userDailyAnswerStatsRelations = relations(
   }),
 );
 
+export const userQuestionTimingEventsRelations = relations(
+  userQuestionTimingEvents,
+  ({ one }) => ({
+    profile: one(userProfiles, {
+      fields: [userQuestionTimingEvents.userId],
+      references: [userProfiles.userId],
+    }),
+    passage: one(passages, {
+      fields: [userQuestionTimingEvents.passageId],
+      references: [passages.id],
+    }),
+    question: one(questions, {
+      fields: [userQuestionTimingEvents.questionId],
+      references: [questions.id],
+    }),
+  }),
+);
+
 export const userVocabBankRelations = relations(userVocabBank, ({ one }) => ({
   profile: one(userProfiles, {
     fields: [userVocabBank.userId],
@@ -417,6 +536,13 @@ export const userVocabBankRelations = relations(userVocabBank, ({ one }) => ({
   passage: one(passages, {
     fields: [userVocabBank.sourcePassageId],
     references: [passages.id],
+  }),
+}));
+
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+  profile: one(userProfiles, {
+    fields: [userAchievements.userId],
+    references: [userProfiles.userId],
   }),
 }));
 
@@ -433,5 +559,9 @@ export type UserProgress = typeof userProgress.$inferSelect;
 export type NewUserProgress = typeof userProgress.$inferInsert;
 export type UserDailyAnswerStat = typeof userDailyAnswerStats.$inferSelect;
 export type NewUserDailyAnswerStat = typeof userDailyAnswerStats.$inferInsert;
+export type UserQuestionTimingEvent = typeof userQuestionTimingEvents.$inferSelect;
+export type NewUserQuestionTimingEvent = typeof userQuestionTimingEvents.$inferInsert;
 export type UserVocabBankItem = typeof userVocabBank.$inferSelect;
 export type NewUserVocabBankItem = typeof userVocabBank.$inferInsert;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type NewUserAchievement = typeof userAchievements.$inferInsert;

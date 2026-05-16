@@ -102,7 +102,9 @@ CLERK_PROXY_URL_RUNTIME="${VITE_CLERK_PROXY_URL:-${CLERK_PROXY_URL:-}}"
 
 node ./scripts/check-toolchain.mjs --pnpm
 corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @workspace/db run migrate
 corepack pnpm --filter @workspace/api-server run build
+corepack pnpm --filter @workspace/api-server exec tsx ./src/scripts/refresh-passage-search-catalog.ts
 corepack pnpm --filter @workspace/readtok run typecheck
 corepack pnpm --filter @workspace/readtok run build
 

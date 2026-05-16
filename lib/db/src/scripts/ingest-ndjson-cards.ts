@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
+import { execFile as execFileCallback } from "node:child_process";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { eq, inArray } from "drizzle-orm";
 import { answerKeys, db, passages, pool, questions } from "../index";
 
@@ -94,6 +96,8 @@ type Anomaly = {
   before: string;
   after: string;
 };
+
+const execFile = promisify(execFileCallback);
 
 function normalizeSpaces(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -443,7 +447,7 @@ async function run() {
     throw new Error("Usage: tsx ingest-ndjson-cards.ts <input.ndjson>");
   }
   const defaultFactoryTag =
-    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v4") || "v4";
+    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v4_5") || "v4_5";
   const factoryTagArg = process.argv
     .slice(3)
     .find((arg) => arg.startsWith("--factory-tag="));
@@ -600,6 +604,8 @@ async function run() {
   const inserted = converted.length;
   const updated = 0;
   const created = inserted;
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(scriptDir, "../../../../");
 
   console.log(`Input cards: ${parsedCards.length}`);
   console.log(`Factory tag: ${factoryTag || "(none)"} (default=${defaultFactoryTag})`);
@@ -609,6 +615,31 @@ async function run() {
     console.log(
       `[${anomaly.kind}] card_no=${anomaly.cardNo} | ${anomaly.title} | ${anomaly.before} -> ${anomaly.after}`,
     );
+  }
+
+  try {
+    const { stdout } = await execFile(
+      "corepack",
+      [
+        "pnpm",
+        "--filter",
+        "@workspace/api-server",
+        "exec",
+        "tsx",
+        "./src/scripts/refresh-passage-search-catalog.ts",
+      ],
+      {
+        cwd: repoRoot,
+        env: process.env,
+      },
+    );
+    if (stdout.trim().length > 0) {
+      console.log(`[search-catalog] ${stdout.trim()}`);
+    }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown search catalog refresh error";
+    console.warn(`[search-catalog] refresh skipped after ingest: ${message}`);
   }
 
   await pool.end();

@@ -44,20 +44,27 @@ pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path
 
 Notes:
 
-- `factory_tag` now defaults to `v4` in `ingest-ndjson-cards.ts`.
+- `factory_tag` now defaults to `v4_5` in `ingest-ndjson-cards.ts`.
 - You can still override explicitly when needed:
 
 ```bash
-pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v4
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v4_5
 ```
 
 - Matching Heading and Matching Information currently store as MCQ-style
   questions with labels preserved.
 - Option keys may extend beyond `D` for matching questions. The ingest script
   keeps all provided options and canonicalizes option answers through `H`.
+- After production deploy, the VPS deploy script now runs
+  `refresh-passage-search-catalog.ts` automatically, so search/catalog refresh
+  is part of the guarded deploy path rather than a manual cleanup step.
+- Frontend passage list/detail caches no longer depend on hand-edited cache
+  version strings. Cache namespaces derive from `/api/passages/ids` or
+  `/api/passages/feed-bootstrap` response `version` values.
 
 ## Expected Outcome
 
 - `passages`, `questions`, `answer_keys` tables updated.
 - Passage list and detail APIs return the new content.
+- Search catalog refresh is included in deploy verification for hosted updates.
 - If ingest modifies rules or quality checks, update `docs/STATE.md` and runbook notes.

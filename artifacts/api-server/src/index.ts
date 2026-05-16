@@ -1,4 +1,5 @@
 import app from "./app";
+import { ensurePassageSearchCatalogWarm } from "./lib/cache/passage-search-catalog";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"];
@@ -22,4 +23,11 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  void ensurePassageSearchCatalogWarm({ status: "active" })
+    .then((result) => {
+      logger.info(result, "Passage search catalog ready");
+    })
+    .catch((error) => {
+      logger.warn({ err: error }, "Failed to initialize passage search catalog");
+    });
 });

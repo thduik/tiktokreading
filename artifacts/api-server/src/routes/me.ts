@@ -6,9 +6,11 @@ import {
   db,
   passages,
   questions,
+  userAchievements,
   userDailyAnswerStats,
-  userVocabBank,
   userProfiles,
+  userQuestionTimingEvents,
+  userVocabBank,
   userProgress,
 } from "@workspace/db";
 import {
@@ -27,23 +29,26 @@ import {
   readLocalDateKey,
   type AnswerStatsRow,
 } from "../lib/answer-stats";
+import {
+  createUserProfile,
+  ensureUserProfileForAuth,
+  ensureUserProgress,
+  fetchCurrentPracticeStreakDays,
+  fetchUserAchievementsWithSummary,
+  getAchievementLevelByXp,
+  normalizeDisplayName,
+  normalizeVocabBankTerm,
+  parseOptionalBoundedInteger,
+  readEmailFromClaims,
+  toPercent,
+  toResponseProfile,
+  toResponseProgress,
+} from "../lib/profile-store";
 import { fetchRankTiers } from "../lib/rank-tiers";
 
 const router: IRouter = Router();
 const PROFILE_DAILY_QUESTION_GOAL = 20;
 type AuthWithUserId = NonNullable<ReturnType<typeof getAuth>> & { userId: string };
-
-function normalizeDisplayName(value: unknown) {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-  return trimmed;
-}
 
 async function fetchAnswerStatsRows({
   userId,
@@ -77,154 +82,42 @@ async function fetchAnswerStatsRows({
   return rows;
 }
 
-function readEmailFromClaims(claims: unknown): string | null {
-  if (!claims || typeof claims !== "object") {
-    return null;
-  }
-
-  const email = (claims as { email?: unknown }).email;
-  if (typeof email === "string" && email.trim().length > 0) {
-    return email.trim().toLowerCase();
-  }
-
-  const primaryEmail = (
-    claims as { primary_email_address?: unknown }
-  ).primary_email_address;
-  if (typeof primaryEmail === "string" && primaryEmail.trim().length > 0) {
-    return primaryEmail.trim().toLowerCase();
-  }
-
-  return null;
-}
-
-function toResponseProfile(row: {
-  userId: string;
-  email: string;
-  displayName: string | null;
-  onboardingCompleted: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    user_id: row.userId,
-    email: row.email,
-    display_name: row.displayName,
-    onboarding_completed: row.onboardingCompleted,
-    created_at: row.createdAt.toISOString(),
-    updated_at: row.updatedAt.toISOString(),
-  };
-}
-
-function toResponseProgress(row: {
-  userId: string;
-  lifetimeXp: number;
-  rankedPoints: number;
-  currentRank: string;
-  totalQuestionsAnswered: number;
-  totalCorrect: number;
-  totalIncorrect: number;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    user_id: row.userId,
-    lifetime_xp: row.lifetimeXp,
-    ranked_points: row.rankedPoints,
-    current_rank: row.currentRank,
-    total_questions_answered: row.totalQuestionsAnswered,
-    total_correct: row.totalCorrect,
-    total_incorrect: row.totalIncorrect,
-    created_at: row.createdAt.toISOString(),
-    updated_at: row.updatedAt.toISOString(),
-  };
-}
-
-function toPercent(correct: number, attempted: number) {
-  if (attempted <= 0) {
-    return 0;
-  }
-  return Math.round((correct / attempted) * 100);
-}
-
-function normalizeVocabBankTerm(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
-}
-
-async function ensureUserProgress(userId: string) {
-  const existingRows = await db
-    .select()
-    .from(userProgress)
-    .where(eq(userProgress.userId, userId))
-    .limit(1);
-  if (existingRows.length > 0) {
-    return existingRows[0];
-  }
-
-  const insertedRows = await db
-    .insert(userProgress)
-    .values({
-      userId,
-      lifetimeXp: 0,
-      rankedPoints: 0,
-      currentRank: "Bronze",
-      totalQuestionsAnswered: 0,
-      totalCorrect: 0,
-      totalIncorrect: 0,
-    })
-    .returning();
-
-  return insertedRows[0];
-}
-
-async function fetchCurrentPracticeStreakDays({
+async function fetchQuestionTimingSummaryRows({
   userId,
-  localDate,
+  fromDate,
+  toDate,
 }: {
   userId: string;
-  localDate: string;
+  fromDate?: string;
+  toDate?: string;
 }) {
-  const rows = await db
+  const conditions = [eq(userQuestionTimingEvents.userId, userId)];
+  if (fromDate) {
+    conditions.push(gte(userQuestionTimingEvents.localDate, fromDate));
+  }
+  if (toDate) {
+    conditions.push(lte(userQuestionTimingEvents.localDate, toDate));
+  }
+
+  return db
     .select({
-      localDate: userDailyAnswerStats.localDate,
-      attempted: sql<number>`coalesce(sum(${userDailyAnswerStats.attemptCount}), 0)::int`,
+      displayPosition: userQuestionTimingEvents.displayPosition,
+      attemptCount: sql<number>`count(*)::int`,
+      correctCount:
+        sql<number>`coalesce(sum(case when ${userQuestionTimingEvents.isCorrect} then 1 else 0 end), 0)::int`,
+      wrongCount:
+        sql<number>`coalesce(sum(case when ${userQuestionTimingEvents.isCorrect} then 0 else 1 end), 0)::int`,
+      averageElapsedSeconds:
+        sql<number>`round(avg(${userQuestionTimingEvents.elapsedSeconds})::numeric, 1)::float8`,
+      fastestElapsedSeconds:
+        sql<number>`min(${userQuestionTimingEvents.elapsedSeconds})::int`,
+      slowestElapsedSeconds:
+        sql<number>`max(${userQuestionTimingEvents.elapsedSeconds})::int`,
     })
-    .from(userDailyAnswerStats)
-    .where(
-      and(
-        eq(userDailyAnswerStats.userId, userId),
-        lte(userDailyAnswerStats.localDate, localDate),
-      ),
-    )
-    .groupBy(userDailyAnswerStats.localDate)
-    .orderBy(desc(userDailyAnswerStats.localDate))
-    .limit(400);
-
-  const activeDateSet = new Set(
-    rows
-      .filter((row) => Number(row.attempted) > 0)
-      .map((row) => String(row.localDate)),
-  );
-
-  let cursor = localDate;
-  if (!activeDateSet.has(cursor)) {
-    cursor = addDaysToDateKey(localDate, -1);
-  }
-  if (!activeDateSet.has(cursor)) {
-    return 0;
-  }
-
-  let streak = 0;
-  while (activeDateSet.has(cursor)) {
-    streak += 1;
-    cursor = addDaysToDateKey(cursor, -1);
-  }
-
-  return streak;
+    .from(userQuestionTimingEvents)
+    .where(and(...conditions))
+    .groupBy(userQuestionTimingEvents.displayPosition)
+    .orderBy(userQuestionTimingEvents.displayPosition);
 }
 
 function getUserIdOrRespondUnauthorized(req: Request, res: Response) {
@@ -256,43 +149,6 @@ function getSafeAuth(req: Request) {
   } catch {
     return null;
   }
-}
-
-async function ensureUserProfileForAuth({
-  auth,
-  email,
-  displayName,
-}: {
-  auth: AuthWithUserId;
-  email?: string | null;
-  displayName?: string | null;
-}) {
-  const existingRows = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, auth.userId))
-    .limit(1);
-
-  if (existingRows.length > 0) {
-    return existingRows[0];
-  }
-
-  const normalizedEmail =
-    email ??
-    readEmailFromClaims(auth.sessionClaims) ??
-    `${auth.userId}@readtok.local`;
-
-  const insertedRows = await db
-    .insert(userProfiles)
-    .values({
-      userId: auth.userId,
-      email: normalizedEmail,
-      displayName: displayName ?? null,
-      onboardingCompleted: Boolean(displayName),
-    })
-    .returning();
-
-  return insertedRows[0];
 }
 
 router.get("/me", async (req, res) => {
@@ -356,18 +212,22 @@ router.post("/me/bootstrap", async (req, res) => {
 
   if (!existing) {
     const insertRows = await db
-      .insert(userProfiles)
-      .values({
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, userId))
+      .limit(1);
+    const createdRow =
+      insertRows[0] ??
+      (await createUserProfile({
         userId,
         email,
         displayName: displayName ?? null,
         onboardingCompleted: displayName !== null,
-      })
-      .returning();
+      }));
     const progress = await ensureUserProgress(userId);
     const { tiers } = await fetchRankTiers();
     res.json({
-      profile: toResponseProfile(insertRows[0]),
+      profile: toResponseProfile(createdRow),
       progress: toResponseProgress(progress),
       next_rank_progress: getNextRankProgress(progress.rankedPoints),
       rank_tiers: tiers,
@@ -399,6 +259,110 @@ router.post("/me/bootstrap", async (req, res) => {
     progress: toResponseProgress(progress),
     next_rank_progress: getNextRankProgress(progress.rankedPoints),
     rank_tiers: tiers,
+  });
+});
+
+router.get("/me/achievements", async (req, res) => {
+  const userId = getUserIdOrRespondUnauthorized(req, res);
+  if (!userId) {
+    return;
+  }
+
+  const profileRows = await db
+    .select({ userId: userProfiles.userId })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
+
+  if (profileRows.length === 0) {
+    res.json({
+      items: [],
+      unlocked_keys: [],
+      summary: getAchievementLevelByXp(0),
+    });
+    return;
+  }
+
+  const payload = await fetchUserAchievementsWithSummary(userId);
+  res.json(payload);
+});
+
+router.post("/me/achievements/unlock-batch", async (req, res) => {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
+    return;
+  }
+
+  const body = req.body as
+    | {
+        unlocks?: Array<{
+          key?: unknown;
+          title?: unknown;
+          category?: unknown;
+          tier?: unknown;
+          xp?: unknown;
+        }>;
+      }
+    | undefined;
+
+  const unlocksRaw = Array.isArray(body?.unlocks) ? body.unlocks : [];
+  if (unlocksRaw.length === 0) {
+    const payload = await fetchUserAchievementsWithSummary(auth.userId);
+    res.json({ inserted: [], ...payload });
+    return;
+  }
+
+  await ensureUserProfileForAuth({
+    auth,
+    email: readEmailFromClaims(auth.sessionClaims),
+    displayName: null,
+  });
+  await ensureUserProgress(auth.userId);
+
+  const seen = new Set<string>();
+  const sanitizedUnlocks = unlocksRaw
+    .map((item) => {
+      const key = typeof item.key === "string" ? item.key.trim() : "";
+      const title = typeof item.title === "string" ? item.title.trim() : "";
+      const category = typeof item.category === "string" ? item.category.trim() : "";
+      const tier = typeof item.tier === "string" ? item.tier.trim() : "";
+      const xp = Number.isFinite(Number(item.xp))
+        ? Math.max(0, Math.trunc(Number(item.xp)))
+        : 0;
+      if (!key || !title || !category || !tier || seen.has(key)) {
+        return null;
+      }
+      seen.add(key);
+      return { key, title, category, tier, xp };
+    })
+    .filter((item): item is { key: string; title: string; category: string; tier: string; xp: number } => Boolean(item));
+
+  if (sanitizedUnlocks.length === 0) {
+    const payload = await fetchUserAchievementsWithSummary(auth.userId);
+    res.json({ inserted: [], ...payload });
+    return;
+  }
+
+  await db
+    .insert(userAchievements)
+    .values(
+      sanitizedUnlocks.map((item) => ({
+        userId: auth.userId,
+        achievementKey: item.key,
+        achievementTitle: item.title,
+        achievementCategory: item.category,
+        achievementTier: item.tier,
+        achievementXp: item.xp,
+      })),
+    )
+    .onConflictDoNothing({
+      target: [userAchievements.userId, userAchievements.achievementKey],
+    });
+
+  const payload = await fetchUserAchievementsWithSummary(auth.userId);
+  res.json({
+    inserted: sanitizedUnlocks.map((item) => item.key),
+    ...payload,
   });
 });
 
@@ -598,6 +562,97 @@ router.get("/me/answer-stats", async (req, res) => {
   });
 });
 
+router.get("/me/question-timing-summary", async (req, res) => {
+  const auth = getAuthOrRespondUnauthorized(req, res);
+  if (!auth) {
+    return;
+  }
+
+  const userId = auth.userId;
+  const localDate = readLocalDateKey(req.query.local_date);
+  const last7StartDate = addDaysToDateKey(localDate, -6);
+  const last30StartDate = addDaysToDateKey(localDate, -29);
+
+  await ensureUserProfileForAuth({ auth });
+
+  const [todayRows, last7Rows, last30Rows, lifetimeRows] = await Promise.all([
+    fetchQuestionTimingSummaryRows({
+      userId,
+      fromDate: localDate,
+      toDate: localDate,
+    }),
+    fetchQuestionTimingSummaryRows({
+      userId,
+      fromDate: last7StartDate,
+      toDate: localDate,
+    }),
+    fetchQuestionTimingSummaryRows({
+      userId,
+      fromDate: last30StartDate,
+      toDate: localDate,
+    }),
+    fetchQuestionTimingSummaryRows({ userId }),
+  ]);
+
+  function toTimingSummary(
+    rows: Array<{
+      displayPosition: number;
+      attemptCount: number;
+      correctCount: number;
+      wrongCount: number;
+      averageElapsedSeconds: number;
+      fastestElapsedSeconds: number;
+      slowestElapsedSeconds: number;
+    }>,
+  ) {
+    const positions: Record<
+      string,
+      {
+        attempts: number;
+        correct: number;
+        wrong: number;
+        average_elapsed_seconds: number;
+        fastest_elapsed_seconds: number;
+        slowest_elapsed_seconds: number;
+      }
+    > = {};
+
+    for (const row of rows) {
+      positions[String(row.displayPosition)] = {
+        attempts: row.attemptCount,
+        correct: row.correctCount,
+        wrong: row.wrongCount,
+        average_elapsed_seconds: row.averageElapsedSeconds,
+        fastest_elapsed_seconds: row.fastestElapsedSeconds,
+        slowest_elapsed_seconds: row.slowestElapsedSeconds,
+      };
+    }
+
+    return {
+      first_four: [1, 2, 3, 4].map((position) => ({
+        display_position: position,
+        ...(positions[String(position)] ?? {
+          attempts: 0,
+          correct: 0,
+          wrong: 0,
+          average_elapsed_seconds: 0,
+          fastest_elapsed_seconds: 0,
+          slowest_elapsed_seconds: 0,
+        }),
+      })),
+      positions,
+    };
+  }
+
+  res.json({
+    localDate,
+    today: toTimingSummary(todayRows),
+    last7day: toTimingSummary(last7Rows),
+    last30day: toTimingSummary(last30Rows),
+    lifetime: toTimingSummary(lifetimeRows),
+  });
+});
+
 router.post("/me/submit-answer", async (req, res) => {
   const auth = getAuthOrRespondUnauthorized(req, res);
   if (!auth) {
@@ -617,6 +672,14 @@ router.post("/me/submit-answer", async (req, res) => {
   const selectedAnswer =
     typeof body?.selected_answer === "string" ? body.selected_answer : "";
   const localDate = readLocalDateKey(body?.local_date);
+  const elapsedSeconds = parseOptionalBoundedInteger(body?.elapsed_seconds, {
+    min: 0,
+    max: 14400,
+  });
+  const displayPosition = parseOptionalBoundedInteger(body?.display_position, {
+    min: 1,
+    max: 99,
+  });
 
   if (!passageId || sourceQuestionId === null) {
     res.status(400).json({
@@ -630,6 +693,8 @@ router.post("/me/submit-answer", async (req, res) => {
   const questionRows = await db
     .select({
       questionId: questions.id,
+      sourceQuestionId: questions.sourceQuestionId,
+      orderIndex: questions.orderIndex,
       questionTypeIndex: questions.questionTypeIndex,
       questionTypeLabel: questions.questionTypeLabel,
       correctAnswer: answerKeys.answerValue,
@@ -720,6 +785,22 @@ router.post("/me/submit-answer", async (req, res) => {
         },
       });
 
+    if (elapsedSeconds !== null && displayPosition !== null) {
+      await tx.insert(userQuestionTimingEvents).values({
+        id: crypto.randomUUID(),
+        userId,
+        passageId,
+        questionId: row.questionId,
+        sourceQuestionId: row.sourceQuestionId,
+        displayPosition,
+        elapsedSeconds,
+        localDate,
+        isCorrect: answerResult.isCorrect,
+        bandGroup,
+        questionType,
+      });
+    }
+
     return progressRows;
   });
 
@@ -728,6 +809,15 @@ router.post("/me/submit-answer", async (req, res) => {
     progress: toResponseProgress(latestProgress),
     next_rank_progress: getNextRankProgress(latestProgress.rankedPoints),
     answer_result: answerResult,
+    question_timing:
+      elapsedSeconds !== null && displayPosition !== null
+        ? {
+            elapsed_seconds: elapsedSeconds,
+            display_position: displayPosition,
+            source_question_id: row.sourceQuestionId,
+            order_index: row.orderIndex,
+          }
+        : null,
   });
 });
 

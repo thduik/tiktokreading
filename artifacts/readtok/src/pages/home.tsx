@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, SlidersHorizontal } from "lucide-react";
 import {
+  ensurePassageContentNamespace,
   fetchPassageList,
+  formatPassageFactoryTagLabel,
   normalizePassageFactoryTag,
   PASSAGE_FACTORY_TAG_VALUES,
   readStoredPassageFactoryTag,
@@ -12,6 +14,7 @@ import {
   type QuestionTypeIndex,
 } from "@/lib/passages-api";
 import { AppPageHeader } from "@/components/app-page-header";
+import { PassageListContentSkeleton } from "@/components/page-skeletons";
 
 const bandFilterOptions = [
   { key: "all", label: "All", band: null as number | null },
@@ -45,14 +48,14 @@ const versionFilterOptions: Array<{
   { key: "all", label: "All versions", factoryTag: null },
   ...PASSAGE_FACTORY_TAG_VALUES.map((factoryTag) => ({
     key: factoryTag,
-    label: factoryTag.toUpperCase(),
+    label: formatPassageFactoryTagLabel(factoryTag),
     factoryTag,
   })),
 ];
 
 type FilterMode = "band" | "question_type";
 const PAGE_SIZE = 30;
-const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v2:";
+const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v3:";
 
 function readInitialFilters() {
   if (typeof window === "undefined") {
@@ -89,12 +92,14 @@ function readInitialFilters() {
     normalizePassageFactoryTag(
       params.get("factoryTag") ?? params.get("factory_tag"),
     ) ?? readStoredPassageFactoryTag();
+  const searchQuery = params.get("q")?.trim() ?? "";
 
   return {
     filterMode: mode,
     activeBand: parsedBand,
     activeType: parsedType,
     activeFactoryTag: parsedFactoryTag,
+    searchQuery,
   };
 }
 
@@ -141,6 +146,12 @@ export default function Home() {
   const [activeFactoryTag, setActiveFactoryTag] = useState<PassageFactoryTag | null>(
     () => readInitialFilters().activeFactoryTag,
   );
+  const [searchQuery, setSearchQuery] = useState<string>(
+    () => readInitialFilters().searchQuery ?? "",
+  );
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>(
+    () => readInitialFilters().searchQuery ?? "",
+  );
   const [items, setItems] = useState<PassageListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -157,18 +168,29 @@ export default function Home() {
   });
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const queryKeyRef = useRef<string>("");
+  const filterMenuRef = useRef<HTMLDivElement | null>(null);
 
   const queryKey = useMemo(
     () =>
       `${filterMode}|${activeBand ?? "all"}|${activeType ?? "all"}|${
         activeFactoryTag ?? "all"
-      }`,
-    [filterMode, activeBand, activeType, activeFactoryTag],
+      }|${debouncedSearchQuery.trim().toLowerCase() || "all"}`,
+    [filterMode, activeBand, activeType, activeFactoryTag, debouncedSearchQuery],
   );
 
   useEffect(() => {
     queryKeyRef.current = queryKey;
   }, [queryKey]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 180);
+
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,6 +203,11 @@ export default function Home() {
 
     async function loadPassages() {
       try {
+        await ensurePassageContentNamespace({
+          status: "active",
+          factoryTag: activeFactoryTag ?? undefined,
+        });
+
         const sessionItems = readSessionItems(queryKey);
         if (sessionItems && sessionItems.length > 0) {
           if (!cancelled && queryKeyRef.current === queryKey) {
@@ -198,6 +225,7 @@ export default function Home() {
           question_type_index:
             filterMode === "question_type" ? (activeType ?? undefined) : undefined,
           factory_tag: activeFactoryTag ?? undefined,
+          title_contains: debouncedSearchQuery || undefined,
           limit: PAGE_SIZE,
           offset: 0,
         });
@@ -232,7 +260,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [activeBand, activeType, filterMode, queryKey]);
+  }, [activeBand, activeType, filterMode, queryKey, activeFactoryTag, debouncedSearchQuery]);
 
   useEffect(() => {
     if (isLoading || isLoadingMore || !hasMore || !loadMoreRef.current) {
@@ -250,16 +278,23 @@ export default function Home() {
         setError(null);
         const requestKey = queryKeyRef.current;
 
-        fetchPassageList({
+        ensurePassageContentNamespace({
           status: "active",
-          band_index:
-            filterMode === "band" ? (activeBand ?? undefined) : undefined,
-          question_type_index:
-            filterMode === "question_type" ? (activeType ?? undefined) : undefined,
-          factory_tag: activeFactoryTag ?? undefined,
-          limit: PAGE_SIZE,
-          offset: nextOffset,
+          factoryTag: activeFactoryTag ?? undefined,
         })
+          .then(() =>
+            fetchPassageList({
+              status: "active",
+              band_index:
+                filterMode === "band" ? (activeBand ?? undefined) : undefined,
+              question_type_index:
+                filterMode === "question_type" ? (activeType ?? undefined) : undefined,
+              factory_tag: activeFactoryTag ?? undefined,
+              title_contains: debouncedSearchQuery || undefined,
+              limit: PAGE_SIZE,
+              offset: nextOffset,
+            }),
+          )
           .then((response) => {
             if (queryKeyRef.current !== requestKey) {
               return;
@@ -307,6 +342,7 @@ export default function Home() {
     activeBand,
     activeType,
     activeFactoryTag,
+    debouncedSearchQuery,
     queryKey,
   ]);
 
@@ -320,7 +356,7 @@ export default function Home() {
       ? bandFilterOptions.find((option) => option.band === activeBand)?.label ?? "All bands"
       : typeFilterOptions.find((option) => option.type === activeType)?.label ??
         "All types",
-    activeFactoryTag ? activeFactoryTag.toUpperCase() : "All versions",
+    activeFactoryTag ? formatPassageFactoryTagLabel(activeFactoryTag) : "All versions",
   ].join(" · ");
 
   useEffect(() => {
@@ -350,118 +386,159 @@ export default function Home() {
     if (activeFactoryTag) {
       params.set("factoryTag", activeFactoryTag);
     }
+    if (searchQuery.trim().length > 0) {
+      params.set("q", searchQuery.trim());
+    }
 
     const nextSearch = params.toString();
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
     window.history.replaceState({}, "", nextUrl);
-  }, [activeBand, activeFactoryTag, activeType, filterMode]);
+  }, [activeBand, activeFactoryTag, activeType, filterMode, searchQuery]);
+
+  useEffect(() => {
+    if (!isFiltersOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!filterMenuRef.current) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof Node && !filterMenuRef.current.contains(target)) {
+        setIsFiltersOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsFiltersOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isFiltersOpen]);
 
   return (
     <div className="min-h-full w-full px-4 pb-24 pt-6" data-testid="page-list">
       <AppPageHeader title="Passage List" />
 
-      <section
-        className="mb-4 rounded-lg border border-border bg-card p-3"
-        aria-label="filters"
-      >
-        <button
-          type="button"
-          onClick={() => setIsFiltersOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-muted/60 px-3 py-2.5 text-left transition-colors hover:border-primary"
-          aria-expanded={isFiltersOpen}
-          aria-controls="passage-list-filters-panel"
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
-              <SlidersHorizontal className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">Filters</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {hasActiveFilters ? filterSummary : "Show filters"}
-              </p>
-            </div>
-          </div>
-          <ChevronDown
-            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-              isFiltersOpen ? "rotate-180" : ""
-            }`}
+      <section className="relative mb-4 rounded-lg border border-border bg-card p-3" aria-label="search and filters">
+        <div className="flex items-center gap-2" ref={filterMenuRef}>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search passage titles or topics"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
           />
-        </button>
-
-        {isFiltersOpen ? (
-          <div
-            id="passage-list-filters-panel"
-            className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+          <button
+            type="button"
+            onClick={() => setIsFiltersOpen((current) => !current)}
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+              isFiltersOpen || hasActiveFilters
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-muted text-muted-foreground hover:border-primary"
+            }`}
+            aria-label="Open filters"
+            aria-expanded={isFiltersOpen}
+            aria-controls="passage-list-filters-panel"
           >
-            <div className="min-w-0 flex-1">
-              <select
-                value={filterMode}
-                onChange={(event) => {
-                  setFilterMode(event.target.value as FilterMode);
-                }}
-                className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-              >
-                <option value="band">Band score</option>
-                <option value="question_type">Question type</option>
-              </select>
-            </div>
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
 
-            <div className="min-w-0 flex-1">
-              {filterMode === "band" ? (
-                <select
-                  value={selectedBandValue}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setActiveBand(value === "all" ? null : Number(value));
-                  }}
-                  className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                >
-                  {bandFilterOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  value={selectedTypeValue}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
-                  }}
-                  className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                >
-                  {typeFilterOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+          {isFiltersOpen ? (
+            <div
+              id="passage-list-filters-panel"
+              className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-3 shadow-lg"
+            >
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-foreground">Filters</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {hasActiveFilters ? filterSummary : "All passages are currently visible."}
+                </p>
+              </div>
 
-            <div className="min-w-0 sm:col-span-2">
-              <select
-                value={selectedFactoryTagValue}
-                onChange={(event) => {
-                  const nextFactoryTag =
-                    event.target.value === "all"
-                      ? null
-                      : (event.target.value as PassageFactoryTag);
-                  setActiveFactoryTag(nextFactoryTag);
-                }}
-                className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-              >
-                {versionFilterOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="min-w-0 flex-1">
+                  <select
+                    value={filterMode}
+                    onChange={(event) => {
+                      setFilterMode(event.target.value as FilterMode);
+                    }}
+                    className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                  >
+                    <option value="band">Band score</option>
+                    <option value="question_type">Question type</option>
+                  </select>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  {filterMode === "band" ? (
+                    <select
+                      value={selectedBandValue}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setActiveBand(value === "all" ? null : Number(value));
+                      }}
+                      className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                    >
+                      {bandFilterOptions.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={selectedTypeValue}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
+                      }}
+                      className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                    >
+                      {typeFilterOptions.map((option) => (
+                        <option key={option.key} value={option.key}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="min-w-0 sm:col-span-2">
+                  <select
+                    value={selectedFactoryTagValue}
+                    onChange={(event) => {
+                      const nextFactoryTag =
+                        event.target.value === "all"
+                          ? null
+                          : (event.target.value as PassageFactoryTag);
+                      setActiveFactoryTag(nextFactoryTag);
+                    }}
+                    className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                  >
+                    {versionFilterOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Search runs against the cached passage catalog for fast lookup.
+        </p>
       </section>
 
       {error && (
@@ -470,20 +547,11 @@ export default function Home() {
         </div>
       )}
 
-      {!error && isLoading && (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-lg border border-border bg-card"
-            />
-          ))}
-        </div>
-      )}
+      {!error && isLoading && <PassageListContentSkeleton />}
 
       {!error && !isLoading && items.length === 0 && (
         <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground">
-          No passages match the selected filters.
+          No passages match the selected filters{debouncedSearchQuery ? " or search." : "."}
         </div>
       )}
 
@@ -521,7 +589,7 @@ export default function Home() {
                   {item.question_count} Questions
                 </span>
                 <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
-                  {item.factory_tag.toUpperCase()}
+                  {formatPassageFactoryTagLabel(item.factory_tag)}
                 </span>
               </div>
             </Link>

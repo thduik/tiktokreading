@@ -5,7 +5,7 @@ import {
   type TouchEvent as ReactTouchEvent,
   type WheelEvent,
 } from "react";
-import { Link, useRoute, useSearch } from "wouter";
+import { Link, useLocation, useRoute, useSearch } from "wouter";
 import {
   AlertTriangle,
   Bookmark,
@@ -25,9 +25,11 @@ import {
   fetchPassageDetail,
   fetchPassageFeedBootstrap,
   fetchPassageIds,
+  formatPassageFactoryTagLabel,
   getCachedPassageDetail,
   normalizePassageFactoryTag,
   readStoredPassageFactoryTag,
+  writeStoredPassageFactoryTag,
   type PassageFactoryTag,
   type PassageAnswerKey,
   type PassageDetail,
@@ -39,18 +41,28 @@ import {
   submitPassageReport,
 } from "@/lib/passages-api";
 import {
+  formatElapsedTimer,
+  passageReportSessionKey,
+  readIdArrayFromStorage,
+  selectRandomIdsFromPool,
+  type FeedRuntimeSession,
+  uniqueIds,
+  writeIdArrayToStorage,
+} from "@/lib/passage-feed-runtime";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/use-app-state";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { playAnswerFeedback } from "@/lib/feedback-effects";
 import { getRankPlateData, type RankPlateData } from "@/lib/rank-visual";
 import type { AchievementDefinition } from "@/lib/achievements";
 import { formatLocalDayKey, getDailyGoalProgress } from "@/lib/daily-goal";
-import { submitRankedAnswer } from "@/lib/profile-api";
+import { applySubmitAnswerCachePatch, submitRankedAnswer } from "@/lib/profile-api";
 import { saveVocabToBank } from "@/lib/profile-api";
 import {
   QUESTION_TYPE_DISPLAY_LABELS,
@@ -78,20 +90,7 @@ type SelectedVocabContext = {
   sourceBandLabel: string;
 };
 
-type FeedRuntimeSession = {
-  factoryTagFilter: PassageFactoryTag | null;
-  passages: PassageDetail[];
-  currentIndex: number;
-  answersByPassageId: Record<string, Record<string, string>>;
-  revealedByPassageId: Record<string, Record<string, boolean>>;
-  feedIds: string[];
-  listOffset: number;
-  feedScrollLeft: number;
-};
-
 let feedRuntimeSession: FeedRuntimeSession | null = null;
-
-const PASSAGE_REPORT_SESSION_KEY_PREFIX = "readtok_reported_passage:";
 const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
   value: PassageReportType;
   label: string;
@@ -103,10 +102,6 @@ const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
   { value: "formatting_issue", label: "Formatting issue" },
   { value: "other", label: "Other" },
 ];
-
-function passageReportSessionKey(passageId: string) {
-  return `${PASSAGE_REPORT_SESSION_KEY_PREFIX}${passageId}`;
-}
 
 function extractInstructionLabel(payload: QuestionPayload): string | null {
   const instruction = payload.instruction_label;
@@ -155,6 +150,7 @@ function normalizeVocabBankKey(term: string) {
     .trim();
 }
 
+
 function AchievementUnlockedToast({
   achievement,
   effectVariant,
@@ -186,6 +182,9 @@ function AchievementUnlockedToast({
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {achievement.description}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-primary">
+            +{achievement.achievementXp} Achievement XP
           </p>
         </div>
       </div>
@@ -545,7 +544,7 @@ function PassageMetaTags({ passage }: { passage: PassageDetail }) {
   )}${factoryTagQuery}`;
   const bandFilterHref = `/list?filterMode=band&band=${encodeURIComponent(
     String(passage.band_index),
-  )}${factoryTagQuery}`;
+  )}`;
 
   return (
     <div className="mt-4 flex flex-wrap gap-2">
@@ -562,7 +561,7 @@ function PassageMetaTags({ passage }: { passage: PassageDetail }) {
         Band {passage.band_label}
       </Link>
       <span className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-2.5 text-[10px] font-medium tracking-[0.03em] text-muted-foreground md:px-3 md:text-[11px] md:tracking-[0.04em]">
-        {passage.factory_tag.toUpperCase()}
+        {formatPassageFactoryTagLabel(passage.factory_tag)}
       </span>
     </div>
   );
@@ -623,12 +622,21 @@ function AudioButton({
   );
 }
 
-function PassageHeader({ passage }: { passage: PassageDetail }) {
+function PassageHeader({
+  passage,
+  elapsedSeconds,
+}: {
+  passage: PassageDetail;
+  elapsedSeconds: number;
+}) {
   return (
-    <header className="mt-0.5">
-      <h1 className="passage-title-text text-[1.65rem] font-semibold leading-tight tracking-tight text-foreground md:text-[1.42rem] lg:text-[1.48rem]">
+    <header className="mt-0.5 flex items-start justify-between gap-3">
+      <h1 className="passage-title-text min-w-0 flex-1 text-[1.65rem] font-semibold leading-tight tracking-tight text-foreground md:text-[1.42rem] lg:text-[1.48rem]">
         {passage.title}
       </h1>
+      <span className="inline-flex h-8 shrink-0 items-center rounded-lg border border-border bg-background px-2.5 text-xs font-semibold tabular-nums text-muted-foreground">
+        {formatElapsedTimer(elapsedSeconds)}
+      </span>
     </header>
   );
 }
@@ -1278,6 +1286,7 @@ export default function PassageDetailPage() {
   const MAX_PREFETCH_COUNT = 3;
   const PREFETCH_TRIGGER_REMAINING = 8;
   const WINDOW_RADIUS = 3;
+  const [, setLocation] = useLocation();
   const [, params] = useRoute("/passages/:id");
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
@@ -1356,6 +1365,9 @@ export default function PassageDetailPage() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportedPassageIds, setReportedPassageIds] = useState<Record<string, true>>({});
+  const [elapsedSecondsByPassageId, setElapsedSecondsByPassageId] = useState<
+    Record<string, number>
+  >({});
   const [achievementEffectVariant, setAchievementEffectVariant] = useState<"a" | "b" | "c">("a");
   const questionOrderByPassageRef = useRef<Record<string, number[]>>({});
   const prefetchCountRef = useRef(0);
@@ -1381,19 +1393,6 @@ export default function PassageDetailPage() {
       ...currentState,
       [passageId]: true,
     }));
-  }
-
-  function uniqueIds(ids: string[]) {
-    const seen = new Set<string>();
-    const ordered: string[] = [];
-    for (const id of ids) {
-      if (id.length === 0 || seen.has(id)) {
-        continue;
-      }
-      seen.add(id);
-      ordered.push(id);
-    }
-    return ordered;
   }
 
   function getDisplayQuestions(passage: PassageDetail) {
@@ -1424,75 +1423,6 @@ export default function PassageDetailPage() {
       .filter((question): question is PassageQuestion => question !== undefined);
   }
 
-  function shuffleIds(ids: string[]) {
-    const cloned = [...ids];
-    for (let index = cloned.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1));
-      const temp = cloned[index];
-      cloned[index] = cloned[swapIndex];
-      cloned[swapIndex] = temp;
-    }
-    return cloned;
-  }
-
-  function readIdArrayFromStorage(storageKey: string) {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) {
-      return [];
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-
-      return parsed.filter(
-        (value): value is string => typeof value === "string" && value.length > 0,
-      );
-    } catch {
-      return [];
-    }
-  }
-
-  function writeIdArrayToStorage(storageKey: string, ids: string[]) {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(storageKey, JSON.stringify(uniqueIds(ids)));
-  }
-
-  function selectRandomIdsFromPool({
-    poolIds,
-    alreadyShownIds,
-    excludeIds,
-    count,
-  }: {
-    poolIds: string[];
-    alreadyShownIds: string[];
-    excludeIds: string[];
-    count: number;
-  }) {
-    const excludeSet = new Set(excludeIds);
-    const shownSet = new Set(alreadyShownIds);
-
-    const freshCandidates = poolIds.filter(
-      (id) => !shownSet.has(id) && !excludeSet.has(id),
-    );
-    if (freshCandidates.length >= count) {
-      return shuffleIds(freshCandidates).slice(0, count);
-    }
-
-    // Pool exhausted: reset shown memory while still avoiding currently loaded IDs.
-    const resetCandidates = poolIds.filter((id) => !excludeSet.has(id));
-    return shuffleIds(resetCandidates).slice(0, count);
-  }
-
   async function fetchPassageDetailsSafe(ids: string[], includeAnswerKey = true) {
     const results = await Promise.allSettled(
       ids.map((id) => fetchPassageDetail(id, includeAnswerKey)),
@@ -1519,6 +1449,7 @@ export default function PassageDetailPage() {
       currentIndex: cachedCurrentIndex,
       answersByPassageId: cachedAnswers,
       revealedByPassageId: cachedRevealed,
+      elapsedSecondsByPassageId: cachedElapsedSeconds,
       feedIds: cachedFeedIds,
       listOffset: cachedListOffset,
       feedScrollLeft: cachedFeedScrollLeft,
@@ -1538,6 +1469,7 @@ export default function PassageDetailPage() {
     setListOffset(cachedListOffset);
     setAnswersByPassageId(cachedAnswers);
     setRevealedByPassageId(cachedRevealed);
+    setElapsedSecondsByPassageId(cachedElapsedSeconds);
     setCurrentIndex(
       Math.min(
         Math.max(requestedIndex >= 0 ? requestedIndex : cachedCurrentIndex, 0),
@@ -1627,6 +1559,12 @@ export default function PassageDetailPage() {
           .filter((detail): detail is PassageDetail => Boolean(detail));
 
         if (details.length === 0) {
+          if (!routePassageId && bootstrapResponse.total === 0 && activeFactoryTag) {
+            throw new Error(
+              `No passages are available for ${formatPassageFactoryTagLabel(activeFactoryTag)} yet.`,
+            );
+          }
+
           throw new Error("No passages could be loaded.");
         }
 
@@ -1776,6 +1714,26 @@ export default function PassageDetailPage() {
   const isReportDisabled = activePassage
     ? Boolean(reportedPassageIds[activePassage.id])
     : true;
+  const activeElapsedSeconds = activePassage
+    ? elapsedSecondsByPassageId[activePassage.id] ?? 0
+    : 0;
+
+  useEffect(() => {
+    if (!activePassage) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setElapsedSecondsByPassageId((current) => ({
+        ...current,
+        [activePassage.id]: (current[activePassage.id] ?? 0) + 1,
+      }));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activePassage?.id]);
 
   useEffect(() => {
     if (!activePassage) {
@@ -1835,6 +1793,7 @@ export default function PassageDetailPage() {
       currentIndex,
       answersByPassageId,
       revealedByPassageId,
+      elapsedSecondsByPassageId,
       feedIds,
       listOffset,
       feedScrollLeft: 0,
@@ -1844,6 +1803,7 @@ export default function PassageDetailPage() {
     currentIndex,
     answersByPassageId,
     revealedByPassageId,
+    elapsedSecondsByPassageId,
     feedIds,
     listOffset,
     activeFactoryTag,
@@ -2100,6 +2060,7 @@ export default function PassageDetailPage() {
     passageId: string,
     question: PassageQuestion,
     submittedAnswer: string,
+    displayPosition: number,
   ) {
     if (!submittedAnswer.trim()) {
       return;
@@ -2164,8 +2125,17 @@ export default function PassageDetailPage() {
       questionId: question.id,
       selectedAnswer: submittedAnswer,
       localDate: formatLocalDayKey(),
+      elapsedSeconds: elapsedSecondsByPassageId[passageId] ?? 0,
+      displayPosition,
     })
       .then((result) => {
+        applySubmitAnswerCachePatch({
+          localDate: formatLocalDayKey(),
+          isCorrect,
+          band: targetPassage.band_label ?? targetPassage.band_index,
+          questionType: question.question_type_label,
+          response: result,
+        });
         recordRankedResult({
           rank: result.answer_result.rankAfter,
           rankedPointsAfter: result.answer_result.rankedPointsAfter,
@@ -2286,6 +2256,11 @@ export default function PassageDetailPage() {
     }
   }
 
+  function handleClearFactoryTagFilter() {
+    writeStoredPassageFactoryTag(null);
+    setLocation("/");
+  }
+
   if (isLoading && passages.length === 0) {
     return (
       <div className="min-h-full w-full px-4 pb-24 pt-6">
@@ -2299,11 +2274,43 @@ export default function PassageDetailPage() {
   }
 
   if (error || passages.length === 0) {
+    const isEmptyFactoryTagState =
+      passages.length === 0 &&
+      !isLoading &&
+      Boolean(activeFactoryTag) &&
+      error ===
+        `No passages are available for ${formatPassageFactoryTagLabel(activeFactoryTag)} yet.`;
+
     return (
       <div className="min-h-full w-full px-4 pb-24 pt-6">
-        <div className="mx-auto w-full max-w-2xl rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-4 text-sm text-destructive">
-          {error ?? "Passage not found."}
-        </div>
+        {isEmptyFactoryTagState ? (
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 rounded-lg border border-border bg-card px-5 py-5 text-sm shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-lg border border-primary/25 bg-primary/10 p-2 text-primary">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-semibold text-foreground">
+                  No passages in {formatPassageFactoryTagLabel(activeFactoryTag)} yet
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your Feed is still filtered to this batch version. Clear the version filter or
+                  open the Passage List to switch batches.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleClearFactoryTagFilter}>Show all versions</Button>
+              <Button asChild variant="outline">
+                <Link href="/list">Open Passage List</Link>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-2xl rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-4 text-sm text-destructive">
+            {error ?? "Passage not found."}
+          </div>
+        )}
       </div>
     );
   }
@@ -2339,7 +2346,7 @@ export default function PassageDetailPage() {
         <div className="desktop-reading-grid mx-auto grid h-[calc(100%-60px)] w-full max-w-[1600px] grid-cols-[1.22fr_1fr] gap-3">
           <section className="min-h-0 overflow-y-auto rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div>
-              <PassageHeader passage={activePassage} />
+              <PassageHeader passage={activePassage} elapsedSeconds={activeElapsedSeconds} />
               <PassageText
                 sentences={activePassage.passage_sentences}
                 highlightedSentenceMap={highlightedSentenceMap}
@@ -2381,7 +2388,7 @@ export default function PassageDetailPage() {
                       handleAnswerChange(activePassage.id, question.id, nextAnswer)
                     }
                     onSubmitAnswer={(nextAnswer) =>
-                      revealAnswer(activePassage.id, question, nextAnswer ?? answer)
+                      revealAnswer(activePassage.id, question, nextAnswer ?? answer, index + 1)
                     }
                   />
                 );
@@ -2523,7 +2530,10 @@ export default function PassageDetailPage() {
                         <div className="mt-2 grid min-h-0 flex-1 grid-rows-2 gap-2">
                           <section className="min-h-0 overflow-y-auto overscroll-y-contain rounded-lg border border-border bg-card px-4 pb-4 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <div>
-                              <PassageHeader passage={passage} />
+                              <PassageHeader
+                                passage={passage}
+                                elapsedSeconds={elapsedSecondsByPassageId[passage.id] ?? 0}
+                              />
                               <PassageText
                                 sentences={passage.passage_sentences}
                                 highlightedSentenceMap={highlightedSentenceMap}
@@ -2565,7 +2575,12 @@ export default function PassageDetailPage() {
                                       handleAnswerChange(passage.id, question.id, nextAnswer)
                                     }
                                     onSubmitAnswer={(nextAnswer) =>
-                                      revealAnswer(passage.id, question, nextAnswer ?? answer)
+                                      revealAnswer(
+                                        passage.id,
+                                        question,
+                                        nextAnswer ?? answer,
+                                        questionIndex + 1,
+                                      )
                                     }
                                   />
                                 );
