@@ -112,9 +112,24 @@ export async function createUserProfile({
           displayName,
           onboardingCompleted,
         })
+        .onConflictDoNothing({
+          target: userProfiles.userId,
+        })
         .returning();
 
-      return insertedRows[0];
+      if (insertedRows[0]) {
+        return insertedRows[0];
+      }
+
+      const existingRows = await db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, userId))
+        .limit(1);
+
+      if (existingRows[0]) {
+        return existingRows[0];
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("user_profiles_public_user_id_uidx")) {
@@ -196,16 +211,6 @@ export async function ensureUserProfileForAuth({
     email ??
     readEmailFromClaims(auth.sessionClaims) ??
     `${auth.userId}@readtok.local`;
-
-  const insertedRows = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, auth.userId))
-    .limit(1);
-
-  if (insertedRows.length > 0) {
-    return insertedRows[0];
-  }
 
   return createUserProfile({
     userId: auth.userId,

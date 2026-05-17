@@ -27,7 +27,7 @@ import {
   fetchPassageIds,
   formatPassageFactoryTagLabel,
   getCachedPassageDetail,
-  normalizePassageFactoryTag,
+  normalizePassageFactoryTagFilter,
   readStoredPassageFactoryTag,
   writeStoredPassageFactoryTag,
   type PassageFactoryTag,
@@ -1292,7 +1292,7 @@ export default function PassageDetailPage() {
   const searchParams = new URLSearchParams(search);
   const startPassageId = searchParams.get("start")?.trim() ?? "";
   const activeFactoryTag =
-    normalizePassageFactoryTag(
+    normalizePassageFactoryTagFilter(
       searchParams.get("factoryTag") ?? searchParams.get("factory_tag"),
     ) ?? readStoredPassageFactoryTag();
   const feedFilterKey = activeFactoryTag ?? "all";

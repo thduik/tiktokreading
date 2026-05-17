@@ -1,8 +1,26 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const REQUIRED_NODE = ">=20.19.0 <21 || >=22.12.0";
-const REQUIRED_PNPM = "10.33.2";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT_DIR = path.resolve(__dirname, "..");
+
+function readJsonFile(filePath) {
+  return JSON.parse(readFileSync(filePath, "utf8"));
+}
+
+function readTextFile(filePath) {
+  return readFileSync(filePath, "utf8").trim();
+}
+
+const packageJson = readJsonFile(path.join(ROOT_DIR, "package.json"));
+const PREFERRED_NODE = readTextFile(path.join(ROOT_DIR, ".node-version"));
+const REQUIRED_NODE = packageJson.engines?.node ?? ">=20.19.0 <21 || >=22.12.0";
+const REQUIRED_PNPM =
+  packageJson.engines?.pnpm ??
+  String(packageJson.packageManager ?? "pnpm@10.33.2").replace(/^pnpm@/, "");
 
 function parseVersion(version) {
   const match = version.trim().replace(/^v/, "").match(/^(\d+)\.(\d+)\.(\d+)/);
@@ -50,6 +68,7 @@ if (!nodeVersionIsSupported(nodeVersion)) {
     [
       `[toolchain] Node ${nodeVersion} is not supported.`,
       `[toolchain] Required Node: ${REQUIRED_NODE}`,
+      `[toolchain] Preferred local Node: ${PREFERRED_NODE}`,
       "[toolchain] This repo uses Vite 7/Rollup 4, which need modern Node native packages.",
       "[toolchain] Run `nvm install && nvm use`, then `corepack pnpm install`."
     ].join("\n")

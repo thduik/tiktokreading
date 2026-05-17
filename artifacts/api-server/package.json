@@ -9,6 +9,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "node ../../scripts/check-toolchain.mjs --pnpm",
     "test": "tsx --test ./src/lib/answer-stats.test.ts ./src/lib/admin-auth.test.ts ./src/lib/profile-store.test.ts"
   },
   "dependencies": {

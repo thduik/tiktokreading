@@ -3,6 +3,7 @@ import {
   getOrFetchCachedApiValue,
   invalidateCachedApiPrefix,
   mutateCachedApiValue,
+  readActiveApiCacheUserScope,
   writeCachedApiValue,
 } from "@/lib/api-cache";
 
@@ -12,6 +13,7 @@ const LEADERBOARD_CACHE_TTL_MS = DEFAULT_API_CACHE_TTL_MS;
 const PUBLIC_STATS_CACHE_TTL_MS = DEFAULT_API_CACHE_TTL_MS;
 const PROFILE_CACHE_SCOPE = "user" as const;
 const PUBLIC_CACHE_SCOPE = "public" as const;
+const profileBootstrapInflight = new Map<string, Promise<ProfileEnvelope>>();
 const DEFAULT_ANSWER_STAT_BAND_GROUPS = [
   "Band6",
   "Band7",
@@ -542,20 +544,34 @@ export async function bootstrapMyProfile({
   email?: string;
   displayName?: string | null;
 }) {
-  const response = await requestJson<ProfileEnvelope>(`${API_BASE}/me/bootstrap`, {
+  const inflightKey = readActiveApiCacheUserScope();
+  const existingRequest = profileBootstrapInflight.get(inflightKey);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = requestJson<ProfileEnvelope>(`${API_BASE}/me/bootstrap`, {
     method: "POST",
     body: JSON.stringify({
       email,
       display_name: displayName,
     }),
-  });
-  writeCachedApiValue(
-    buildProfileCacheKey(),
-    response,
-    PROFILE_CACHE_TTL_MS,
-    PROFILE_CACHE_SCOPE,
-  );
-  return response;
+  })
+    .then((response) => {
+      writeCachedApiValue(
+        buildProfileCacheKey(),
+        response,
+        PROFILE_CACHE_TTL_MS,
+        PROFILE_CACHE_SCOPE,
+      );
+      return response;
+    })
+    .finally(() => {
+      profileBootstrapInflight.delete(inflightKey);
+    });
+
+  profileBootstrapInflight.set(inflightKey, request);
+  return request;
 }
 
 export async function updateMyProfile({

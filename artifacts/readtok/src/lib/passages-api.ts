@@ -12,14 +12,11 @@ export type QuestionTypeIndex =
   | "short_answer";
 
 export type AnswerType = "label" | "option_key" | "text";
-export type PassageFactoryTag = "v1" | "v2" | "v3" | "v4" | "v4_5";
-
-export const PASSAGE_FACTORY_TAG_VALUES: PassageFactoryTag[] = [
+export type PassageFactoryTag = string;
+export const PASSAGE_FACTORY_TAG_FILTER_VALUES: PassageFactoryTag[] = [
   "v1",
   "v2",
-  "v3",
-  "v4",
-  "v4_5",
+  "v5",
 ];
 export const PASSAGE_FACTORY_TAG_STORAGE_KEY =
   "readtok_active_factory_tag_filter_v1";
@@ -143,7 +140,9 @@ interface PassageListResponse {
     limit: number;
     offset: number;
     count: number;
+    total?: number;
   };
+  available_factory_tags?: string[];
 }
 
 interface PassageIdsResponse {
@@ -153,6 +152,7 @@ interface PassageIdsResponse {
   status: string;
   language_code: string | null;
   factory_tag: string | null;
+  available_factory_tags?: string[];
 }
 
 interface PassageFeedBootstrapResponse {
@@ -162,6 +162,7 @@ interface PassageFeedBootstrapResponse {
   total: number;
   version: string;
   factory_tag: string | null;
+  available_factory_tags?: string[];
 }
 
 export interface SubmitPassageReportResponse {
@@ -320,13 +321,64 @@ export function normalizePassageFactoryTag(
   }
 
   const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-  if (
-    PASSAGE_FACTORY_TAG_VALUES.includes(normalized as PassageFactoryTag)
-  ) {
-    return normalized as PassageFactoryTag;
+  if (/^v\d+(?:_\d+)?$/.test(normalized)) {
+    return normalized;
   }
 
   return null;
+}
+
+export function normalizePassageFactoryTagFilter(
+  raw: string | null | undefined,
+): PassageFactoryTag | null {
+  const normalized = normalizePassageFactoryTag(raw);
+  if (!normalized) {
+    return null;
+  }
+
+  return PASSAGE_FACTORY_TAG_FILTER_VALUES.includes(normalized) ? normalized : null;
+}
+
+function parseFactoryTagSortParts(factoryTag: string) {
+  const normalized = normalizePassageFactoryTag(factoryTag);
+  if (!normalized) {
+    return { major: -1, minor: -1, raw: factoryTag };
+  }
+
+  const match = normalized.match(/^v(\d+)(?:_(\d+))?$/);
+  if (!match) {
+    return { major: -1, minor: -1, raw: normalized };
+  }
+
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2] ?? 0),
+    raw: normalized,
+  };
+}
+
+export function sortPassageFactoryTags(tags: Array<string | null | undefined>) {
+  const uniqueNormalizedTags = Array.from(
+    new Set(
+      tags
+        .map((tag) => normalizePassageFactoryTag(tag))
+        .filter((tag): tag is string => Boolean(tag)),
+    ),
+  );
+
+  return uniqueNormalizedTags.sort((left, right) => {
+    const a = parseFactoryTagSortParts(left);
+    const b = parseFactoryTagSortParts(right);
+
+    if (a.major !== b.major) {
+      return b.major - a.major;
+    }
+    if (a.minor !== b.minor) {
+      return b.minor - a.minor;
+    }
+
+    return a.raw.localeCompare(b.raw);
+  });
 }
 
 export function formatPassageFactoryTagLabel(factoryTag: string | null | undefined) {
@@ -344,7 +396,7 @@ export function readStoredPassageFactoryTag() {
     return null;
   }
 
-  return normalizePassageFactoryTag(
+  return normalizePassageFactoryTagFilter(
     window.localStorage.getItem(PASSAGE_FACTORY_TAG_STORAGE_KEY),
   );
 }
@@ -356,12 +408,14 @@ export function writeStoredPassageFactoryTag(
     return;
   }
 
-  if (!factoryTag) {
+  const normalized = normalizePassageFactoryTagFilter(factoryTag);
+
+  if (!normalized) {
     window.localStorage.removeItem(PASSAGE_FACTORY_TAG_STORAGE_KEY);
     return;
   }
 
-  window.localStorage.setItem(PASSAGE_FACTORY_TAG_STORAGE_KEY, factoryTag);
+  window.localStorage.setItem(PASSAGE_FACTORY_TAG_STORAGE_KEY, normalized);
 }
 
 function readCachedValue<T>(storageKey: string): T | null {

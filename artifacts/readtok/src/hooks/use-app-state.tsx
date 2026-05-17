@@ -42,6 +42,12 @@ import {
   type SessionSummaryProgress,
   type SessionSummarySnapshot,
 } from "@/lib/practice-tracking";
+import {
+  API_CACHE_USER_SCOPE_CHANGE_EVENT,
+  API_CACHE_USER_SCOPE_STORAGE_KEY,
+  DEFAULT_API_CACHE_USER_SCOPE,
+  readActiveApiCacheUserScope,
+} from "@/lib/api-cache";
 import { authEnabled } from "@/lib/runtime-config";
 
 export interface UserStats {
@@ -113,6 +119,22 @@ const STORAGE_KEYS = {
 
 function shouldPersistSyncedUserState() {
   return !authEnabled;
+}
+
+function readActiveLocalStateScope() {
+  if (!authEnabled) {
+    return DEFAULT_API_CACHE_USER_SCOPE;
+  }
+
+  return readActiveApiCacheUserScope();
+}
+
+function buildScopedStorageKey(key: string, scope: string) {
+  if (!authEnabled) {
+    return key;
+  }
+
+  return `${key}:${scope}`;
 }
 
 function purgeSyncedUserStorage() {
@@ -256,8 +278,10 @@ function deriveAchievementLevelProgress(unlockedKeys: string[]) {
   return getAchievementLevelProgress(calculateAchievementXpFromKeys(unlockedKeys));
 }
 
-function readSavedCardIds() {
-  const rawSaved = localStorage.getItem(STORAGE_KEYS.saved);
+function readSavedCardIds(scope: string) {
+  const rawSaved = localStorage.getItem(
+    buildScopedStorageKey(STORAGE_KEYS.saved, scope),
+  );
   if (!rawSaved) {
     return [];
   }
@@ -270,11 +294,11 @@ function readSavedCardIds() {
   return parsedSaved.filter((value): value is string => typeof value === "string");
 }
 
-function readHydratedState() {
+function readHydratedState(scope: string) {
   const hasCompletedOnboarding =
     localStorage.getItem(STORAGE_KEYS.onboarding) === "true";
 
-  const savedCardIds = readSavedCardIds();
+  const savedCardIds = readSavedCardIds(scope);
   const storedStats = shouldPersistSyncedUserState()
     ? sanitizeStats(JSON.parse(localStorage.getItem(STORAGE_KEYS.stats) ?? "null"))
     : {
@@ -306,10 +330,15 @@ function readHydratedState() {
         )
       : null,
     feedbackPreferences: sanitizeFeedbackPreferences(
-      JSON.parse(localStorage.getItem(STORAGE_KEYS.feedbackPreferences) ?? "null"),
+      JSON.parse(
+        localStorage.getItem(buildScopedStorageKey(STORAGE_KEYS.feedbackPreferences, scope)) ??
+          "null",
+      ),
     ),
     mistakes: sanitizeMistakes(
-      JSON.parse(localStorage.getItem(STORAGE_KEYS.mistakes) ?? "null"),
+      JSON.parse(
+        localStorage.getItem(buildScopedStorageKey(STORAGE_KEYS.mistakes, scope)) ?? "null",
+      ),
     ),
   };
 }
@@ -338,6 +367,40 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     AchievementDefinition[]
   >([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [activeStorageScope, setActiveStorageScope] = useState<string>(() =>
+    readActiveLocalStateScope(),
+  );
+  const [hydratedStorageScope, setHydratedStorageScope] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !authEnabled) {
+      return;
+    }
+
+    const syncScope = () => {
+      const nextScope = readActiveLocalStateScope();
+      setActiveStorageScope((currentScope) =>
+        currentScope === nextScope ? currentScope : nextScope,
+      );
+    };
+
+    const handleScopeChange = () => {
+      syncScope();
+    };
+
+    const handleScopeStorage = (event: StorageEvent) => {
+      if (event.key === API_CACHE_USER_SCOPE_STORAGE_KEY) {
+        syncScope();
+      }
+    };
+
+    window.addEventListener(API_CACHE_USER_SCOPE_CHANGE_EVENT, handleScopeChange);
+    window.addEventListener("storage", handleScopeStorage);
+    return () => {
+      window.removeEventListener(API_CACHE_USER_SCOPE_CHANGE_EVENT, handleScopeChange);
+      window.removeEventListener("storage", handleScopeStorage);
+    };
+  }, []);
 
   useEffect(() => {
     if (!shouldPersistSyncedUserState()) {
@@ -345,22 +408,23 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
     }
 
     try {
-      const hydratedState = readHydratedState();
+      const hydratedState = readHydratedState(activeStorageScope);
       setHasCompletedOnboarding(hydratedState.hasCompletedOnboarding);
       setSavedCardIds(hydratedState.savedCardIds);
       setStats(hydratedState.stats);
       setRankedIdentity(hydratedState.rankedIdentity);
       setFeedbackPreferences(hydratedState.feedbackPreferences);
       setMistakes(hydratedState.mistakes);
+      setHydratedStorageScope(activeStorageScope);
     } catch (error) {
       console.error("Failed to load state", error);
     } finally {
       setIsLoaded(true);
     }
-  }, []);
+  }, [activeStorageScope]);
 
   useEffect(() => {
-    if (!isLoaded) {
+    if (!isLoaded || hydratedStorageScope !== activeStorageScope) {
       return;
     }
 
@@ -368,7 +432,10 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       STORAGE_KEYS.onboarding,
       hasCompletedOnboarding ? "true" : "false",
     );
-    localStorage.setItem(STORAGE_KEYS.saved, JSON.stringify(savedCardIds));
+    localStorage.setItem(
+      buildScopedStorageKey(STORAGE_KEYS.saved, activeStorageScope),
+      JSON.stringify(savedCardIds),
+    );
     if (shouldPersistSyncedUserState()) {
       localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats));
       localStorage.setItem(
@@ -379,13 +446,18 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       purgeSyncedUserStorage();
     }
     localStorage.setItem(
-      STORAGE_KEYS.feedbackPreferences,
+      buildScopedStorageKey(STORAGE_KEYS.feedbackPreferences, activeStorageScope),
       JSON.stringify(feedbackPreferences),
     );
-    localStorage.setItem(STORAGE_KEYS.mistakes, JSON.stringify(mistakes));
+    localStorage.setItem(
+      buildScopedStorageKey(STORAGE_KEYS.mistakes, activeStorageScope),
+      JSON.stringify(mistakes),
+    );
   }, [
+    activeStorageScope,
     feedbackPreferences,
     hasCompletedOnboarding,
+    hydratedStorageScope,
     isLoaded,
     mistakes,
     rankedIdentity,
@@ -398,20 +470,35 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       const syncedStateKeyAllowed =
         shouldPersistSyncedUserState() &&
         (event.key === STORAGE_KEYS.stats || event.key === STORAGE_KEYS.rankedIdentity);
+      const scopedSavedKey = buildScopedStorageKey(STORAGE_KEYS.saved, activeStorageScope);
+      const scopedFeedbackKey = buildScopedStorageKey(
+        STORAGE_KEYS.feedbackPreferences,
+        activeStorageScope,
+      );
+      const scopedMistakesKey = buildScopedStorageKey(
+        STORAGE_KEYS.mistakes,
+        activeStorageScope,
+      );
 
       if (
         !event.key ||
         (event.key !== STORAGE_KEYS.onboarding &&
-          event.key !== STORAGE_KEYS.saved &&
+          event.key !== scopedSavedKey &&
           !syncedStateKeyAllowed &&
-          event.key !== STORAGE_KEYS.feedbackPreferences &&
-          event.key !== STORAGE_KEYS.mistakes)
+          event.key !== scopedFeedbackKey &&
+          event.key !== scopedMistakesKey &&
+          event.key !== API_CACHE_USER_SCOPE_STORAGE_KEY)
       ) {
         return;
       }
 
       try {
-        const hydratedState = readHydratedState();
+        if (event.key === API_CACHE_USER_SCOPE_STORAGE_KEY) {
+          setActiveStorageScope(readActiveLocalStateScope());
+          return;
+        }
+
+        const hydratedState = readHydratedState(activeStorageScope);
         setHasCompletedOnboarding(hydratedState.hasCompletedOnboarding);
         setSavedCardIds(hydratedState.savedCardIds);
         setStats(hydratedState.stats);
@@ -425,7 +512,7 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  }, [activeStorageScope]);
 
   const completeOnboarding = useCallback(() => {
     setHasCompletedOnboarding(true);

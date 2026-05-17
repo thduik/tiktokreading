@@ -187,6 +187,63 @@ type PassageIdPoolResponse = {
   factory_tag: string | null;
 };
 
+function parseFactoryTagSortParts(factoryTag: string) {
+  const match = factoryTag.match(/^v(\d+)(?:_(\d+))?$/i);
+  if (!match) {
+    return { major: -1, minor: -1, raw: factoryTag };
+  }
+
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2] ?? 0),
+    raw: factoryTag,
+  };
+}
+
+function sortFactoryTagsDescending(values: string[]) {
+  return [...values].sort((left, right) => {
+    const a = parseFactoryTagSortParts(left);
+    const b = parseFactoryTagSortParts(right);
+
+    if (a.major !== b.major) {
+      return b.major - a.major;
+    }
+    if (a.minor !== b.minor) {
+      return b.minor - a.minor;
+    }
+
+    return a.raw.localeCompare(b.raw);
+  });
+}
+
+async function fetchAvailableFactoryTags({
+  status,
+  languageCode,
+}: {
+  status?: string;
+  languageCode?: string;
+}) {
+  const conditions = [];
+  if (status !== undefined) {
+    conditions.push(eq(passages.status, status));
+  }
+  if (languageCode !== undefined) {
+    conditions.push(eq(passages.languageCode, languageCode));
+  }
+
+  const rows = await db
+    .select({ factoryTag: passages.factoryTag })
+    .from(passages)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(passages.factoryTag);
+
+  return sortFactoryTagsDescending(
+    rows
+      .map((row) => row.factoryTag?.trim())
+      .filter((value): value is string => Boolean(value)),
+  );
+}
+
 type PassageCatalogSearchParams = {
   titleContains: string;
   bandIndex?: number;
@@ -912,7 +969,9 @@ router.get("/passages", async (req, res) => {
       limit: number;
       offset: number;
       count: number;
+      total: number;
     };
+    available_factory_tags: string[];
   }>(listCacheKey);
 
   if (cachedListResponse.value) {
@@ -920,6 +979,11 @@ router.get("/passages", async (req, res) => {
     res.json(cachedListResponse.value);
     return;
   }
+
+  const availableFactoryTagsPromise = fetchAvailableFactoryTags({
+    status,
+    languageCode,
+  });
 
   if (titleContains !== undefined) {
     const searchResult = await searchPassageCatalog({
@@ -943,6 +1007,7 @@ router.get("/passages", async (req, res) => {
       return;
     }
 
+    const availableFactoryTags = await availableFactoryTagsPromise;
     const listResponse = {
       items: searchResult.items,
       pagination: {
@@ -951,6 +1016,7 @@ router.get("/passages", async (req, res) => {
         count: searchResult.items.length,
         total: searchResult.total,
       },
+      available_factory_tags: availableFactoryTags,
     };
 
     res.setHeader(
@@ -1035,6 +1101,7 @@ router.get("/passages", async (req, res) => {
     .limit(limit)
     .offset(offset);
 
+  const availableFactoryTags = await availableFactoryTagsPromise;
   const listResponse = {
     items: rows.map((row) => toPassageListItemResponse(row)),
     pagination: {
@@ -1043,6 +1110,7 @@ router.get("/passages", async (req, res) => {
       count: rows.length,
       total: rows.length,
     },
+    available_factory_tags: availableFactoryTags,
   };
 
   res.setHeader(
@@ -1070,6 +1138,10 @@ router.get("/passages/ids", async (req, res) => {
     languageCode,
     factoryTag,
   });
+  const availableFactoryTags = await fetchAvailableFactoryTags({
+    status,
+    languageCode,
+  });
 
   res.setHeader("x-cache", cacheStatus);
   res.json({
@@ -1079,6 +1151,7 @@ router.get("/passages/ids", async (req, res) => {
     status,
     language_code: languageCode ?? null,
     factory_tag: pool.factory_tag,
+    available_factory_tags: availableFactoryTags,
   });
 });
 
@@ -1110,6 +1183,10 @@ router.get("/passages/feed-bootstrap", async (req, res) => {
     languageCode,
     factoryTag,
   });
+  const availableFactoryTags = await fetchAvailableFactoryTags({
+    status,
+    languageCode,
+  });
   const selectedIds = sampleIds(pool.ids, limit);
   const detailResult = await fetchPassageDetailResponsesByIds({
     ids: selectedIds,
@@ -1125,6 +1202,7 @@ router.get("/passages/feed-bootstrap", async (req, res) => {
     total: pool.total,
     version: pool.version,
     factory_tag: pool.factory_tag,
+    available_factory_tags: availableFactoryTags,
   });
 });
 

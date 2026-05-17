@@ -1,6 +1,10 @@
 export type ApiCacheScope = "public" | "user";
 
 export const DEFAULT_API_CACHE_TTL_MS = 10 * 60 * 1000;
+export const API_CACHE_USER_SCOPE_STORAGE_KEY = "readtok_api_cache_user_scope_v1";
+export const API_CACHE_USER_SCOPE_CHANGE_EVENT =
+  "readtok:api-cache-user-scope-change";
+export const DEFAULT_API_CACHE_USER_SCOPE = "__anon__";
 
 type ApiCacheRecord<T> = {
   version: 1;
@@ -10,8 +14,6 @@ type ApiCacheRecord<T> = {
 };
 
 const API_CACHE_STORAGE_PREFIX = "readtok_api_cache_v1:";
-const API_CACHE_USER_SCOPE_STORAGE_KEY = "readtok_api_cache_user_scope_v1";
-const DEFAULT_USER_SCOPE = "__anon__";
 const memoryCache = new Map<string, ApiCacheRecord<unknown>>();
 const inflightCache = new Map<string, Promise<unknown>>();
 
@@ -131,16 +133,16 @@ function writeRecord<T>(fullKey: string, payload: T, ttlMs: number) {
 
 export function readActiveApiCacheUserScope() {
   if (!canUseStorage()) {
-    return DEFAULT_USER_SCOPE;
+    return DEFAULT_API_CACHE_USER_SCOPE;
   }
 
   const raw = window.localStorage.getItem(API_CACHE_USER_SCOPE_STORAGE_KEY);
   if (!raw) {
-    return DEFAULT_USER_SCOPE;
+    return DEFAULT_API_CACHE_USER_SCOPE;
   }
 
   const normalized = raw.trim();
-  return normalized.length > 0 ? normalized : DEFAULT_USER_SCOPE;
+  return normalized.length > 0 ? normalized : DEFAULT_API_CACHE_USER_SCOPE;
 }
 
 export function setActiveApiCacheUserScope(userScope: string | null | undefined) {
@@ -148,12 +150,22 @@ export function setActiveApiCacheUserScope(userScope: string | null | undefined)
     return;
   }
 
-  if (!userScope || userScope.trim().length === 0) {
-    window.localStorage.setItem(API_CACHE_USER_SCOPE_STORAGE_KEY, DEFAULT_USER_SCOPE);
-    return;
+  const nextScope =
+    !userScope || userScope.trim().length === 0
+      ? DEFAULT_API_CACHE_USER_SCOPE
+      : userScope.trim();
+  const previousScope = readActiveApiCacheUserScope();
+  window.localStorage.setItem(API_CACHE_USER_SCOPE_STORAGE_KEY, nextScope);
+  if (previousScope !== nextScope) {
+    window.dispatchEvent(
+      new CustomEvent(API_CACHE_USER_SCOPE_CHANGE_EVENT, {
+        detail: {
+          previousScope,
+          nextScope,
+        },
+      }),
+    );
   }
-
-  window.localStorage.setItem(API_CACHE_USER_SCOPE_STORAGE_KEY, userScope.trim());
 }
 
 export function readCachedApiValue<T>(

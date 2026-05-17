@@ -5,9 +5,10 @@ import {
   ensurePassageContentNamespace,
   fetchPassageList,
   formatPassageFactoryTagLabel,
-  normalizePassageFactoryTag,
-  PASSAGE_FACTORY_TAG_VALUES,
+  normalizePassageFactoryTagFilter,
+  PASSAGE_FACTORY_TAG_FILTER_VALUES,
   readStoredPassageFactoryTag,
+  sortPassageFactoryTags,
   writeStoredPassageFactoryTag,
   type PassageFactoryTag,
   type PassageListItem,
@@ -40,22 +41,9 @@ const typeFilterOptions: Array<{
   { key: "short_answer", label: "Short Answer", type: "short_answer" },
 ];
 
-const versionFilterOptions: Array<{
-  key: "all" | PassageFactoryTag;
-  label: string;
-  factoryTag: PassageFactoryTag | null;
-}> = [
-  { key: "all", label: "All versions", factoryTag: null },
-  ...PASSAGE_FACTORY_TAG_VALUES.map((factoryTag) => ({
-    key: factoryTag,
-    label: formatPassageFactoryTagLabel(factoryTag),
-    factoryTag,
-  })),
-];
-
 type FilterMode = "band" | "question_type";
 const PAGE_SIZE = 30;
-const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v3:";
+const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v4:";
 
 function readInitialFilters() {
   if (typeof window === "undefined") {
@@ -89,7 +77,7 @@ function readInitialFilters() {
       ? (rawType as QuestionTypeIndex)
       : null;
   const parsedFactoryTag =
-    normalizePassageFactoryTag(
+    normalizePassageFactoryTagFilter(
       params.get("factoryTag") ?? params.get("factory_tag"),
     ) ?? readStoredPassageFactoryTag();
   const searchQuery = params.get("q")?.trim() ?? "";
@@ -115,23 +103,43 @@ function readSessionItems(cacheKey: string) {
 
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
+    if (Array.isArray(parsed)) {
+      return {
+        items: parsed as PassageListItem[],
+        availableFactoryTags: [] as PassageFactoryTag[],
+      };
+    }
+    if (!parsed || typeof parsed !== "object") {
       return null;
     }
-    return parsed as PassageListItem[];
+    const items = Array.isArray((parsed as { items?: unknown }).items)
+      ? ((parsed as { items: PassageListItem[] }).items ?? [])
+      : [];
+    const availableFactoryTags = sortPassageFactoryTags(
+      Array.isArray((parsed as { availableFactoryTags?: unknown }).availableFactoryTags)
+        ? ((parsed as { availableFactoryTags: string[] }).availableFactoryTags ?? [])
+        : [],
+    );
+    return { items, availableFactoryTags };
   } catch {
     return null;
   }
 }
 
-function writeSessionItems(cacheKey: string, items: PassageListItem[]) {
+function writeSessionItems(
+  cacheKey: string,
+  payload: {
+    items: PassageListItem[];
+    availableFactoryTags: PassageFactoryTag[];
+  },
+) {
   if (typeof window === "undefined") {
     return;
   }
 
   window.sessionStorage.setItem(
     `${SESSION_LIST_KEY_PREFIX}${cacheKey}`,
-    JSON.stringify(items),
+    JSON.stringify(payload),
   );
 }
 
@@ -158,6 +166,7 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true);
   const [nextOffset, setNextOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [availableFactoryTags, setAvailableFactoryTags] = useState<PassageFactoryTag[]>([]);
   const [isFiltersOpen, setIsFiltersOpen] = useState(() => {
     const initial = readInitialFilters();
     return (
@@ -182,6 +191,26 @@ export default function Home() {
     queryKeyRef.current = queryKey;
   }, [queryKey]);
 
+  const versionFilterOptions = useMemo(() => {
+    const tags = sortPassageFactoryTags(
+      activeFactoryTag
+        ? [...PASSAGE_FACTORY_TAG_FILTER_VALUES, ...availableFactoryTags, activeFactoryTag]
+        : [...PASSAGE_FACTORY_TAG_FILTER_VALUES, ...availableFactoryTags],
+    );
+    const visibleTags = tags.filter((tag) =>
+      PASSAGE_FACTORY_TAG_FILTER_VALUES.includes(tag),
+    );
+
+    return [
+      { key: "all" as const, label: "All versions", factoryTag: null as PassageFactoryTag | null },
+      ...visibleTags.map((factoryTag) => ({
+        key: factoryTag,
+        label: formatPassageFactoryTagLabel(factoryTag),
+        factoryTag,
+      })),
+    ];
+  }, [activeFactoryTag, availableFactoryTags]);
+
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setDebouncedSearchQuery(searchQuery.trim());
@@ -198,6 +227,11 @@ export default function Home() {
     setIsLoadingMore(false);
     setError(null);
     setItems([]);
+    setAvailableFactoryTags((currentTags) =>
+      activeFactoryTag && !currentTags.includes(activeFactoryTag)
+        ? sortPassageFactoryTags([...currentTags, activeFactoryTag])
+        : currentTags,
+    );
     setHasMore(true);
     setNextOffset(0);
 
@@ -209,11 +243,12 @@ export default function Home() {
         });
 
         const sessionItems = readSessionItems(queryKey);
-        if (sessionItems && sessionItems.length > 0) {
+        if (sessionItems && sessionItems.items.length > 0) {
           if (!cancelled && queryKeyRef.current === queryKey) {
-            setItems(sessionItems);
-            setNextOffset(sessionItems.length);
-            setHasMore(sessionItems.length >= PAGE_SIZE);
+            setItems(sessionItems.items);
+            setAvailableFactoryTags(sessionItems.availableFactoryTags);
+            setNextOffset(sessionItems.items.length);
+            setHasMore(sessionItems.items.length >= PAGE_SIZE);
           }
           return;
         }
@@ -235,9 +270,17 @@ export default function Home() {
             return;
           }
           setItems(response.items);
+          setAvailableFactoryTags(
+            sortPassageFactoryTags(response.available_factory_tags ?? []),
+          );
           setNextOffset(response.items.length);
           setHasMore(response.items.length === PAGE_SIZE);
-          writeSessionItems(queryKey, response.items);
+          writeSessionItems(queryKey, {
+            items: response.items,
+            availableFactoryTags: sortPassageFactoryTags(
+              response.available_factory_tags ?? [],
+            ),
+          });
         }
       } catch (fetchError) {
         if (!cancelled) {
@@ -247,6 +290,7 @@ export default function Home() {
               : "Failed to load passages.";
           setError(message);
           setItems([]);
+          setAvailableFactoryTags(activeFactoryTag ? [activeFactoryTag] : []);
         }
       } finally {
         if (!cancelled) {
@@ -299,6 +343,9 @@ export default function Home() {
             if (queryKeyRef.current !== requestKey) {
               return;
             }
+            setAvailableFactoryTags(
+              sortPassageFactoryTags(response.available_factory_tags ?? []),
+            );
             setItems((currentItems) => {
               const seen = new Set(currentItems.map((item) => item.id));
               const merged = [...currentItems];
@@ -308,6 +355,12 @@ export default function Home() {
                   seen.add(item.id);
                 }
               }
+              writeSessionItems(queryKeyRef.current, {
+                items: merged,
+                availableFactoryTags: sortPassageFactoryTags(
+                  response.available_factory_tags ?? [],
+                ),
+              });
               return merged;
             });
             setNextOffset((currentOffset) => currentOffset + response.items.length);

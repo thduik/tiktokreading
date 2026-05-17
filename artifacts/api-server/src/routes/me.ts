@@ -209,53 +209,45 @@ router.post("/me/bootstrap", async (req, res) => {
     .where(eq(userProfiles.userId, userId))
     .limit(1);
   const existing = existingRows[0];
-
-  if (!existing) {
-    const insertRows = await db
-      .select()
-      .from(userProfiles)
-      .where(eq(userProfiles.userId, userId))
-      .limit(1);
-    const createdRow =
-      insertRows[0] ??
-      (await createUserProfile({
-        userId,
-        email,
-        displayName: displayName ?? null,
-        onboardingCompleted: displayName !== null,
-      }));
-    const progress = await ensureUserProgress(userId);
-    const { tiers } = await fetchRankTiers();
-    res.json({
-      profile: toResponseProfile(createdRow),
-      progress: toResponseProgress(progress),
-      next_rank_progress: getNextRankProgress(progress.rankedPoints),
-      rank_tiers: tiers,
-    });
-    return;
-  }
+  const baseProfile =
+    existing ??
+    (await createUserProfile({
+      userId,
+      email,
+      displayName: displayName ?? null,
+      onboardingCompleted: displayName !== null,
+    }));
 
   const nextDisplayName =
     displayName !== undefined && displayName !== null
       ? displayName
-      : existing.displayName;
+      : baseProfile.displayName;
   const nextOnboardingCompleted =
-    existing.onboardingCompleted || (displayName !== undefined && displayName !== null);
+    baseProfile.onboardingCompleted ||
+    (displayName !== undefined && displayName !== null);
+  const shouldUpdateProfile =
+    baseProfile.email !== email ||
+    baseProfile.displayName !== nextDisplayName ||
+    baseProfile.onboardingCompleted !== nextOnboardingCompleted;
 
-  const updateRows = await db
-    .update(userProfiles)
-    .set({
-      email,
-      displayName: nextDisplayName,
-      onboardingCompleted: nextOnboardingCompleted,
-      updatedAt: new Date(),
-    })
-    .where(eq(userProfiles.userId, userId))
-    .returning();
+  const profileRow = shouldUpdateProfile
+    ? (
+        await db
+          .update(userProfiles)
+          .set({
+            email,
+            displayName: nextDisplayName,
+            onboardingCompleted: nextOnboardingCompleted,
+            updatedAt: new Date(),
+          })
+          .where(eq(userProfiles.userId, userId))
+          .returning()
+      )[0]
+    : baseProfile;
   const progress = await ensureUserProgress(userId);
   const { tiers } = await fetchRankTiers();
   res.json({
-    profile: toResponseProfile(updateRows[0]),
+    profile: toResponseProfile(profileRow),
     progress: toResponseProgress(progress),
     next_rank_progress: getNextRankProgress(progress.rankedPoints),
     rank_tiers: tiers,
