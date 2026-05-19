@@ -36,7 +36,7 @@ Answer key anomaly audit:
 pnpm --filter @workspace/db run audit:answer-keys
 ```
 
-V4 NDJSON mixed-card ingest (current production default):
+NDJSON mixed-card ingest (current production default):
 
 ```bash
 pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson
@@ -44,11 +44,21 @@ pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path
 
 Notes:
 
-- `factory_tag` now defaults to `v4_5` in `ingest-ndjson-cards.ts`.
+- `factory_tag` now defaults to `v5` in `ingest-ndjson-cards.ts`.
+- The List filter exposes `v5+` as the forward-looking production bucket. New
+  passage generations at `v5`, `v6`, `v7`, and above should continue to appear
+  there automatically; do not add a new frontend version option for each new
+  passage machine increment unless product behavior changes.
 - You can still override explicitly when needed:
 
 ```bash
-pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v4_5
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v5
+```
+
+- If a batch omits `band`, pass it explicitly:
+
+```bash
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --band-label=7.0
 ```
 
 - Matching Heading and Matching Information currently store as MCQ-style

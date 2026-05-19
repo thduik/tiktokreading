@@ -24,15 +24,17 @@ type OutAnswerType = "label" | "option_key" | "text";
 
 type NdCard = {
   card_no: number;
-  band: "6.0" | "7.0" | "7.5" | "8.0+";
+  band?: string;
   title: string;
   topic: string;
   passage: string;
   vocab: Array<{
     term: string;
     sentence_ref?: string;
-    meaning_en: string;
+    meaning_en?: string;
+    quick_explanation?: string;
     meaning_vi: string;
+    example_sentence?: string;
   }>;
   questions: Array<{
     type: NdQuestionType;
@@ -95,6 +97,12 @@ type Anomaly = {
   kind: string;
   before: string;
   after: string;
+};
+
+type NormalizedBandLabel = "6.0" | "7.0" | "7.5" | "8.0+";
+
+type ConvertOptions = {
+  defaultBandLabel?: string;
 };
 
 const execFile = promisify(execFileCallback);
@@ -198,7 +206,17 @@ function parseMaxWords(instructionLine: string) {
   return undefined;
 }
 
-function bandIndexFromLabel(label: NdCard["band"]) {
+export function normalizeBandLabel(rawLabel?: string | null): NormalizedBandLabel | null {
+  if (!rawLabel) return null;
+  const normalized = rawLabel.trim().toLowerCase().replace(/^band\s*/i, "");
+  if (normalized === "6" || normalized === "6.0") return "6.0";
+  if (normalized === "7" || normalized === "7.0") return "7.0";
+  if (normalized === "7.5") return "7.5";
+  if (normalized === "8" || normalized === "8.0" || normalized === "8.0+") return "8.0+";
+  return null;
+}
+
+function bandIndexFromLabel(label: NormalizedBandLabel) {
   if (label === "6.0") return 60;
   if (label === "7.0") return 70;
   if (label === "7.5") return 75;
@@ -277,9 +295,22 @@ export function parseNdjson(raw: string) {
   });
 }
 
-export function validateAndConvert(cards: NdCard[]) {
+function parseBandOverrideArg(rawArg?: string) {
+  if (!rawArg) return undefined;
+  const rawValue = rawArg.includes("=") ? rawArg.slice(rawArg.indexOf("=") + 1) : rawArg;
+  const normalized = normalizeBandLabel(rawValue);
+  if (!normalized) {
+    throw new Error(
+      `Invalid band override "${rawValue}". Expected one of 6.0, 7.0, 7.5, or 8.0+.`,
+    );
+  }
+  return normalized;
+}
+
+export function validateAndConvert(cards: NdCard[], options: ConvertOptions = {}) {
   const anomalies: Anomaly[] = [];
   const converted: ConvertedCard[] = [];
+  const defaultBandLabel = parseBandOverrideArg(options.defaultBandLabel);
 
   for (const card of cards) {
     if (!Array.isArray(card.questions) || card.questions.length === 0) {
@@ -294,7 +325,15 @@ export function validateAndConvert(cards: NdCard[]) {
       );
     }
 
-    const bandIndex = bandIndexFromLabel(card.band);
+    const bandLabel = normalizeBandLabel(card.band) ?? defaultBandLabel;
+    if (!bandLabel) {
+      throw new Error(
+        `card_no=${card.card_no} (${normalizeSpaces(card.title)}) is missing a valid band label. ` +
+          `Provide one in the data or pass --band-label=<6.0|7.0|7.5|8.0+>.`,
+      );
+    }
+
+    const bandIndex = bandIndexFromLabel(bandLabel);
     const passage = normalizeSpaces(toAsciiPunctuation(card.passage));
     const sentences = splitSentences(passage);
 
@@ -404,11 +443,18 @@ export function validateAndConvert(cards: NdCard[]) {
     const vocab = (card.vocab ?? []).map((item) => {
       const sentenceIndex = parseSentenceRef(item.sentence_ref);
       const term = normalizeSpaces(toAsciiPunctuation(item.term));
+      const definitionSource = item.meaning_en ?? item.quick_explanation ?? "";
+      const definition = normalizeSpaces(toAsciiPunctuation(definitionSource));
+      const exampleSentence = normalizeSpaces(
+        toAsciiPunctuation(
+          item.example_sentence ?? defaultExampleSentence(sentences, term, sentenceIndex),
+        ),
+      );
       return {
         term,
-        definition: normalizeSpaces(toAsciiPunctuation(item.meaning_en)),
-        simple_meaning_en: normalizeSpaces(toAsciiPunctuation(item.meaning_en)),
-        example_sentence_en: defaultExampleSentence(sentences, term, sentenceIndex),
+        definition,
+        simple_meaning_en: definition,
+        example_sentence_en: exampleSentence,
         meaning_vi: normalizeSpaces(item.meaning_vi),
         sentence_index: sentenceIndex,
       };
@@ -419,7 +465,7 @@ export function validateAndConvert(cards: NdCard[]) {
     converted.push({
       id: "",
       bandIndex,
-      bandLabel: card.band,
+      bandLabel,
       questionSetTypeIndex,
       questionSetTypeLabel: questionSetTypeLabel(questionSetTypeIndex),
       topicIndex: slugify(card.topic),
@@ -447,10 +493,13 @@ async function run() {
     throw new Error("Usage: tsx ingest-ndjson-cards.ts <input.ndjson>");
   }
   const defaultFactoryTag =
-    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v4_5") || "v4_5";
+    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v5") || "v5";
   const factoryTagArg = process.argv
     .slice(3)
     .find((arg) => arg.startsWith("--factory-tag="));
+  const bandLabelArg = process.argv
+    .slice(3)
+    .find((arg) => arg.startsWith("--band-label=") || arg.startsWith("--default-band-label="));
   const factoryTag =
     normalizeFactoryTag(
       factoryTagArg?.slice("--factory-tag=".length) ?? defaultFactoryTag,
@@ -459,7 +508,9 @@ async function run() {
   const absInputPath = path.resolve(process.cwd(), inputPath);
   const raw = await readFile(absInputPath, "utf8");
   const parsedCards = parseNdjson(raw);
-  const { converted, anomalies } = validateAndConvert(parsedCards);
+  const { converted, anomalies } = validateAndConvert(parsedCards, {
+    defaultBandLabel: bandLabelArg,
+  });
 
   const idRows = await db
     .select({ id: passages.id })
@@ -609,6 +660,9 @@ async function run() {
 
   console.log(`Input cards: ${parsedCards.length}`);
   console.log(`Factory tag: ${factoryTag || "(none)"} (default=${defaultFactoryTag})`);
+  if (bandLabelArg) {
+    console.log(`Band override: ${parseBandOverrideArg(bandLabelArg)}`);
+  }
   console.log(`Upserted passages: ${inserted} (created: ${created}, updated: ${updated})`);
   console.log(`Ingest anomalies auto-fixed: ${anomalies.length}`);
   for (const anomaly of anomalies) {

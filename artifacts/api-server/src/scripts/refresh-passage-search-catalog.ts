@@ -1,4 +1,5 @@
 import { refreshPassageSearchCatalog } from "../lib/cache/passage-search-catalog";
+import { closeRedisClient } from "../lib/cache/redis-client";
 
 async function main() {
   const result = await refreshPassageSearchCatalog({ status: "active" });
@@ -12,12 +13,16 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(
-    JSON.stringify({
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    }),
-  );
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(
+      JSON.stringify({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeRedisClient();
+  });

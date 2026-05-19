@@ -34,6 +34,9 @@ Every meaningful code change must update at least one relevant note file:
   Add or update an ADR in `docs/adr/`.
 - Operational procedure changed:
   Update a file in `docs/runbooks/`.
+- Database behavior changed:
+  also update the corresponding cache/API notes so Redis behavior and read
+  contracts stay aligned with the new DB truth.
 
 If no note changes are needed, the PR/task summary must explicitly say:
 
@@ -42,6 +45,8 @@ If no note changes are needed, the PR/task summary must explicitly say:
 ## Authoring Guidelines
 
 - Prefer short, concrete notes over long narrative.
+- Keep notes and comments high-signal: explain coupling, invariants, update
+  traps, and intent; do not preserve stale or purely decorative commentary.
 - Use copy/paste-ready commands in runbooks.
 - Keep timestamps in UTC when possible.
 - Keep ADRs immutable except status updates and corrections.

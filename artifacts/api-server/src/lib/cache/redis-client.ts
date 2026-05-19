@@ -41,3 +41,20 @@ export async function getRedisClient() {
 
   return clientPromise;
 }
+
+export async function closeRedisClient() {
+  if (!clientPromise) {
+    return;
+  }
+
+  try {
+    const client = await clientPromise;
+    if (client) {
+      await client.quit();
+    }
+  } catch (error) {
+    logger.warn({ err: error }, "Redis client shutdown failed");
+  } finally {
+    clientPromise = null;
+  }
+}

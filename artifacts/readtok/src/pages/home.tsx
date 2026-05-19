@@ -482,22 +482,28 @@ export default function Home() {
     <div className="min-h-full w-full px-4 pb-24 pt-6" data-testid="page-list">
       <AppPageHeader title="Passage List" />
 
-      <section className="relative mb-4 rounded-lg border border-border bg-card p-3" aria-label="search and filters">
-        <div className="flex items-center gap-2" ref={filterMenuRef}>
+      <section
+        className="sticky top-4 z-20 mb-4 bg-transparent"
+        aria-label="search and filters"
+      >
+        <div
+          className="relative flex items-center gap-2 rounded-xl border border-border/80 bg-card/90 p-2 shadow-lg backdrop-blur-md"
+          ref={filterMenuRef}
+        >
           <input
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search passage titles or topics"
-            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+            className="h-11 min-w-0 flex-1 rounded-lg border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
           />
           <button
             type="button"
             onClick={() => setIsFiltersOpen((current) => !current)}
             className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition-colors ${
               isFiltersOpen || hasActiveFilters
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-muted text-muted-foreground hover:border-primary"
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-border bg-background/70 text-muted-foreground hover:border-primary"
             }`}
             aria-label="Open filters"
             aria-expanded={isFiltersOpen}
@@ -509,7 +515,7 @@ export default function Home() {
           {isFiltersOpen ? (
             <div
               id="passage-list-filters-panel"
-              className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-3 shadow-lg"
+              className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-card/95 p-3 shadow-xl backdrop-blur-md"
             >
               <div className="mb-3">
                 <p className="text-sm font-semibold text-foreground">Filters</p>
@@ -586,12 +592,12 @@ export default function Home() {
                   </select>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Search runs against the cached passage catalog for fast lookup.
+              </p>
             </div>
           ) : null}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Search runs against the cached passage catalog for fast lookup.
-        </p>
       </section>
 
       {error && (

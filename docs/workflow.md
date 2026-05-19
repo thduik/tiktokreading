@@ -13,6 +13,13 @@ This workflow is intentionally simple and strict.
 - Make smallest safe change first.
 - Verify locally (`typecheck`, targeted build/test).
 - Keep changes scoped; avoid unrelated refactors.
+- If the task changes database shape, stored data semantics, or write/read
+  behavior, update the corresponding Redis/cache layer and affected API read
+  contracts in the same task. DB work is not considered complete if cache keys,
+  cache invalidation, or API payloads are left stale.
+- Update code comments when behavior, assumptions, or edge-case handling
+  changes. Add brief comments only where they improve understanding for humans
+  and future agents; remove or rewrite stale comments immediately.
 
 ## 3) Documentation Update Gate (Required)
 
@@ -24,6 +31,12 @@ Before considering work done, answer:
   Add/update ADR in `docs/adr/`.
 - Did command/process/operations change?
   Update relevant runbook in `docs/runbooks/`.
+- Did database behavior change?
+  Update `docs/STATE.md` and any runbook/ADR note that describes the matching
+  cache and API contract expectations.
+- Did the change introduce or alter non-obvious logic?
+  Update nearby code comments and any note that future humans/agents would need
+  in order to extend the behavior safely.
 
 If none apply, write:
 
@@ -39,5 +52,8 @@ If none apply, write:
 
 - Always treat `docs/` as canonical memory.
 - Prefer adding one concise note over long chat-only context.
+- Prefer concise, high-signal comments over silent cleverness. Comment the why,
+  invariants, coupling points, and future update traps; avoid narrating obvious
+  code.
 - If interrupted mid-task, first action is a state check:
   inspect current git diff, then continue with docs in sync.

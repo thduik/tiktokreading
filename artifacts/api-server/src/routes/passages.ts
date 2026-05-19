@@ -57,12 +57,17 @@ function parseFactoryTag(raw: string | undefined) {
     return undefined;
   }
 
-  const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const compact = raw.trim().toLowerCase();
+  if (/^v\d+\+$/.test(compact)) {
+    return compact.replace(/\+$/, "_plus");
+  }
+
+  const normalized = compact.replace(/[^a-z0-9]+/g, "_");
   if (normalized.length === 0) {
     return undefined;
   }
 
-  if (!/^v\d+(?:_\d+)?$/.test(normalized)) {
+  if (!/^v\d+(?:_\d+)?$/.test(normalized) && !/^v\d+_plus$/.test(normalized)) {
     return null;
   }
 
@@ -188,16 +193,67 @@ type PassageIdPoolResponse = {
 };
 
 function parseFactoryTagSortParts(factoryTag: string) {
+  const plusMatch = factoryTag.match(/^v(\d+)_plus$/i);
+  if (plusMatch) {
+    return {
+      major: Number(plusMatch[1]),
+      minor: Number.MAX_SAFE_INTEGER,
+      plus: true,
+      raw: factoryTag,
+    };
+  }
+
   const match = factoryTag.match(/^v(\d+)(?:_(\d+))?$/i);
   if (!match) {
-    return { major: -1, minor: -1, raw: factoryTag };
+    return { major: -1, minor: -1, plus: false, raw: factoryTag };
   }
 
   return {
     major: Number(match[1]),
     minor: Number(match[2] ?? 0),
+    plus: false,
     raw: factoryTag,
   };
+}
+
+function isFactoryTagAtOrAbove(candidate: string, thresholdTag: string) {
+  const candidateParts = parseFactoryTagSortParts(candidate);
+  const thresholdParts = parseFactoryTagSortParts(thresholdTag);
+
+  if (candidateParts.major !== thresholdParts.major) {
+    return candidateParts.major > thresholdParts.major;
+  }
+
+  return candidateParts.minor >= thresholdParts.minor;
+}
+
+async function resolveFactoryTagFilterValues({
+  status,
+  languageCode,
+  factoryTag,
+}: {
+  status?: string;
+  languageCode?: string;
+  factoryTag?: string;
+}) {
+  if (!factoryTag) {
+    return null;
+  }
+
+  const plusMatch = factoryTag.match(/^(v\d+)_plus$/i);
+  if (!plusMatch) {
+    return [factoryTag];
+  }
+
+  const thresholdTag = plusMatch[1].toLowerCase();
+  const availableTags = await fetchAvailableFactoryTags({
+    status,
+    languageCode,
+  });
+
+  return availableTags.filter((candidate) =>
+    isFactoryTagAtOrAbove(candidate, thresholdTag),
+  );
 }
 
 function sortFactoryTagsDescending(values: string[]) {
@@ -422,6 +478,14 @@ async function searchPassageCatalog(params: PassageCatalogSearchParams) {
   const normalizedQuery = tokens.join(" ");
   const allowedIds = idsList ? new Set(idsList) : null;
 
+  const allowedFactoryTags = factoryTag
+    ? await resolveFactoryTagFilterValues({
+        status,
+        languageCode,
+        factoryTag,
+      })
+    : null;
+
   const matched = catalog
     .filter((entry) => {
       if (bandIndex !== undefined && entry.band_index !== bandIndex) {
@@ -442,7 +506,10 @@ async function searchPassageCatalog(params: PassageCatalogSearchParams) {
       if (topicIndex !== undefined && entry.topic_index !== topicIndex) {
         return false;
       }
-      if (factoryTag !== undefined && entry.factory_tag !== factoryTag) {
+      if (
+        allowedFactoryTags !== null &&
+        !allowedFactoryTags.includes(entry.factory_tag)
+      ) {
         return false;
       }
       if (allowedIds && !allowedIds.has(entry.id)) {
@@ -732,8 +799,15 @@ async function fetchPassageIdPool({
   if (languageCode !== undefined) {
     whereConditions.push(eq(passages.languageCode, languageCode));
   }
-  if (factoryTag !== undefined) {
-    whereConditions.push(eq(passages.factoryTag, factoryTag));
+  const matchingFactoryTags = await resolveFactoryTagFilterValues({
+    status,
+    languageCode,
+    factoryTag,
+  });
+  if (matchingFactoryTags && matchingFactoryTags.length > 0) {
+    whereConditions.push(inArray(passages.factoryTag, matchingFactoryTags));
+  } else if (matchingFactoryTags && matchingFactoryTags.length === 0) {
+    whereConditions.push(sql`1 = 0`);
   }
   const whereClause =
     whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -984,6 +1058,11 @@ router.get("/passages", async (req, res) => {
     status,
     languageCode,
   });
+  const matchingFactoryTags = await resolveFactoryTagFilterValues({
+    status,
+    languageCode,
+    factoryTag: factoryTag ?? undefined,
+  });
 
   if (titleContains !== undefined) {
     const searchResult = await searchPassageCatalog({
@@ -1063,8 +1142,10 @@ router.get("/passages", async (req, res) => {
   if (languageCode !== undefined) {
     whereConditions.push(eq(passages.languageCode, languageCode));
   }
-  if (factoryTag !== undefined) {
-    whereConditions.push(eq(passages.factoryTag, factoryTag));
+  if (matchingFactoryTags && matchingFactoryTags.length > 0) {
+    whereConditions.push(inArray(passages.factoryTag, matchingFactoryTags));
+  } else if (matchingFactoryTags && matchingFactoryTags.length === 0) {
+    whereConditions.push(sql`1 = 0`);
   }
   if (idsList && idsList.length > 0) {
     whereConditions.push(inArray(passages.id, idsList));

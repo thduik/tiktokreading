@@ -15,6 +15,15 @@ test("text answer canonicalization strips question prefixes without changing con
   assert.equal(ingestModule.canonicalizeTextAnswer("4. good roads"), "good roads");
 });
 
+test("band label normalization accepts open input forms", () => {
+  assert.equal(ingestModule.normalizeBandLabel("6"), "6.0");
+  assert.equal(ingestModule.normalizeBandLabel("Band 7.0"), "7.0");
+  assert.equal(ingestModule.normalizeBandLabel("7.5"), "7.5");
+  assert.equal(ingestModule.normalizeBandLabel("8.0"), "8.0+");
+  assert.equal(ingestModule.normalizeBandLabel("8.0+"), "8.0+");
+  assert.equal(ingestModule.normalizeBandLabel(""), null);
+});
+
 test("option text canonicalization strips duplicated option labels", () => {
   assert.equal(ingestModule.canonicalizeOptionText("A. First option", "A"), "First option");
   assert.equal(ingestModule.canonicalizeOptionText("b) Second option", "B"), "Second option");
@@ -123,4 +132,66 @@ test("converter keeps matching options beyond D and stores them as matching labe
   assert.equal(card?.answerKey[4]?.answerValue, "E");
   assert.equal(card?.answerKey[5]?.answerValue, "F");
   assert.equal(anomalies.filter((anomaly) => anomaly.kind === "answer_value_normalized").length, 2);
+});
+
+test("converter accepts v5 vocab fields and band override for blank-band cards", () => {
+  const rawCard: Parameters<typeof ingestModule.validateAndConvert>[0][number] = {
+    card_no: 2,
+    band: "",
+    title: "Blank Band V5 Card",
+    topic: "Testing",
+    passage: "First sentence introduces the concept. Second sentence shows the example.",
+    vocab: [
+      {
+        term: "concept",
+        sentence_ref: "S1",
+        quick_explanation: "A general idea.",
+        meaning_vi: "khai niem",
+        example_sentence: "This example sentence should be preserved.",
+      },
+    ],
+    questions: [
+      {
+        type: "TFNG",
+        prompt: "The passage introduces a concept.",
+        instruction: "",
+        options: [],
+      },
+    ],
+    answers: [{ type: "TFNG", answer: "TRUE", explanation: "Sentence one." }],
+  };
+
+  const { converted } = ingestModule.validateAndConvert([rawCard], {
+    defaultBandLabel: "7.0",
+  });
+  const card = converted[0];
+  assert.equal(card?.bandLabel, "7.0");
+  assert.equal(card?.bandIndex, 70);
+  assert.equal(card?.vocab[0]?.definition, "A general idea.");
+  assert.equal(card?.vocab[0]?.example_sentence_en, "This example sentence should be preserved.");
+});
+
+test("converter rejects blank band without override", () => {
+  const rawCard: Parameters<typeof ingestModule.validateAndConvert>[0][number] = {
+    card_no: 3,
+    band: "",
+    title: "Missing Band Card",
+    topic: "Testing",
+    passage: "Only one sentence is needed here.",
+    vocab: [],
+    questions: [
+      {
+        type: "TFNG",
+        prompt: "Testing prompt.",
+        instruction: "",
+        options: [],
+      },
+    ],
+    answers: [{ type: "TFNG", answer: "TRUE", explanation: "Sentence one." }],
+  };
+
+  assert.throws(
+    () => ingestModule.validateAndConvert([rawCard]),
+    /missing a valid band label/,
+  );
 });

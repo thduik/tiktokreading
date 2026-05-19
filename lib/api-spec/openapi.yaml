@@ -560,7 +560,8 @@ components:
 
     PassageFactoryTag:
       type: string
-      enum: [v1, v2, v3, v4, v4_5]
+      pattern: "^v[0-9]+(?:_[0-9]+)?$"
+      example: v5
 
     PassageReportType:
       type: string

@@ -117,6 +117,23 @@ const authAppearance = {
   },
 };
 
+const buildUpdateCheckIntervalMs = 60 * 1000;
+const currentBundleScriptSelector = 'script[type="module"][src*="/assets/index-"]';
+
+function currentBundleSrc() {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  return document
+    .querySelector<HTMLScriptElement>(currentBundleScriptSelector)
+    ?.getAttribute("src");
+}
+
+function nextBundleSrcFromHtml(html: string) {
+  const match = html.match(/<script\s+type="module"\s+crossorigin\s+src="([^"]*\/assets\/index-[^"]+\.js)"/i);
+  return match?.[1] ?? null;
+}
+
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
     ? path.slice(basePath.length) || "/"
@@ -735,6 +752,76 @@ function AppContent() {
     };
 
     void unregisterServiceWorkers();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+
+    let cancelled = false;
+    let inFlight = false;
+    const initialBundleSrc = currentBundleSrc();
+
+    if (!initialBundleSrc) {
+      return;
+    }
+
+    const checkForNewBundle = async () => {
+      if (cancelled || inFlight || document.visibilityState === "hidden") {
+        return;
+      }
+
+      inFlight = true;
+      try {
+        const response = await fetch(`${basePath || ""}/index.html`, {
+          cache: "no-store",
+          headers: {
+            Accept: "text/html",
+          },
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const html = await response.text();
+        const latestBundleSrc = nextBundleSrcFromHtml(html);
+        if (!latestBundleSrc || latestBundleSrc === initialBundleSrc) {
+          return;
+        }
+
+        window.location.reload();
+      } catch (error) {
+        console.warn("Build update check failed", error);
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void checkForNewBundle();
+    }, buildUpdateCheckIntervalMs);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void checkForNewBundle();
+      }
+    };
+
+    const handleFocus = () => {
+      void checkForNewBundle();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   if (authConfigMissingOnHostedApp) {

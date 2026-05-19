@@ -17,6 +17,9 @@ export const PASSAGE_FACTORY_TAG_FILTER_VALUES: PassageFactoryTag[] = [
   "v1",
   "v2",
   "v5",
+  // Keep this open-ended bucket so future v6/v7/... passage batches appear
+  // without another frontend filter change.
+  "v5_plus",
 ];
 export const PASSAGE_FACTORY_TAG_STORAGE_KEY =
   "readtok_active_factory_tag_filter_v1";
@@ -320,8 +323,13 @@ export function normalizePassageFactoryTag(
     return null;
   }
 
-  const normalized = raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-  if (/^v\d+(?:_\d+)?$/.test(normalized)) {
+  const compact = raw.trim().toLowerCase();
+  if (/^v\d+\+$/.test(compact)) {
+    return compact.replace(/\+$/, "_plus");
+  }
+
+  const normalized = compact.replace(/[^a-z0-9]+/g, "_");
+  if (/^v\d+(?:_\d+)?$/.test(normalized) || /^v\d+_plus$/.test(normalized)) {
     return normalized;
   }
 
@@ -342,17 +350,28 @@ export function normalizePassageFactoryTagFilter(
 function parseFactoryTagSortParts(factoryTag: string) {
   const normalized = normalizePassageFactoryTag(factoryTag);
   if (!normalized) {
-    return { major: -1, minor: -1, raw: factoryTag };
+    return { major: -1, minor: -1, plus: false, raw: factoryTag };
+  }
+
+  const plusMatch = normalized.match(/^v(\d+)_plus$/);
+  if (plusMatch) {
+    return {
+      major: Number(plusMatch[1]),
+      minor: Number.MAX_SAFE_INTEGER,
+      plus: true,
+      raw: normalized,
+    };
   }
 
   const match = normalized.match(/^v(\d+)(?:_(\d+))?$/);
   if (!match) {
-    return { major: -1, minor: -1, raw: normalized };
+    return { major: -1, minor: -1, plus: false, raw: normalized };
   }
 
   return {
     major: Number(match[1]),
     minor: Number(match[2] ?? 0),
+    plus: false,
     raw: normalized,
   };
 }
@@ -386,7 +405,16 @@ export function formatPassageFactoryTagLabel(factoryTag: string | null | undefin
     return "";
   }
 
-  const normalized = factoryTag.trim().toLowerCase().replace(/^v/, "");
+  const normalizedFactoryTag = normalizePassageFactoryTag(factoryTag);
+  if (!normalizedFactoryTag) {
+    return "";
+  }
+
+  if (/_plus$/.test(normalizedFactoryTag)) {
+    return `V${normalizedFactoryTag.replace(/^v/, "").replace(/_plus$/, "+")}`;
+  }
+
+  const normalized = normalizedFactoryTag.replace(/^v/, "");
   const labelValue = normalized.replace(/_/g, ".");
   return `V${labelValue}`;
 }

@@ -8,13 +8,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_REPO_DIR="${LOCAL_REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
-VPS_HOST="${VPS_HOST:-debian@34.143.183.246}"
+VPS_HOST="${VPS_HOST:-root@103.69.97.207}"
 REMOTE_REPO_DIR="${REMOTE_REPO_DIR:-/opt/readtok}"
 REMOTE_WEBROOT_DIR="${REMOTE_WEBROOT_DIR:-/var/www/readtok}"
 REMOTE_API_SERVICE="${REMOTE_API_SERVICE:-readtok-api.service}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_rsa}"
 SSH_PASSWORD="${SSH_PASSWORD:-}"
 SUDO_PASSWORD="${SUDO_PASSWORD:-${SSH_PASSWORD}}"
+PRODUCTION_ORIGIN="${PRODUCTION_ORIGIN:-https://ieltstok.online}"
 
 echo "[deploy] source dir:  ${LOCAL_REPO_DIR}"
 echo "[deploy] target host: ${VPS_HOST}"
@@ -101,7 +102,7 @@ CLERK_PUBLISHABLE_KEY_RUNTIME="${VITE_CLERK_PUBLISHABLE_KEY:-${CLERK_PUBLISHABLE
 CLERK_PROXY_URL_RUNTIME="${VITE_CLERK_PROXY_URL:-${CLERK_PROXY_URL:-}}"
 
 node ./scripts/check-toolchain.mjs --pnpm
-corepack pnpm install --frozen-lockfile
+CI=true corepack pnpm install --frozen-lockfile --config.confirmModulesPurge=false --config.engine-strict=false
 corepack pnpm --filter @workspace/db run migrate
 corepack pnpm --filter @workspace/api-server run build
 corepack pnpm --filter @workspace/api-server exec tsx ./src/scripts/refresh-passage-search-catalog.ts
@@ -164,11 +165,51 @@ head -n 20 "${REMOTE_WEBROOT_DIR}/index.html"
 echo "[deploy] runtime config: verified Clerk key present"
 REMOTE
 
+REMOTE_BUNDLE_PATH="$("${SSH_CMD[@]}" "${VPS_HOST}" "python3 - <<'PY'
+from pathlib import Path
+import re
+
+html = Path('${REMOTE_WEBROOT_DIR}/index.html').read_text(encoding='utf-8')
+match = re.search(r'<script\\s+type=\"module\"\\s+crossorigin\\s+src=\"([^\"]*assets/index-[^\"]+\\.js)\"', html)
+print(match.group(1) if match else '')
+PY")"
+
 echo "[deploy] live check:"
-curl -fsSL "https://ieltstok.online" | sed -n '1,20p'
+LIVE_INDEX_HTML="$(curl -fsSL "${PRODUCTION_ORIGIN}")"
+printf '%s\n' "${LIVE_INDEX_HTML}" | sed -n '1,20p'
+
+LIVE_BUNDLE_PATH="$(printf '%s\n' "${LIVE_INDEX_HTML}" | python3 - <<'PY'
+import re
+import sys
+
+html = sys.stdin.read()
+match = re.search(r'<script\s+type="module"\s+crossorigin\s+src="([^"]*assets/index-[^"]+\.js)"', html)
+print(match.group(1) if match else '')
+PY
+)"
+
+if [[ -z "${REMOTE_BUNDLE_PATH}" || -z "${LIVE_BUNDLE_PATH}" ]]; then
+  echo "[deploy] failed to resolve published bundle path"
+  exit 1
+fi
+
+if [[ "${REMOTE_BUNDLE_PATH}" != "${LIVE_BUNDLE_PATH}" ]]; then
+  echo "[deploy] live bundle mismatch"
+  echo "[deploy] remote bundle: ${REMOTE_BUNDLE_PATH}"
+  echo "[deploy] live bundle:   ${LIVE_BUNDLE_PATH}"
+  exit 1
+fi
+
+curl -fsSL "${PRODUCTION_ORIGIN}${LIVE_BUNDLE_PATH}" >/dev/null
 
 echo "[deploy] live runtime config check:"
-curl -fsSL "https://ieltstok.online/runtime-config.js" | grep -q 'clerkPublishableKey: ".'
+curl -fsSL "${PRODUCTION_ORIGIN}/runtime-config.js" | grep -q 'clerkPublishableKey: ".'
 echo "[deploy] live runtime config: verified Clerk key present"
+
+echo "[deploy] live API check:"
+curl -fsSL "${PRODUCTION_ORIGIN}/api/passages?limit=1" >/dev/null
+echo "[deploy] live API: verified"
+
+echo "[deploy] live bundle: ${LIVE_BUNDLE_PATH}"
 
 echo "[deploy] done"

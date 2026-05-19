@@ -59,11 +59,21 @@ Last updated: 2026-05-14 (UTC)
   bumps. The frontend derives a cache namespace from `/api/passages/ids` or
   `/api/passages/feed-bootstrap` `version` values and stores cache entries under
   that namespace.
+- Passage version filter:
+  the List UI intentionally exposes `v5+` as an open-ended bucket, and the API
+  resolves it to every passage `factory_tag` at `v5` or above. Future `v6`,
+  `v7`, and later passage batches should therefore appear under `v5+` without a
+  new frontend filter release.
 - Redis cache policy:
   Public read-heavy data uses Redis when `REDIS_URL` is configured: passage
   lists, passage details, passage ID pools, rank tiers, and short-lived
   leaderboard rows. Private/user/admin mutation routes are intentionally not
   shared-cacheable.
+- DB change workflow rule:
+  any DB development that changes shape, semantics, or read/write behavior must
+  ship with the corresponding Redis/cache-key, invalidation, and API payload
+  updates in the same task. We do not treat database-only changes as complete
+  if cached readers can still serve stale structure or stale meaning.
 - Public identity:
   leaderboard and public user profile lookups use `user_profiles.public_user_id`
   instead of exposing raw Clerk IDs.
@@ -124,6 +134,8 @@ Last updated: 2026-05-14 (UTC)
   `https://ieltstok.online`
 - VPS shape:
   repo at `/opt/readtok`, frontend webroot at `/var/www/readtok`.
+- Current production host:
+  `root@103.69.97.207`
 - Deployment:
   Build on VPS and publish static bundle to Nginx webroot.
 
@@ -135,6 +147,9 @@ Last updated: 2026-05-14 (UTC)
 - Answer analytics are backend-backed for signed-in users only; local mode still
   uses local Profile counters and should be considered best-effort only.
 - Agent sessions should use docs in this directory as source of truth, not removed legacy files.
+- "Live" means verified on the current production host, current webroot bundle,
+  and current live origin. Local code, GitHub push, or a partial deploy log are
+  not enough on their own.
 
 ## Next Priorities
 
