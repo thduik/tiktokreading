@@ -45,6 +45,9 @@ pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path
 Notes:
 
 - `factory_tag` now defaults to `v6` in `ingest-ndjson-cards.ts`.
+- 2026-05-22 note: the final `v6` production batches have been ingested. For
+  the next batch, confirm and pass the new tag explicitly, for example
+  `--factory-tag=v7`, rather than relying on the historical `v6` default.
 - Pick-two MCQ answer keys are preserved canonically, for example `B and D`
   becomes `B, D`, so do not manually flatten them before ingest.
 - If older `v5+` passages were written before that fix, run
