@@ -9,4 +9,6 @@ import type { PassageReportType } from "./passageReportType";
 
 export type ReportPassageBody = {
   reportType: PassageReportType;
+  /** @maxLength 500 */
+  customFeedback?: string;
 };

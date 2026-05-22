@@ -6,13 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PassageFactoryTag =
-  (typeof PassageFactoryTag)[keyof typeof PassageFactoryTag];
-
-export const PassageFactoryTag = {
-  v1: "v1",
-  v2: "v2",
-  v3: "v3",
-  v4: "v4",
-  v4_5: "v4_5",
-} as const;
+/**
+ * @pattern ^v[0-9]+(?:_[0-9]+)?$
+ */
+export type PassageFactoryTag = string;

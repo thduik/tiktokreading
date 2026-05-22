@@ -171,6 +171,33 @@ test("converter accepts v5 vocab fields and band override for blank-band cards",
   assert.equal(card?.vocab[0]?.example_sentence_en, "This example sentence should be preserved.");
 });
 
+test("converter preserves multi-answer MCQ keys for pick-two questions", () => {
+  const rawCard: Parameters<typeof ingestModule.validateAndConvert>[0][number] = {
+    card_no: 4,
+    band: "7.5",
+    title: "Pick Two MCQ Card",
+    topic: "Testing",
+    passage: "First sentence introduces the problem. Second sentence gives the answer.",
+    vocab: [],
+    questions: [
+      {
+        type: "MCQ",
+        prompt: "Which TWO options are correct?",
+        instruction: "Choose TWO options.",
+        options: ["A. one", "B. two", "C. three", "D. four", "E. five"],
+      },
+    ],
+    answers: [{ type: "MCQ", answer: "D and B", explanation: "Options B and D." }],
+  };
+
+  const { converted, anomalies } = ingestModule.validateAndConvert([rawCard]);
+  const answer = converted[0]?.answerKey[0];
+
+  assert.equal(answer?.answerValue, "B, D");
+  assert.deepEqual(answer?.acceptedValues, ["D and B", "B, D"]);
+  assert.equal(anomalies.filter((anomaly) => anomaly.kind === "answer_value_normalized").length, 1);
+});
+
 test("converter rejects blank band without override", () => {
   const rawCard: Parameters<typeof ingestModule.validateAndConvert>[0][number] = {
     card_no: 3,

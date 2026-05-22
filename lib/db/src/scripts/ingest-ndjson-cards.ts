@@ -236,6 +236,23 @@ export function canonicalizeOptionKey(value: string) {
   return m ? m[1] : stripped;
 }
 
+function splitOptionKeyValues(raw: string) {
+  const normalized = normalizeSpaces(raw)
+    .replace(/\band\b/gi, ",")
+    .replace(/[&/;+]/g, ",");
+
+  const values = normalized
+    .split(",")
+    .map((part) => canonicalizeOptionKey(part))
+    .filter((part) => part.length > 0);
+
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function formatOptionKeyValues(values: string[]) {
+  return values.join(", ");
+}
+
 export function canonicalizeTextAnswer(value: string) {
   return normalizeSpaces(value).replace(/^\d+\s*[.)\-:]\s*/g, "");
 }
@@ -376,6 +393,7 @@ export function validateAndConvert(cards: NdCard[], options: ConvertOptions = {}
         qType === "tfng" ? "label" : qType === "mcq" ? "option_key" : "text";
 
       let answerValue = raw;
+      let acceptedValues: string[] | undefined;
       if (expectedType === "label") {
         const canonical = canonicalizeTfng(raw);
         if (canonical !== raw) {
@@ -389,7 +407,8 @@ export function validateAndConvert(cards: NdCard[], options: ConvertOptions = {}
         }
         answerValue = canonical;
       } else if (expectedType === "option_key") {
-        const canonical = canonicalizeOptionKey(raw);
+        const split = splitOptionKeyValues(raw);
+        const canonical = formatOptionKeyValues(split);
         if (canonical !== raw) {
           anomalies.push({
             cardNo: card.card_no,
@@ -400,6 +419,12 @@ export function validateAndConvert(cards: NdCard[], options: ConvertOptions = {}
           });
         }
         answerValue = canonical;
+        if (split.length > 1) {
+          acceptedValues = [raw, canonical].filter(
+            (value, index, values) =>
+              value.trim().length > 0 && values.indexOf(value) === index,
+          );
+        }
       } else {
         const canonical = canonicalizeTextAnswer(raw);
         if (canonical !== raw) {
@@ -414,7 +439,6 @@ export function validateAndConvert(cards: NdCard[], options: ConvertOptions = {}
         answerValue = canonical;
       }
 
-      let acceptedValues: string[] | undefined;
       if (expectedType === "text" && raw.includes("/")) {
         const split = splitAcceptedValues(raw);
         if (split.length > 1) {
@@ -493,7 +517,7 @@ async function run() {
     throw new Error("Usage: tsx ingest-ndjson-cards.ts <input.ndjson>");
   }
   const defaultFactoryTag =
-    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v5") || "v5";
+    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v6") || "v6";
   const factoryTagArg = process.argv
     .slice(3)
     .find((arg) => arg.startsWith("--factory-tag="));

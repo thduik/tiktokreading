@@ -30,12 +30,13 @@ import {
   type AnswerStatsRow,
 } from "../lib/answer-stats";
 import {
+  advancePracticeStreakState,
   createUserProfile,
   ensureUserProfileForAuth,
   ensureUserProgress,
-  fetchCurrentPracticeStreakDays,
   fetchUserAchievementsWithSummary,
   getAchievementLevelByXp,
+  getVisiblePracticeStreakDays,
   normalizeDisplayName,
   normalizeVocabBankTerm,
   parseOptionalBoundedInteger,
@@ -440,27 +441,25 @@ router.get("/me/dashboard-stats", async (req, res) => {
 
   await ensureUserProfileForAuth({ auth });
 
-  const [progress, todayRows, last7Rows, last30Rows, lifetimeRows, currentStreakDays] =
-    await Promise.all([
-      ensureUserProgress(userId),
-      fetchAnswerStatsRows({
-        userId,
-        fromDate: localDate,
-        toDate: localDate,
-      }),
-      fetchAnswerStatsRows({
-        userId,
-        fromDate: last7StartDate,
-        toDate: localDate,
-      }),
-      fetchAnswerStatsRows({
-        userId,
-        fromDate: last30StartDate,
-        toDate: localDate,
-      }),
-      fetchAnswerStatsRows({ userId }),
-      fetchCurrentPracticeStreakDays({ userId, localDate }),
-    ]);
+  const [progress, todayRows, last7Rows, last30Rows, lifetimeRows] = await Promise.all([
+    ensureUserProgress(userId),
+    fetchAnswerStatsRows({
+      userId,
+      fromDate: localDate,
+      toDate: localDate,
+    }),
+    fetchAnswerStatsRows({
+      userId,
+      fromDate: last7StartDate,
+      toDate: localDate,
+    }),
+    fetchAnswerStatsRows({
+      userId,
+      fromDate: last30StartDate,
+      toDate: localDate,
+    }),
+    fetchAnswerStatsRows({ userId }),
+  ]);
 
   const todayData = buildAnswerStatsPeriod(todayRows);
   const last7dayData = buildAnswerStatsPeriod(last7Rows);
@@ -476,6 +475,12 @@ router.get("/me/dashboard-stats", async (req, res) => {
     ),
     is_complete: todayData.overall.total >= PROFILE_DAILY_QUESTION_GOAL,
   };
+  const currentStreakDays = getVisiblePracticeStreakDays({
+    currentPracticeStreakDays: progress.currentPracticeStreakDays,
+    bestPracticeStreakDays: progress.bestPracticeStreakDays,
+    lastPracticeDateLocal: progress.lastPracticeDateLocal,
+    localDate,
+  });
 
   res.json({
     local_date: localDate,
@@ -709,6 +714,12 @@ router.post("/me/submit-answer", async (req, res) => {
   }
 
   const progressRow = await ensureUserProgress(userId);
+  const nextPracticeStreakState = advancePracticeStreakState({
+    currentPracticeStreakDays: progressRow.currentPracticeStreakDays,
+    bestPracticeStreakDays: progressRow.bestPracticeStreakDays,
+    lastPracticeDateLocal: progressRow.lastPracticeDateLocal,
+    localDate,
+  });
   const row = questionRows[0];
   const bandGroup = normalizeAnswerStatBandGroup(row.bandLabel);
   const questionType = normalizeAnswerStatQuestionType({
@@ -746,6 +757,9 @@ router.post("/me/submit-answer", async (req, res) => {
         totalQuestionsAnswered: updatedUserProgress.totalQuestionsAnswered,
         totalCorrect: updatedUserProgress.totalCorrect,
         totalIncorrect: updatedUserProgress.totalIncorrect,
+        currentPracticeStreakDays: nextPracticeStreakState.currentPracticeStreakDays,
+        bestPracticeStreakDays: nextPracticeStreakState.bestPracticeStreakDays,
+        lastPracticeDateLocal: nextPracticeStreakState.lastPracticeDateLocal,
         updatedAt: new Date(),
       })
       .where(eq(userProgress.userId, userId))
@@ -799,6 +813,7 @@ router.post("/me/submit-answer", async (req, res) => {
   const latestProgress = updatedRows[0];
   res.json({
     progress: toResponseProgress(latestProgress),
+    current_streak_days: latestProgress.currentPracticeStreakDays,
     next_rank_progress: getNextRankProgress(latestProgress.rankedPoints),
     answer_result: answerResult,
     question_timing:

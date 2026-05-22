@@ -79,6 +79,9 @@ export function toResponseProgress(row: {
   totalQuestionsAnswered: number;
   totalCorrect: number;
   totalIncorrect: number;
+  currentPracticeStreakDays: number;
+  bestPracticeStreakDays: number;
+  lastPracticeDateLocal: string | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -90,6 +93,9 @@ export function toResponseProgress(row: {
     total_questions_answered: row.totalQuestionsAnswered,
     total_correct: row.totalCorrect,
     total_incorrect: row.totalIncorrect,
+    current_practice_streak_days: row.currentPracticeStreakDays,
+    best_practice_streak_days: row.bestPracticeStreakDays,
+    last_practice_date_local: row.lastPracticeDateLocal,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
   };

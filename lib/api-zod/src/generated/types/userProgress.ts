@@ -14,6 +14,9 @@ export interface UserProgress {
   total_questions_answered: number;
   total_correct: number;
   total_incorrect: number;
+  current_practice_streak_days: number;
+  best_practice_streak_days: number;
+  last_practice_date_local: Date | null;
   created_at: Date;
   updated_at: Date;
 }

@@ -14,6 +14,9 @@ import type { StatusQueryParameter } from "./statusQueryParameter";
 export type BootstrapPassageFeedParams = {
   status?: StatusQueryParameter;
   language_code?: LanguageCodeQueryParameter;
+  /**
+   * @pattern ^v[0-9]+(?:_[0-9]+)?$
+   */
   factory_tag?: FactoryTagQueryParameter;
   include_answer_key?: IncludeAnswerKeyQueryParameter;
   /**

@@ -7,15 +7,180 @@ export type FeedRuntimeSession = {
   answersByPassageId: Record<string, Record<string, string>>;
   revealedByPassageId: Record<string, Record<string, boolean>>;
   elapsedSecondsByPassageId: Record<string, number>;
+  questionOrderByPassageId: Record<string, number[]>;
   feedIds: string[];
   listOffset: number;
   feedScrollLeft: number;
 };
 
+export type ActivePassageBackupEntry = {
+  passage: PassageDetail;
+  answersByQuestionId: Record<string, string>;
+  revealedByQuestionId: Record<string, boolean>;
+  elapsedSeconds: number;
+  questionOrder: number[];
+  viewedAt: number;
+};
+
+export type ActivePassageResumeSnapshot = {
+  factoryTagFilter: PassageFactoryTag | null;
+  entry: ActivePassageBackupEntry;
+};
+
+type PersistedActivePassageResumeSnapshot = ActivePassageResumeSnapshot & {
+  version: 1;
+  savedAt: number;
+  lastActivityAt: number;
+};
+
 export const PASSAGE_REPORT_SESSION_KEY_PREFIX = "readtok_reported_passage:";
+export const ACTIVE_PASSAGE_RESUME_TTL_MS = 5 * 60 * 1000;
+export const ACTIVE_PASSAGE_BACKUP_HEARTBEAT_MS = 30 * 1000;
+const ACTIVE_PASSAGE_RESUME_STORAGE_PREFIX = "readtok_active_passage_resume_v1:";
 
 export function passageReportSessionKey(passageId: string) {
   return `${PASSAGE_REPORT_SESSION_KEY_PREFIX}${passageId}`;
+}
+
+function canUseStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function isPassageDetailLike(value: unknown): value is PassageDetail {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<PassageDetail>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.title === "string" &&
+    typeof candidate.passage === "string" &&
+    typeof candidate.factory_tag === "string" &&
+    typeof candidate.status === "string" &&
+    Array.isArray(candidate.questions) &&
+    Array.isArray(candidate.answer_key) &&
+    Array.isArray(candidate.vocab) &&
+    Array.isArray(candidate.passage_sentences)
+  );
+}
+
+function isActivePassageBackupEntry(value: unknown): value is ActivePassageBackupEntry {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<ActivePassageBackupEntry>;
+  return (
+    isPassageDetailLike(candidate.passage) &&
+    candidate.answersByQuestionId !== undefined &&
+    candidate.revealedByQuestionId !== undefined &&
+    isRecordOfString(candidate.answersByQuestionId) &&
+    isRecordOfBoolean(candidate.revealedByQuestionId) &&
+    typeof candidate.elapsedSeconds === "number" &&
+    Number.isFinite(candidate.elapsedSeconds) &&
+    Array.isArray(candidate.questionOrder) &&
+    candidate.questionOrder.every((item) => typeof item === "number" && Number.isInteger(item)) &&
+    typeof candidate.viewedAt === "number" &&
+    Number.isFinite(candidate.viewedAt)
+  );
+}
+
+function isRecordOfString(value: unknown): value is Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((item) => typeof item === "string");
+}
+
+function isRecordOfBoolean(value: unknown): value is Record<string, boolean> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((item) => typeof item === "boolean");
+}
+
+export function buildActivePassageResumeStorageKey(factoryTagFilter: PassageFactoryTag | null) {
+  return `${ACTIVE_PASSAGE_RESUME_STORAGE_PREFIX}${factoryTagFilter ?? "all"}`;
+}
+
+export function clearActivePassageResume(factoryTagFilter: PassageFactoryTag | null) {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(buildActivePassageResumeStorageKey(factoryTagFilter));
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+export function writeActivePassageResume(
+  snapshot: ActivePassageResumeSnapshot,
+  lastActivityAt = Date.now(),
+) {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  const payload: PersistedActivePassageResumeSnapshot = {
+    ...snapshot,
+    version: 1,
+    savedAt: Date.now(),
+    lastActivityAt,
+  };
+
+  try {
+    window.localStorage.setItem(
+      buildActivePassageResumeStorageKey(snapshot.factoryTagFilter),
+      JSON.stringify(payload),
+    );
+  } catch {
+    // Ignore storage write failures; resume snapshot is best-effort.
+  }
+}
+
+export function readActivePassageResume(
+  factoryTagFilter: PassageFactoryTag | null,
+  now = Date.now(),
+): ActivePassageResumeSnapshot | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  const storageKey = buildActivePassageResumeStorageKey(factoryTagFilter);
+  const raw = window.localStorage.getItem(storageKey);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedActivePassageResumeSnapshot>;
+    if (
+      parsed.version !== 1 ||
+      typeof parsed.savedAt !== "number" ||
+      typeof parsed.lastActivityAt !== "number" ||
+      now - parsed.lastActivityAt > ACTIVE_PASSAGE_RESUME_TTL_MS ||
+      !isActivePassageBackupEntry(parsed.entry)
+    ) {
+      window.localStorage.removeItem(storageKey);
+      return null;
+    }
+
+    return {
+      factoryTagFilter:
+        parsed.factoryTagFilter === null || typeof parsed.factoryTagFilter === "string"
+          ? parsed.factoryTagFilter
+          : null,
+      entry: parsed.entry,
+    };
+  } catch {
+    window.localStorage.removeItem(storageKey);
+    return null;
+  }
 }
 
 export function uniqueIds(ids: string[]) {

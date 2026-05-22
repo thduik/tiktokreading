@@ -44,7 +44,14 @@ pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path
 
 Notes:
 
-- `factory_tag` now defaults to `v5` in `ingest-ndjson-cards.ts`.
+- `factory_tag` now defaults to `v6` in `ingest-ndjson-cards.ts`.
+- Pick-two MCQ answer keys are preserved canonically, for example `B and D`
+  becomes `B, D`, so do not manually flatten them before ingest.
+- If older `v5+` passages were written before that fix, run
+  `repair-v5-plus-multi-key-mcq.ts --apply`. That repair script rewrites the
+  stored answer keys, bumps the parent passage `updated_at` timestamps so the
+  frontend rotates its content namespace, invalidates Redis passage caches, and
+  then refreshes the search catalog.
 - The List filter exposes `v5+` as the forward-looking production bucket. New
   passage generations at `v5`, `v6`, `v7`, and above should continue to appear
   there automatically; do not add a new frontend version option for each new
@@ -52,7 +59,7 @@ Notes:
 - You can still override explicitly when needed:
 
 ```bash
-pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v5
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v6
 ```
 
 - If a batch omits `band`, pass it explicitly:

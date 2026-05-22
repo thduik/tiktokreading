@@ -24,6 +24,9 @@ export type ListPassagesParams = {
   band_index?: BandIndexQueryParameter;
   question_set_type_index?: QuestionSetTypeQueryParameter;
   question_type_index?: QuestionTypeQueryParameter;
+  /**
+   * @pattern ^v[0-9]+(?:_[0-9]+)?$
+   */
   factory_tag?: FactoryTagQueryParameter;
   topic_index?: TopicIndexQueryParameter;
   status?: StatusQueryParameter;

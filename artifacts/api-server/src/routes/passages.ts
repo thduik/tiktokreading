@@ -9,6 +9,7 @@ import {
   type Passage,
   type Question,
   passageReportCounts,
+  passageReportFeedback,
   passages,
   questions,
 } from "@workspace/db";
@@ -37,6 +38,7 @@ const REPORT_TYPE_VALUES = [
   "wrong_answer_key",
   "question_unclear",
   "questions_too_easy",
+  "questions_too_hard",
   "passage_text_issue",
   "formatting_issue",
   "other",
@@ -1340,6 +1342,9 @@ router.post("/passages/:id/report", async (req, res) => {
 
   const reportTypeRaw =
     typeof req.body?.reportType === "string" ? req.body.reportType.trim() : "";
+  const customFeedbackRaw =
+    typeof req.body?.customFeedback === "string" ? req.body.customFeedback : "";
+  const customFeedback = customFeedbackRaw.trim();
 
   if (!reportTypeSet.has(reportTypeRaw)) {
     res.status(400).json({
@@ -1348,21 +1353,37 @@ router.post("/passages/:id/report", async (req, res) => {
     return;
   }
 
+  if (customFeedback.length > 500) {
+    res.status(400).json({ error: "customFeedback must be at most 500 characters" });
+    return;
+  }
+
   try {
-    await db
-      .insert(passageReportCounts)
-      .values({
-        passageId,
-        reportType: reportTypeRaw,
-        count: 1,
-      })
-      .onConflictDoUpdate({
-        target: [passageReportCounts.passageId, passageReportCounts.reportType],
-        set: {
-          count: sql`${passageReportCounts.count} + 1`,
-          updatedAt: sql`now()`,
-        },
-      });
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(passageReportCounts)
+        .values({
+          passageId,
+          reportType: reportTypeRaw,
+          count: 1,
+        })
+        .onConflictDoUpdate({
+          target: [passageReportCounts.passageId, passageReportCounts.reportType],
+          set: {
+            count: sql`${passageReportCounts.count} + 1`,
+            updatedAt: sql`now()`,
+          },
+        });
+
+      if (customFeedback.length > 0) {
+        await tx.insert(passageReportFeedback).values({
+          id: crypto.randomUUID(),
+          passageId,
+          reportType: reportTypeRaw,
+          customFeedback,
+        });
+      }
+    });
   } catch (error) {
     const maybePgError = error as { code?: string } | undefined;
     if (maybePgError?.code === "23503") {
@@ -1386,6 +1407,7 @@ router.post("/passages/:id/report", async (req, res) => {
     ok: true,
     passage_id: passageId,
     report_type: reportTypeRaw,
+    custom_feedback_saved: customFeedback.length > 0,
     aggregates: counts.map((item) => ({
       report_type: item.reportType,
       count: item.count,

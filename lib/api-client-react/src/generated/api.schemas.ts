@@ -42,16 +42,10 @@ export const AnswerType = {
   text: "text",
 } as const;
 
-export type PassageFactoryTag =
-  (typeof PassageFactoryTag)[keyof typeof PassageFactoryTag];
-
-export const PassageFactoryTag = {
-  v1: "v1",
-  v2: "v2",
-  v3: "v3",
-  v4: "v4",
-  v4_5: "v4_5",
-} as const;
+/**
+ * @pattern ^v[0-9]+(?:_[0-9]+)?$
+ */
+export type PassageFactoryTag = string;
 
 export type PassageReportType =
   (typeof PassageReportType)[keyof typeof PassageReportType];
@@ -60,6 +54,7 @@ export const PassageReportType = {
   wrong_answer_key: "wrong_answer_key",
   question_unclear: "question_unclear",
   questions_too_easy: "questions_too_easy",
+  questions_too_hard: "questions_too_hard",
   passage_text_issue: "passage_text_issue",
   formatting_issue: "formatting_issue",
   other: "other",
@@ -190,6 +185,7 @@ export interface PassageReportResponse {
   ok: boolean;
   passage_id: string;
   report_type: PassageReportType;
+  custom_feedback_saved: boolean;
   aggregates: PassageReportAggregate[];
 }
 
@@ -211,6 +207,9 @@ export interface UserProgress {
   total_questions_answered: number;
   total_correct: number;
   total_incorrect: number;
+  current_practice_streak_days: number;
+  best_practice_streak_days: number;
+  last_practice_date_local: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -407,6 +406,7 @@ export interface QuestionTimingAck {
 
 export interface SubmitAnswerResponse {
   progress: UserProgress;
+  current_streak_days: number;
   next_rank_progress: NextRankProgress;
   answer_result: AnswerResult;
   question_timing: QuestionTimingAck | null;
@@ -564,6 +564,9 @@ export type ListPassagesParams = {
   band_index?: BandIndexQueryParameter;
   question_set_type_index?: QuestionSetTypeQueryParameter;
   question_type_index?: QuestionTypeQueryParameter;
+  /**
+   * @pattern ^v[0-9]+(?:_[0-9]+)?$
+   */
   factory_tag?: FactoryTagQueryParameter;
   topic_index?: TopicIndexQueryParameter;
   status?: StatusQueryParameter;
@@ -580,12 +583,18 @@ export type ListPassagesParams = {
 export type ListPassageIdsParams = {
   status?: StatusQueryParameter;
   language_code?: LanguageCodeQueryParameter;
+  /**
+   * @pattern ^v[0-9]+(?:_[0-9]+)?$
+   */
   factory_tag?: FactoryTagQueryParameter;
 };
 
 export type BootstrapPassageFeedParams = {
   status?: StatusQueryParameter;
   language_code?: LanguageCodeQueryParameter;
+  /**
+   * @pattern ^v[0-9]+(?:_[0-9]+)?$
+   */
   factory_tag?: FactoryTagQueryParameter;
   include_answer_key?: IncludeAnswerKeyQueryParameter;
   /**
@@ -601,6 +610,8 @@ export type GetPassageDetailParams = {
 
 export type ReportPassageBody = {
   reportType: PassageReportType;
+  /** @maxLength 500 */
+  customFeedback?: string;
 };
 
 export type UpdateMyProfileBody = {

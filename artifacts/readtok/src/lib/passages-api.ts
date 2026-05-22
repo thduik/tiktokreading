@@ -17,6 +17,8 @@ export const PASSAGE_FACTORY_TAG_FILTER_VALUES: PassageFactoryTag[] = [
   "v1",
   "v2",
   "v5",
+  "v5_5",
+  "v6",
   // Keep this open-ended bucket so future v6/v7/... passage batches appear
   // without another frontend filter change.
   "v5_plus",
@@ -128,6 +130,7 @@ export type PassageReportType =
   | "wrong_answer_key"
   | "question_unclear"
   | "questions_too_easy"
+  | "questions_too_hard"
   | "passage_text_issue"
   | "formatting_issue"
   | "other";
@@ -172,6 +175,7 @@ export interface SubmitPassageReportResponse {
   ok: boolean;
   passage_id: string;
   report_type: PassageReportType;
+  custom_feedback_saved: boolean;
   aggregates: Array<{
     report_type: PassageReportType;
     count: number;
@@ -877,6 +881,7 @@ export function getCachedPassageDetail(id: string, includeAnswerKey = true) {
 export async function submitPassageReport(
   passageId: string,
   reportType: PassageReportType,
+  customFeedback?: string,
 ) {
   const response = await fetch(`${API_BASE}/passages/${encodeURIComponent(passageId)}/report`, {
     method: "POST",
@@ -885,7 +890,7 @@ export async function submitPassageReport(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ reportType }),
+    body: JSON.stringify({ reportType, customFeedback }),
   });
 
   if (!response.ok) {

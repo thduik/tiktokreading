@@ -19,7 +19,7 @@
     "audit:answer-keys": "tsx ./src/scripts/audit-answer-key-anomalies.ts",
     "audit:question-paraphrase": "tsx ./src/scripts/audit-question-paraphrase.ts",
     "pretest": "node ../../scripts/check-toolchain.mjs --pnpm",
-    "test": "tsx --test ./src/ranking/ranking.test.ts ./src/schema/migration-smoke.test.ts ./src/scripts/ingest-ndjson-cards.test.ts",
+    "test": "tsx --test ./src/ranking/ranking.test.ts ./src/schema/migration-smoke.test.ts ./src/scripts/ingest-ndjson-cards.test.ts ./src/scripts/repair-v5-plus-multi-key-mcq.test.ts",
     "test:ranking": "tsx --test ./src/ranking/ranking.test.ts",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"

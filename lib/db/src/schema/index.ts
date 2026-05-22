@@ -96,6 +96,13 @@ export const userProgress = pgTable(
     totalQuestionsAnswered: integer("total_questions_answered").notNull().default(0),
     totalCorrect: integer("total_correct").notNull().default(0),
     totalIncorrect: integer("total_incorrect").notNull().default(0),
+    currentPracticeStreakDays: integer("current_practice_streak_days")
+      .notNull()
+      .default(0),
+    bestPracticeStreakDays: integer("best_practice_streak_days")
+      .notNull()
+      .default(0),
+    lastPracticeDateLocal: date("last_practice_date_local"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -115,6 +122,10 @@ export const userProgress = pgTable(
     check(
       "user_progress_totals_nonnegative_chk",
       sql`${table.totalQuestionsAnswered} >= 0 AND ${table.totalCorrect} >= 0 AND ${table.totalIncorrect} >= 0`,
+    ),
+    check(
+      "user_progress_practice_streak_nonnegative_chk",
+      sql`${table.currentPracticeStreakDays} >= 0 AND ${table.bestPracticeStreakDays} >= 0`,
     ),
     check(
       "user_progress_current_rank_chk",
@@ -244,6 +255,28 @@ export const passageReportCounts = pgTable(
     ),
     index("passage_report_counts_passage_idx").on(table.passageId),
     check("passage_report_counts_nonnegative_chk", sql`${table.count} >= 0`),
+  ],
+);
+
+export const passageReportFeedback = pgTable(
+  "passage_report_feedback",
+  {
+    id: text("id").primaryKey(),
+    passageId: text("passage_id")
+      .notNull()
+      .references(() => passages.id, { onDelete: "cascade" }),
+    reportType: text("report_type").notNull(),
+    customFeedback: text("custom_feedback").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("passage_report_feedback_passage_idx").on(table.passageId, table.createdAt),
+    check(
+      "passage_report_feedback_length_chk",
+      sql`char_length(${table.customFeedback}) >= 1 AND char_length(${table.customFeedback}) <= 500`,
+    ),
   ],
 );
 

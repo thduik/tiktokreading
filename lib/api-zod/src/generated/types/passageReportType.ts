@@ -13,6 +13,7 @@ export const PassageReportType = {
   wrong_answer_key: "wrong_answer_key",
   question_unclear: "question_unclear",
   questions_too_easy: "questions_too_easy",
+  questions_too_hard: "questions_too_hard",
   passage_text_issue: "passage_text_issue",
   formatting_issue: "formatting_issue",
   other: "other",

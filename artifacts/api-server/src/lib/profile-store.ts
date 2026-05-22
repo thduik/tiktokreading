@@ -1,4 +1,4 @@
-import { desc, eq, lte, sql, and } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   db,
   userAchievements,
@@ -28,6 +28,178 @@ type AuthWithUserId = {
   userId: string;
   sessionClaims?: unknown;
 };
+
+type PracticeStreakState = {
+  currentPracticeStreakDays: number;
+  bestPracticeStreakDays: number;
+  lastPracticeDateLocal: string | null;
+};
+
+export const PRACTICE_STREAK_GRACE_MISSED_DAYS = 3;
+
+function getDateKeyDistance(fromDate: string, toDate: string) {
+  const fromMs = Date.parse(`${fromDate}T00:00:00Z`);
+  const toMs = Date.parse(`${toDate}T00:00:00Z`);
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) {
+    return 0;
+  }
+  return Math.round((toMs - fromMs) / 86400000);
+}
+
+function buildPracticeStreakStateFromActiveDates(activeDatesDesc: string[]): PracticeStreakState {
+  if (activeDatesDesc.length === 0) {
+    return {
+      currentPracticeStreakDays: 0,
+      bestPracticeStreakDays: 0,
+      lastPracticeDateLocal: null,
+    };
+  }
+
+  const uniqueActiveDatesAsc = [...new Set(activeDatesDesc)].sort((left, right) =>
+    left.localeCompare(right),
+  );
+  const lastPracticeDateLocal = uniqueActiveDatesAsc[uniqueActiveDatesAsc.length - 1] ?? null;
+
+  let currentRun = 0;
+  let bestRun = 0;
+  let previousDate: string | null = null;
+  for (const activeDate of uniqueActiveDatesAsc) {
+    if (previousDate && getDateKeyDistance(previousDate, activeDate) === 1) {
+      currentRun += 1;
+    } else {
+      currentRun = 1;
+    }
+    bestRun = Math.max(bestRun, currentRun);
+    previousDate = activeDate;
+  }
+
+  let endingRun = 0;
+  if (lastPracticeDateLocal) {
+    let cursor = lastPracticeDateLocal;
+    const activeSet = new Set(uniqueActiveDatesAsc);
+    while (activeSet.has(cursor)) {
+      endingRun += 1;
+      cursor = addDaysToDateKey(cursor, -1);
+    }
+  }
+
+  return {
+    currentPracticeStreakDays: endingRun,
+    bestPracticeStreakDays: bestRun,
+    lastPracticeDateLocal,
+  };
+}
+
+async function hydratePracticeStreakState(row: typeof userProgress.$inferSelect) {
+  const shouldHydrate =
+    row.currentPracticeStreakDays === 0 && row.bestPracticeStreakDays === 0;
+  if (!shouldHydrate) {
+    return row;
+  }
+
+  const rows = await db
+    .select({
+      localDate: userDailyAnswerStats.localDate,
+      attempted: sql<number>`coalesce(sum(${userDailyAnswerStats.attemptCount}), 0)::int`,
+    })
+    .from(userDailyAnswerStats)
+    .where(eq(userDailyAnswerStats.userId, row.userId))
+    .groupBy(userDailyAnswerStats.localDate)
+    .orderBy(desc(userDailyAnswerStats.localDate))
+    .limit(4000);
+
+  const activeDates = rows
+    .filter((item) => Number(item.attempted) > 0)
+    .map((item) => String(item.localDate));
+
+  const hydratedState = buildPracticeStreakStateFromActiveDates(activeDates);
+  if (
+    hydratedState.currentPracticeStreakDays === row.currentPracticeStreakDays &&
+    hydratedState.bestPracticeStreakDays === row.bestPracticeStreakDays &&
+    hydratedState.lastPracticeDateLocal === row.lastPracticeDateLocal
+  ) {
+    return row;
+  }
+
+  const updatedRows = await db
+    .update(userProgress)
+    .set({
+      currentPracticeStreakDays: hydratedState.currentPracticeStreakDays,
+      bestPracticeStreakDays: hydratedState.bestPracticeStreakDays,
+      lastPracticeDateLocal: hydratedState.lastPracticeDateLocal,
+      updatedAt: new Date(),
+    })
+    .where(eq(userProgress.userId, row.userId))
+    .returning();
+
+  return updatedRows[0] ?? row;
+}
+
+export function getVisiblePracticeStreakDays({
+  currentPracticeStreakDays,
+  lastPracticeDateLocal,
+  localDate,
+}: PracticeStreakState & { localDate: string }) {
+  if (!lastPracticeDateLocal || currentPracticeStreakDays <= 0) {
+    return 0;
+  }
+
+  const dayDistance = getDateKeyDistance(lastPracticeDateLocal, localDate);
+  if (dayDistance <= 0) {
+    return currentPracticeStreakDays;
+  }
+
+  const missedDays = Math.max(0, dayDistance - 1);
+  if (missedDays <= PRACTICE_STREAK_GRACE_MISSED_DAYS) {
+    return currentPracticeStreakDays;
+  }
+
+  return 0;
+}
+
+export function advancePracticeStreakState({
+  currentPracticeStreakDays,
+  bestPracticeStreakDays,
+  lastPracticeDateLocal,
+  localDate,
+}: PracticeStreakState & { localDate: string }): PracticeStreakState {
+  if (!lastPracticeDateLocal) {
+    return {
+      currentPracticeStreakDays: 1,
+      bestPracticeStreakDays: Math.max(bestPracticeStreakDays, 1),
+      lastPracticeDateLocal: localDate,
+    };
+  }
+
+  const dayDistance = getDateKeyDistance(lastPracticeDateLocal, localDate);
+  if (dayDistance <= 0) {
+    return {
+      currentPracticeStreakDays,
+      bestPracticeStreakDays: Math.max(
+        bestPracticeStreakDays,
+        currentPracticeStreakDays,
+      ),
+      lastPracticeDateLocal,
+    };
+  }
+
+  // If the user returns after missing up to three full local days, we preserve
+  // their current streak and continue it on the next practiced day.
+  const missedDays = Math.max(0, dayDistance - 1);
+  const nextCurrentPracticeStreakDays =
+    missedDays <= PRACTICE_STREAK_GRACE_MISSED_DAYS
+      ? currentPracticeStreakDays + 1
+      : 1;
+
+  return {
+    currentPracticeStreakDays: nextCurrentPracticeStreakDays,
+    bestPracticeStreakDays: Math.max(
+      bestPracticeStreakDays,
+      nextCurrentPracticeStreakDays,
+    ),
+    lastPracticeDateLocal: localDate,
+  };
+}
 
 export async function fetchUserAchievementsWithSummary(userId: string) {
   const items = await db
@@ -71,7 +243,7 @@ export async function ensureUserProgress(userId: string) {
     .where(eq(userProgress.userId, userId))
     .limit(1);
   if (existingRows.length > 0) {
-    return existingRows[0];
+    return hydratePracticeStreakState(existingRows[0]);
   }
 
   const insertedRows = await db
@@ -84,10 +256,13 @@ export async function ensureUserProgress(userId: string) {
       totalQuestionsAnswered: 0,
       totalCorrect: 0,
       totalIncorrect: 0,
+      currentPracticeStreakDays: 0,
+      bestPracticeStreakDays: 0,
+      lastPracticeDateLocal: null,
     })
     .returning();
 
-  return insertedRows[0];
+  return hydratePracticeStreakState(insertedRows[0]);
 }
 
 export async function createUserProfile({
@@ -140,52 +315,6 @@ export async function createUserProfile({
   }
 
   throw new Error("Could not allocate a unique public user id");
-}
-
-export async function fetchCurrentPracticeStreakDays({
-  userId,
-  localDate,
-}: {
-  userId: string;
-  localDate: string;
-}) {
-  const rows = await db
-    .select({
-      localDate: userDailyAnswerStats.localDate,
-      attempted: sql<number>`coalesce(sum(${userDailyAnswerStats.attemptCount}), 0)::int`,
-    })
-    .from(userDailyAnswerStats)
-    .where(
-      and(
-        eq(userDailyAnswerStats.userId, userId),
-        lte(userDailyAnswerStats.localDate, localDate),
-      ),
-    )
-    .groupBy(userDailyAnswerStats.localDate)
-    .orderBy(desc(userDailyAnswerStats.localDate))
-    .limit(400);
-
-  const activeDateSet = new Set(
-    rows
-      .filter((row) => Number(row.attempted) > 0)
-      .map((row) => String(row.localDate)),
-  );
-
-  let cursor = localDate;
-  if (!activeDateSet.has(cursor)) {
-    cursor = addDaysToDateKey(localDate, -1);
-  }
-  if (!activeDateSet.has(cursor)) {
-    return 0;
-  }
-
-  let streak = 0;
-  while (activeDateSet.has(cursor)) {
-    streak += 1;
-    cursor = addDaysToDateKey(cursor, -1);
-  }
-
-  return streak;
 }
 
 export async function ensureUserProfileForAuth({

@@ -88,3 +88,29 @@ test("question timing migration creates an append-only timing events table", asy
   assert.match(sql, /CHECK \(display_position >= 1\)/i);
   assert.match(sql, /CREATE INDEX IF NOT EXISTS user_question_timing_events_user_date_idx/i);
 });
+
+test("practice streak migration adds explicit streak state to user progress", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0017_user_progress_practice_streak.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS current_practice_streak_days INTEGER NOT NULL DEFAULT 0/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS best_practice_streak_days INTEGER NOT NULL DEFAULT 0/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS last_practice_date_local DATE NULL/i);
+  assert.match(sql, /user_progress_practice_streak_nonnegative_chk/i);
+  assert.match(sql, /MAX\(local_date\) AS last_practice_date_local/i);
+});
+
+test("passage report feedback migration stores optional freeform notes safely", async () => {
+  const sql = await readFile(
+    path.join(migrationDir, "0018_passage_report_feedback.sql"),
+    "utf8",
+  );
+
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS passage_report_feedback/i);
+  assert.match(sql, /custom_feedback TEXT NOT NULL/i);
+  assert.match(sql, /char_length\(custom_feedback\) >= 1/i);
+  assert.match(sql, /char_length\(custom_feedback\) <= 500/i);
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS passage_report_feedback_passage_idx/i);
+});

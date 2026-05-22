@@ -22,6 +22,20 @@ Last updated: 2026-05-14 (UTC)
   `"/saved"` and `"/profile"` active in bottom nav.
 - Mobile feed:
   Controlled left/right swipe switches passage; vertical scrolling is immediate for reading/question panels.
+- Desktop feed:
+  Left/right arrow keys switch passages when focus is not inside an input, textarea,
+  select, contenteditable area, or open feed dialog.
+- Feed startup backups:
+  Feed now uses a very small two-step startup fallback instead of persisting
+  the whole random stack in browser storage. First, a resume snapshot stores
+  the exact real passage the user is currently reading, with answer/timer
+  state, and can reopen it for up to `5` minutes after a crash or refresh. The
+  resume snapshot updates immediately when the displayed passage changes, so
+  every swipe rewrites the exact resume target. If that short-lived snapshot is
+  unavailable, Feed falls back to one of `5` bundled cold-backup passages so
+  the screen never starts blank even if the API is unavailable. In every case,
+  the live feed bootstrap still runs in parallel and replaces the preview as
+  soon as fresh API data arrives.
 - Daily goal:
   `20 questions/day` shown in profile and feed header.
 - Question completion ring:
@@ -60,10 +74,11 @@ Last updated: 2026-05-14 (UTC)
   `/api/passages/feed-bootstrap` `version` values and stores cache entries under
   that namespace.
 - Passage version filter:
-  the List UI intentionally exposes `v5+` as an open-ended bucket, and the API
-  resolves it to every passage `factory_tag` at `v5` or above. Future `v6`,
-  `v7`, and later passage batches should therefore appear under `v5+` without a
-  new frontend filter release.
+  the List UI intentionally exposes both exact current buckets such as `v5.5`
+  and `v6`
+  and an open-ended `v5+` bucket. The API resolves `v5+` to every passage
+  `factory_tag` at `v5` or above, so future `v6`, `v7`, and later passage
+  batches should appear there without a new frontend filter release.
 - Redis cache policy:
   Public read-heavy data uses Redis when `REDIS_URL` is configured: passage
   lists, passage details, passage ID pools, rank tiers, and short-lived
@@ -80,6 +95,11 @@ Last updated: 2026-05-14 (UTC)
 - Admin reports:
   `/admin` uses env-based admin auth and reads aggregated
   `passage_report_counts` from `/api/admin/reports`.
+- Passage report feedback:
+  the passage report flow still increments aggregate type counts, and it can now
+  optionally persist up to `500` characters of freeform `custom_feedback` per
+  submission in `passage_report_feedback`. The frontend exposes both
+  `questions_too_easy` and `questions_too_hard` issue types.
 - Ranking:
   Server accepts answer submissions and returns LP delta.
 - Leaderboard API:
@@ -100,6 +120,14 @@ Last updated: 2026-05-14 (UTC)
   backend-backed for cross-device consistency. Authenticated profile stats and
   answer submission routes ensure the profile row exists before reading/writing,
   so a new device cannot miss writes while profile bootstrap is still racing.
+- Practice streak rule:
+  `user_progress` now owns explicit streak state with
+  `current_practice_streak_days`, `best_practice_streak_days`, and
+  `last_practice_date_local`. The dashboard shows the stored streak as long as
+  the user returns within `3` full missed local days; on the next practiced day
+  after that grace window, the streak resets to `1`. The submit-answer response
+  also returns `current_streak_days` so frontend profile caches can patch
+  immediately after a write instead of waiting for a dashboard reread.
 - Local-vs-server state boundary:
   for hosted auth mode, backend-owned user state must not be persisted in
   browser localStorage. `use-app-state` now treats only onboarding flags, feed
@@ -124,7 +152,14 @@ Last updated: 2026-05-14 (UTC)
   smoke checks, and ingest normalization.
 - Passage ingestion:
   NDJSON ingest scripts with anomaly checks/fixes in DB tooling. V2 mixed-card
-  ingest supports matching-style option keys beyond `D`.
+  ingest supports matching-style option keys beyond `D`. Multi-answer MCQ keys
+  such as `B and D` are now preserved canonically as `B, D` instead of being
+  flattened to a single option. Historical `v5+` passages that were flattened
+  before this fix can be repaired in place with
+  `repair-v5-plus-multi-key-mcq.ts`, which also bumps passage `updated_at` so
+  frontend content namespaces rotate and invalidates passage Redis caches before
+  the search catalog is rewarmed. The default `factory_tag` baseline is now
+  `v6`.
 - Backups:
   Daily PostgreSQL backup script exists for S3-compatible storage.
 

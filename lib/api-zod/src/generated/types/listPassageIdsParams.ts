@@ -13,5 +13,8 @@ import type { StatusQueryParameter } from "./statusQueryParameter";
 export type ListPassageIdsParams = {
   status?: StatusQueryParameter;
   language_code?: LanguageCodeQueryParameter;
+  /**
+   * @pattern ^v[0-9]+(?:_[0-9]+)?$
+   */
   factory_tag?: FactoryTagQueryParameter;
 };

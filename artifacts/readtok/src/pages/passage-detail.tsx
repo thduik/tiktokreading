@@ -26,7 +26,6 @@ import {
   fetchPassageFeedBootstrap,
   fetchPassageIds,
   formatPassageFactoryTagLabel,
-  getCachedPassageDetail,
   normalizePassageFactoryTagFilter,
   readStoredPassageFactoryTag,
   writeStoredPassageFactoryTag,
@@ -41,14 +40,19 @@ import {
   submitPassageReport,
 } from "@/lib/passages-api";
 import {
+  ACTIVE_PASSAGE_BACKUP_HEARTBEAT_MS,
   formatElapsedTimer,
   passageReportSessionKey,
+  readActivePassageResume,
   readIdArrayFromStorage,
   selectRandomIdsFromPool,
+  type ActivePassageBackupEntry,
   type FeedRuntimeSession,
   uniqueIds,
+  writeActivePassageResume,
   writeIdArrayToStorage,
 } from "@/lib/passage-feed-runtime";
+import { selectColdBackupPassage } from "@/data/cold-backup-passages";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +68,13 @@ import type { AchievementDefinition } from "@/lib/achievements";
 import { formatLocalDayKey, getDailyGoalProgress } from "@/lib/daily-goal";
 import { applySubmitAnswerCachePatch, submitRankedAnswer } from "@/lib/profile-api";
 import { saveVocabToBank } from "@/lib/profile-api";
+import {
+  formatOptionKeyAnswer,
+  getExpectedOptionSelectionCount,
+  isOptionKeyAnswerCorrect,
+  resolveOptionKeyAnswerForScoring,
+  splitOptionKeyAnswer,
+} from "@/lib/mcq-answer";
 import {
   QUESTION_TYPE_DISPLAY_LABELS,
   createMistakeEntry,
@@ -98,6 +109,7 @@ const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
   { value: "wrong_answer_key", label: "Wrong answer key" },
   { value: "question_unclear", label: "Question unclear" },
   { value: "questions_too_easy", label: "Questions too easy" },
+  { value: "questions_too_hard", label: "Question is too hard" },
   { value: "passage_text_issue", label: "Passage text issue" },
   { value: "formatting_issue", label: "Formatting issue" },
   { value: "other", label: "Other" },
@@ -344,11 +356,15 @@ function isQuestionCorrect(
     return false;
   }
 
-  if (answerKey.answer_type === "label" || answerKey.answer_type === "option_key") {
+  if (answerKey.answer_type === "label") {
     return (
       normalizeForCompare(userAnswer, false) ===
       normalizeForCompare(answerKey.answer_value, false)
     );
+  }
+
+  if (answerKey.answer_type === "option_key") {
+    return isOptionKeyAnswerCorrect(answerKey, userAnswer);
   }
 
   const caseSensitive = question.payload.case_sensitive === true;
@@ -816,20 +832,25 @@ function VocabMeaningDialog({
 function PassageReportDialog({
   open,
   reportType,
+  customFeedback,
   isSubmitting,
   error,
   onOpenChange,
   onReportTypeChange,
+  onCustomFeedbackChange,
   onSubmit,
 }: {
   open: boolean;
   reportType: PassageReportType;
+  customFeedback: string;
   isSubmitting: boolean;
   error: string | null;
   onOpenChange: (open: boolean) => void;
   onReportTypeChange: (nextType: PassageReportType) => void;
+  onCustomFeedbackChange: (nextValue: string) => void;
   onSubmit: () => void;
 }) {
+  const remainingCharacters = 500 - customFeedback.length;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-1.5rem)] max-w-md rounded-lg border border-border bg-card p-4 text-foreground">
@@ -857,6 +878,25 @@ function PassageReportDialog({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="space-y-1.5 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Custom feedback</span>
+              <span className="text-[11px] text-muted-foreground">
+                {remainingCharacters}/500 left
+              </span>
+            </div>
+            <textarea
+              value={customFeedback}
+              onChange={(event) =>
+                onCustomFeedbackChange(event.target.value.slice(0, 500))
+              }
+              disabled={isSubmitting}
+              maxLength={500}
+              placeholder="Optional note about what feels wrong, too hard, or confusing."
+              className="min-h-[112px] w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            />
           </label>
 
           {error ? (
@@ -895,23 +935,62 @@ function McqOptions({
   options,
   answer,
   onChange,
+  onSubmit,
   disabled,
+  expectedSelectionCount,
 }: {
   options: Array<{ key: string; text: string }>;
   answer: string;
   onChange: (nextAnswer: string) => void;
+  onSubmit: (nextAnswer: string) => void;
   disabled: boolean;
+  expectedSelectionCount: number;
 }) {
+  const selectedKeys = splitOptionKeyAnswer(answer);
+  const selectedKeySet = new Set(selectedKeys);
+  const isMultiSelect = expectedSelectionCount > 1;
+  const canSubmit = !disabled && selectedKeys.length === expectedSelectionCount;
+
+  function handleOptionPress(optionKey: string) {
+    if (disabled) {
+      return;
+    }
+
+    let nextSelectedKeys: string[];
+    if (selectedKeySet.has(optionKey)) {
+      nextSelectedKeys = selectedKeys.filter((key) => key !== optionKey);
+    } else if (isMultiSelect) {
+      if (selectedKeys.length >= expectedSelectionCount) {
+        return;
+      }
+      nextSelectedKeys = [...selectedKeys, optionKey];
+    } else {
+      nextSelectedKeys = [optionKey];
+    }
+
+    const nextAnswer = formatOptionKeyAnswer(nextSelectedKeys);
+    onChange(nextAnswer);
+    if (!isMultiSelect && nextSelectedKeys.length === 1) {
+      onSubmit(nextAnswer);
+    }
+  }
+
   return (
     <div className="space-y-2.5">
+      {isMultiSelect ? (
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-primary/85">
+          Select {expectedSelectionCount} answers
+        </p>
+      ) : null}
       {options.map((option) => {
-        const selected = answer === option.key;
+        const selected = selectedKeySet.has(option.key);
         return (
           <button
             key={option.key}
             type="button"
             disabled={disabled}
-            onClick={() => onChange(option.key)}
+            onClick={() => handleOptionPress(option.key)}
+            aria-pressed={selected}
             className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
               selected
                 ? "border-primary/60 bg-primary/15 text-foreground"
@@ -922,6 +1001,25 @@ function McqOptions({
           </button>
         );
       })}
+      {isMultiSelect ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {selectedKeys.length}/{expectedSelectionCount} selected
+          </p>
+          <button
+            type="button"
+            onClick={() => onSubmit(answer)}
+            disabled={!canSubmit}
+            className={`answer-action-btn h-10 w-full rounded-lg border text-xs font-semibold uppercase tracking-[0.08em] transition-colors ${
+              canSubmit
+                ? "border-primary/45 bg-primary/15 text-primary hover:bg-primary/25"
+                : "cursor-not-allowed border-border bg-muted text-muted-foreground"
+            }`}
+          >
+            {disabled ? "Submitted" : "Submit answers"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1185,6 +1283,7 @@ function QuestionBlock({
   const instructionLabel = extractInstructionLabel(question.payload);
   const isCorrect = isQuestionCorrect(question, answerKey, answer);
   const mcqOptions = readMcqOptions(question.payload);
+  const mcqSelectionCount = getExpectedOptionSelectionCount(answerKey);
   const isTextQuestion =
     question.question_type_index === "sentence_completion" ||
     question.question_type_index === "short_answer";
@@ -1214,11 +1313,10 @@ function QuestionBlock({
           <McqOptions
             options={mcqOptions}
             answer={answer}
-            onChange={(nextAnswer) => {
-              onAnswerChange(nextAnswer);
-              onSubmitAnswer(nextAnswer);
-            }}
+            onChange={onAnswerChange}
+            onSubmit={onSubmitAnswer}
             disabled={revealed || !answerKeyAvailable}
+            expectedSelectionCount={mcqSelectionCount}
           />
         )}
 
@@ -1362,6 +1460,7 @@ export default function PassageDetailPage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [selectedReportType, setSelectedReportType] =
     useState<PassageReportType>("wrong_answer_key");
+  const [customReportFeedback, setCustomReportFeedback] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportedPassageIds, setReportedPassageIds] = useState<Record<string, true>>({});
@@ -1369,7 +1468,9 @@ export default function PassageDetailPage() {
     Record<string, number>
   >({});
   const [achievementEffectVariant, setAchievementEffectVariant] = useState<"a" | "b" | "c">("a");
+  const [startupPreviewSource, setStartupPreviewSource] = useState<"runtime" | "resume" | "cold_backup" | null>(null);
   const questionOrderByPassageRef = useRef<Record<string, number[]>>({});
+  const latestFeedSessionRef = useRef<FeedRuntimeSession | null>(null);
   const prefetchCountRef = useRef(0);
   const hydratingAnswerKeyPassageIdsRef = useRef<Set<string>>(new Set());
   const desktopWheelMomentumTimeoutRef = useRef<number | null>(null);
@@ -1377,6 +1478,140 @@ export default function PassageDetailPage() {
   const arrowTapCooldownTimeoutRef = useRef<number | null>(null);
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const mobileSwipeLockUntilRef = useRef(0);
+  const startupPreviewPassageIdRef = useRef<string | null>(null);
+
+  function buildResumeEntryForPassage(passage: PassageDetail): ActivePassageBackupEntry | null {
+    if (passage.status !== "active") {
+      return null;
+    }
+
+    return {
+      passage,
+      answersByQuestionId: answersByPassageId[passage.id] ?? {},
+      revealedByQuestionId: revealedByPassageId[passage.id] ?? {},
+      elapsedSeconds: elapsedSecondsByPassageId[passage.id] ?? 0,
+      questionOrder:
+        questionOrderByPassageRef.current[passage.id] ??
+        passage.questions.map((question) => question.id),
+      viewedAt: Date.now(),
+    };
+  }
+
+  function persistResumeEntry(entry: ActivePassageBackupEntry | null) {
+    if (!entry) {
+      return;
+    }
+
+    writeActivePassageResume({
+      factoryTagFilter: activeFactoryTag,
+      entry,
+    });
+  }
+
+  function persistResumeForPassage(passage: PassageDetail | null | undefined) {
+    if (!passage) {
+      return;
+    }
+    persistResumeEntry(buildResumeEntryForPassage(passage));
+  }
+
+  function persistActivePassageResumeSnapshot() {
+    const nextEntry = activePassage ? buildResumeEntryForPassage(activePassage) : null;
+    if (!nextEntry) {
+      return;
+    }
+
+    persistResumeEntry(nextEntry);
+  }
+
+  function restoreFromFeedSession(
+    cachedSession: FeedRuntimeSession,
+    targetPassageId?: string,
+    options?: { keepLoading?: boolean },
+  ) {
+    if (cachedSession.passages.length === 0) {
+      return false;
+    }
+
+    const {
+      passages: cachedPassages,
+      currentIndex: cachedCurrentIndex,
+      answersByPassageId: cachedAnswers,
+      revealedByPassageId: cachedRevealed,
+      elapsedSecondsByPassageId: cachedElapsedSeconds,
+      questionOrderByPassageId: cachedQuestionOrder,
+      feedIds: cachedFeedIds,
+      listOffset: cachedListOffset,
+      feedScrollLeft: cachedFeedScrollLeft,
+    } = cachedSession;
+
+    const requestedIndex =
+      targetPassageId && targetPassageId.length > 0
+        ? cachedPassages.findIndex((passage) => passage.id === targetPassageId)
+        : cachedCurrentIndex;
+
+    if (targetPassageId && targetPassageId.length > 0 && requestedIndex < 0) {
+      return false;
+    }
+
+    questionOrderByPassageRef.current = { ...cachedQuestionOrder };
+    setPassages(cachedPassages);
+    setFeedIds(cachedFeedIds);
+    setListOffset(cachedListOffset);
+    setAnswersByPassageId(cachedAnswers);
+    setRevealedByPassageId(cachedRevealed);
+    setElapsedSecondsByPassageId(cachedElapsedSeconds);
+    setCurrentIndex(
+      Math.min(
+        Math.max(requestedIndex >= 0 ? requestedIndex : cachedCurrentIndex, 0),
+        cachedPassages.length - 1,
+      ),
+    );
+    if (options?.keepLoading) {
+      const displayedIndex = Math.min(
+        Math.max(requestedIndex >= 0 ? requestedIndex : cachedCurrentIndex, 0),
+        cachedPassages.length - 1,
+      );
+      startupPreviewPassageIdRef.current = cachedPassages[displayedIndex]?.id ?? null;
+    }
+    void cachedFeedScrollLeft;
+    setIsLoading(Boolean(options?.keepLoading));
+    setError(null);
+
+    return true;
+  }
+
+  function restoreSinglePassagePreview(
+    passage: PassageDetail,
+    options?: {
+      answersByQuestionId?: Record<string, string>;
+      revealedByQuestionId?: Record<string, boolean>;
+      elapsedSeconds?: number;
+      questionOrder?: number[];
+      source?: "resume" | "cold_backup";
+    },
+  ) {
+    questionOrderByPassageRef.current = {
+      [passage.id]: options?.questionOrder ?? passage.questions.map((question) => question.id),
+    };
+    setPassages([passage]);
+    setFeedIds([]);
+    setListOffset(0);
+    setCurrentIndex(0);
+    setAnswersByPassageId({
+      [passage.id]: options?.answersByQuestionId ?? {},
+    });
+    setRevealedByPassageId({
+      [passage.id]: options?.revealedByQuestionId ?? {},
+    });
+    setElapsedSecondsByPassageId({
+      [passage.id]: options?.elapsedSeconds ?? 0,
+    });
+    setStartupPreviewSource(options?.source ?? null);
+    startupPreviewPassageIdRef.current = options?.source === "resume" ? passage.id : null;
+    setError(null);
+    setIsLoading(true);
+  }
 
   function hasReportedPassageInSession(passageId: string) {
     if (typeof window === "undefined") {
@@ -1443,43 +1678,42 @@ export default function PassageDetailPage() {
     if (feedRuntimeSession.factoryTagFilter !== activeFactoryTag) {
       return false;
     }
+    const restored = restoreFromFeedSession(feedRuntimeSession, targetPassageId, {
+      keepLoading: true,
+    });
+    if (restored) {
+      setStartupPreviewSource("runtime");
+    }
+    return restored;
+  }
 
-    const {
-      passages: cachedPassages,
-      currentIndex: cachedCurrentIndex,
-      answersByPassageId: cachedAnswers,
-      revealedByPassageId: cachedRevealed,
-      elapsedSecondsByPassageId: cachedElapsedSeconds,
-      feedIds: cachedFeedIds,
-      listOffset: cachedListOffset,
-      feedScrollLeft: cachedFeedScrollLeft,
-    } = feedRuntimeSession;
-
-    const requestedIndex =
-      targetPassageId && targetPassageId.length > 0
-        ? cachedPassages.findIndex((passage) => passage.id === targetPassageId)
-        : cachedCurrentIndex;
-
-    if (targetPassageId && targetPassageId.length > 0 && requestedIndex < 0) {
+  function restoreFromActivePassageResume(targetPassageId?: string) {
+    const cachedSnapshot = readActivePassageResume(activeFactoryTag);
+    if (!cachedSnapshot) {
       return false;
     }
 
-    setPassages(cachedPassages);
-    setFeedIds(cachedFeedIds);
-    setListOffset(cachedListOffset);
-    setAnswersByPassageId(cachedAnswers);
-    setRevealedByPassageId(cachedRevealed);
-    setElapsedSecondsByPassageId(cachedElapsedSeconds);
-    setCurrentIndex(
-      Math.min(
-        Math.max(requestedIndex >= 0 ? requestedIndex : cachedCurrentIndex, 0),
-        cachedPassages.length - 1,
-      ),
-    );
-    void cachedFeedScrollLeft;
-    setIsLoading(false);
-    setError(null);
+    if (
+      targetPassageId &&
+      targetPassageId.length > 0 &&
+      cachedSnapshot.entry.passage.id !== targetPassageId
+    ) {
+      return false;
+    }
 
+    restoreSinglePassagePreview(cachedSnapshot.entry.passage, {
+      answersByQuestionId: cachedSnapshot.entry.answersByQuestionId,
+      revealedByQuestionId: cachedSnapshot.entry.revealedByQuestionId,
+      elapsedSeconds: cachedSnapshot.entry.elapsedSeconds,
+      questionOrder: cachedSnapshot.entry.questionOrder,
+      source: "resume",
+    });
+    return true;
+  }
+
+  function restoreFromColdBackup() {
+    const coldPassage = selectColdBackupPassage(activeFactoryTag);
+    restoreSinglePassagePreview(coldPassage, { source: "cold_backup" });
     return true;
   }
 
@@ -1493,33 +1727,27 @@ export default function PassageDetailPage() {
     setRevealedByPassageId({});
     setFeedIds([]);
     setListOffset(0);
+    setStartupPreviewSource(null);
+    startupPreviewPassageIdRef.current = null;
     setSelectedVocabContext(null);
     prefetchCountRef.current = 0;
+    questionOrderByPassageRef.current = {};
 
-    if (restoreFromRuntimeSession(routePassageId)) {
-      return () => {
-        cancelled = true;
-        if ("speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-        }
-      };
-    }
-
-    if (routePassageId) {
-      const cachedRoutePassage = getCachedPassageDetail(routePassageId, true);
-      if (cachedRoutePassage) {
-        setPassages([cachedRoutePassage]);
-        setCurrentIndex(0);
-        setIsLoading(false);
-      }
-    }
+    // Startup favors continuity first: same-tab runtime, then the recent
+    // exact resume snapshot, then the bundled cold backup. In every case the
+    // live feed bootstrap still runs and replaces the preview when fresh data lands.
+    const restoredPreview =
+      restoreFromRuntimeSession(routePassageId) ||
+      restoreFromActivePassageResume(routePassageId) ||
+      restoreFromColdBackup();
 
     async function loadInitialPassages() {
       try {
+        const bootstrapSeedPassageId = routePassageId || startupPreviewPassageIdRef.current || "";
         const bootstrapResponse = await fetchPassageFeedBootstrap({
           status: "active",
           factoryTag: activeFactoryTag ?? undefined,
-          limit: routePassageId ? INITIAL_STACK_SIZE - 1 : INITIAL_STACK_SIZE,
+          limit: bootstrapSeedPassageId ? INITIAL_STACK_SIZE - 1 : INITIAL_STACK_SIZE,
           includeAnswerKey: false,
         });
         const poolIds = uniqueIds(bootstrapResponse.all_passage_ids);
@@ -1531,18 +1759,20 @@ export default function PassageDetailPage() {
         const randomIds = randomDetails
           .map((item) => item.id)
           .filter((id) => !alreadyShownSet.has(id));
-        const seededIds = uniqueIds(routePassageId ? [routePassageId, ...randomIds] : randomIds);
+        const seededIds = uniqueIds(
+          bootstrapSeedPassageId ? [bootstrapSeedPassageId, ...randomIds] : randomIds,
+        );
         const fillIds = selectRandomIdsFromPool({
           poolIds,
           alreadyShownIds: alreadyShown,
           excludeIds: seededIds,
           count: Math.max(INITIAL_STACK_SIZE - seededIds.length, 0),
         });
-        const initialIds = uniqueIds(
-          routePassageId
-            ? [routePassageId, ...randomIds, ...fillIds]
-            : [...randomIds, ...fillIds],
-        ).slice(0, INITIAL_STACK_SIZE);
+        const initialIds = uniqueIds([
+          ...(bootstrapSeedPassageId ? [bootstrapSeedPassageId] : []),
+          ...randomIds,
+          ...fillIds,
+        ]).slice(0, INITIAL_STACK_SIZE);
         const bootstrapDetailsById = new Map(
           randomDetails.map((detail) => [detail.id, detail]),
         );
@@ -1569,10 +1799,10 @@ export default function PassageDetailPage() {
         }
 
         if (
-          routePassageId.length > 0 &&
-          !details.some((detail) => detail.id === routePassageId)
+          bootstrapSeedPassageId.length > 0 &&
+          !details.some((detail) => detail.id === bootstrapSeedPassageId)
         ) {
-          const routePassage = await fetchPassageDetail(routePassageId, true);
+          const routePassage = await fetchPassageDetail(bootstrapSeedPassageId, true);
           details.unshift(routePassage);
         }
 
@@ -1580,14 +1810,15 @@ export default function PassageDetailPage() {
           setPassages(details);
           setFeedIds(poolIds);
           setListOffset(0);
+          setStartupPreviewSource(null);
           writeIdArrayToStorage(RANDOM_SHOWN_STORAGE_KEY, [
             ...alreadyShown,
             ...initialIds,
           ]);
 
           const requestedIndex =
-            routePassageId.length > 0
-              ? details.findIndex((item) => item.id === routePassageId)
+            bootstrapSeedPassageId.length > 0
+              ? details.findIndex((item) => item.id === bootstrapSeedPassageId)
               : 0;
           setCurrentIndex(requestedIndex >= 0 ? requestedIndex : 0);
         }
@@ -1597,6 +1828,15 @@ export default function PassageDetailPage() {
             fetchError instanceof Error
               ? fetchError.message
               : "Failed to load passages.";
+          if (
+            restoredPreview &&
+            activeFactoryTag &&
+            message ===
+              `No passages are available for ${formatPassageFactoryTagLabel(activeFactoryTag)} yet.`
+          ) {
+            setPassages([]);
+            setStartupPreviewSource(null);
+          }
           setError(message);
         }
       } finally {
@@ -1708,6 +1948,7 @@ export default function PassageDetailPage() {
   }, [currentIndex, isAppending, isMobile, passages.length]);
 
   const activePassage = passages[currentIndex] ?? null;
+  const isInteractivePassage = activePassage?.status === "active";
   const isSaved = activePassage ? isCardSaved(activePassage.id) : false;
   const hasPrevPassage = currentIndex > 0;
   const hasNextPassage = currentIndex < passages.length - 1;
@@ -1719,7 +1960,7 @@ export default function PassageDetailPage() {
     : 0;
 
   useEffect(() => {
-    if (!activePassage) {
+    if (!activePassage || activePassage.status !== "active") {
       return;
     }
 
@@ -1784,6 +2025,7 @@ export default function PassageDetailPage() {
 
   useEffect(() => {
     if (passages.length === 0) {
+      latestFeedSessionRef.current = null;
       return;
     }
 
@@ -1794,10 +2036,12 @@ export default function PassageDetailPage() {
       answersByPassageId,
       revealedByPassageId,
       elapsedSecondsByPassageId,
+      questionOrderByPassageId: questionOrderByPassageRef.current,
       feedIds,
       listOffset,
       feedScrollLeft: 0,
     };
+    latestFeedSessionRef.current = feedRuntimeSession;
   }, [
     passages,
     currentIndex,
@@ -1810,7 +2054,63 @@ export default function PassageDetailPage() {
   ]);
 
   useEffect(() => {
-    if (!activePassage) {
+    if (passages.length === 0 || startupPreviewSource === "cold_backup") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      persistActivePassageResumeSnapshot();
+    }, 600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    passages,
+    currentIndex,
+    answersByPassageId,
+    revealedByPassageId,
+    elapsedSecondsByPassageId,
+    feedIds,
+    listOffset,
+    activeFactoryTag,
+    startupPreviewSource,
+  ]);
+
+  useEffect(() => {
+    // The short-lived resume layer should always follow the passage currently
+    // on screen, so a swipe updates the exact resume target immediately instead
+    // of waiting for the slower periodic persistence cycle.
+    persistActivePassageResumeSnapshot();
+  }, [activePassage?.id, activeFactoryTag]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      persistActivePassageResumeSnapshot();
+    }, ACTIVE_PASSAGE_BACKUP_HEARTBEAT_MS);
+
+    function handlePageHide() {
+      persistActivePassageResumeSnapshot();
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        persistActivePassageResumeSnapshot();
+      }
+    }
+
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handlePageHide);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handlePageHide);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activePassage || activePassage.status !== "active") {
       return;
     }
     if (activePassage.answer_key.length > 0) {
@@ -1838,12 +2138,16 @@ export default function PassageDetailPage() {
     if (!hasPrevPassage) {
       return;
     }
-    setCurrentIndex((index) => Math.max(index - 1, 0));
+    const nextIndex = Math.max(currentIndex - 1, 0);
+    persistResumeForPassage(passages[nextIndex]);
+    setCurrentIndex(nextIndex);
   }
 
   async function moveToNextPassage() {
     if (hasNextPassage) {
-      setCurrentIndex((index) => Math.min(index + 1, passages.length - 1));
+      const nextIndex = Math.min(currentIndex + 1, passages.length - 1);
+      persistResumeForPassage(passages[nextIndex]);
+      setCurrentIndex(nextIndex);
       return;
     }
 
@@ -1883,6 +2187,59 @@ export default function PassageDetailPage() {
     void moveToNextPassage();
     startArrowTapCooldown();
   }
+
+  useEffect(() => {
+    function handlePassageArrowKey(event: KeyboardEvent) {
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        isReportDialogOpen ||
+        selectedVocabContext
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("input, textarea, select, option, [contenteditable='true']")
+      ) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        if (!hasPrevPassage || isArrowTapCooldown) {
+          return;
+        }
+        event.preventDefault();
+        moveToPreviousPassage();
+        startArrowTapCooldown();
+      }
+
+      if (event.key === "ArrowRight") {
+        if (isArrowTapCooldown) {
+          return;
+        }
+        event.preventDefault();
+        void moveToNextPassage();
+        startArrowTapCooldown();
+      }
+    }
+
+    window.addEventListener("keydown", handlePassageArrowKey);
+    return () => window.removeEventListener("keydown", handlePassageArrowKey);
+  }, [
+    hasPrevPassage,
+    isArrowTapCooldown,
+    isReportDialogOpen,
+    selectedVocabContext,
+    currentIndex,
+    passages,
+    isAppending,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -2075,6 +2432,22 @@ export default function PassageDetailPage() {
       return;
     }
 
+    const normalizedSubmittedAnswer =
+      question.question_type_index === "mcq"
+        ? formatOptionKeyAnswer(submittedAnswer)
+        : submittedAnswer.trim();
+    if (!normalizedSubmittedAnswer) {
+      return;
+    }
+
+    // Backend LP scoring still uses exact string equality. For multi-select MCQ, submit the
+    // matching stored answer-key variant when the chosen option set is correct so the UI can
+    // support pick-2 answers without widening the current API contract.
+    const scoringAnswer =
+      question.question_type_index === "mcq"
+        ? resolveOptionKeyAnswerForScoring(answerKey, normalizedSubmittedAnswer)
+        : normalizedSubmittedAnswer;
+
     setRevealedByPassageId((currentState) => ({
       ...currentState,
       [passageId]: {
@@ -2083,7 +2456,7 @@ export default function PassageDetailPage() {
       },
     }));
 
-    const isCorrect = isQuestionCorrect(question, answerKey, submittedAnswer);
+    const isCorrect = isQuestionCorrect(question, answerKey, normalizedSubmittedAnswer);
     const xpDelta = isCorrect ? 10 : 2;
     const normalizedQuestionType =
       normalizePracticeQuestionType(question.question_type_label) ??
@@ -2104,7 +2477,7 @@ export default function PassageDetailPage() {
           questionPrompt: question.prompt,
           band: targetPassage.band_label,
           type: questionTypeLabel,
-          userAnswer: submittedAnswer,
+          userAnswer: normalizedSubmittedAnswer,
           correctAnswer: answerKey.answer_value,
         }),
       );
@@ -2123,7 +2496,7 @@ export default function PassageDetailPage() {
     void submitRankedAnswer({
       passageId,
       questionId: question.id,
-      selectedAnswer: submittedAnswer,
+      selectedAnswer: scoringAnswer,
       localDate: formatLocalDayKey(),
       elapsedSeconds: elapsedSecondsByPassageId[passageId] ?? 0,
       displayPosition,
@@ -2234,6 +2607,7 @@ export default function PassageDetailPage() {
       return;
     }
     setReportError(null);
+    setCustomReportFeedback("");
     setIsReportDialogOpen(true);
   }
 
@@ -2245,12 +2619,23 @@ export default function PassageDetailPage() {
     setIsSubmittingReport(true);
     setReportError(null);
     try {
-      await submitPassageReport(activePassage.id, selectedReportType);
+      await submitPassageReport(
+        activePassage.id,
+        selectedReportType,
+        customReportFeedback.trim() || undefined,
+      );
       markPassageReportedInSession(activePassage.id);
       recordPassageReport();
+      setCustomReportFeedback("");
       setIsReportDialogOpen(false);
-    } catch {
-      setReportError("Could not submit report. Please try again.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not submit report. Please try again.";
+      if (message.includes("500 characters")) {
+        setReportError("Custom feedback must be 500 characters or fewer.");
+      } else {
+        setReportError("Could not submit report. Please try again.");
+      }
     } finally {
       setIsSubmittingReport(false);
     }
@@ -2454,10 +2839,12 @@ export default function PassageDetailPage() {
         <PassageReportDialog
           open={isReportDialogOpen}
           reportType={selectedReportType}
+          customFeedback={customReportFeedback}
           isSubmitting={isSubmittingReport}
           error={reportError}
           onOpenChange={setIsReportDialogOpen}
           onReportTypeChange={setSelectedReportType}
+          onCustomFeedbackChange={setCustomReportFeedback}
           onSubmit={() => {
             void handleSubmitPassageReport();
           }}
@@ -2642,13 +3029,23 @@ export default function PassageDetailPage() {
         </button>
       </div>
 
+      {startupPreviewSource && isLoading && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-lg border border-border bg-card/88 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+          {startupPreviewSource === "runtime"
+            ? "Refreshing your feed..."
+            : startupPreviewSource === "resume"
+              ? "Restoring the passage you were reading..."
+              : "Opening a starter card while we load fresh passages..."}
+        </div>
+      )}
+
       {isAppending && (
         <div className="pointer-events-none absolute bottom-16 left-1/2 z-30 -translate-x-1/2 rounded-lg border border-border bg-card/85 px-3 py-1 text-xs text-muted-foreground">
           Loading more sets...
         </div>
       )}
 
-      {activePassage && (
+      {activePassage && isInteractivePassage && (
         <FloatingActionButtons
           saved={isCardSaved(activePassage.id)}
           reportDisabled={isReportDisabled}
@@ -2675,10 +3072,12 @@ export default function PassageDetailPage() {
       <PassageReportDialog
         open={isReportDialogOpen}
         reportType={selectedReportType}
+        customFeedback={customReportFeedback}
         isSubmitting={isSubmittingReport}
         error={reportError}
         onOpenChange={setIsReportDialogOpen}
         onReportTypeChange={setSelectedReportType}
+        onCustomFeedbackChange={setCustomReportFeedback}
         onSubmit={() => {
           void handleSubmitPassageReport();
         }}

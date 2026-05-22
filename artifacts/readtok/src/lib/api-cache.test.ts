@@ -39,6 +39,7 @@ class MockLocalStorage {
 function installMockWindow() {
   const mockWindow = {
     localStorage: new MockLocalStorage(),
+    dispatchEvent: () => true,
   } as unknown as Window & typeof globalThis;
 
   Object.defineProperty(globalThis, "window", {

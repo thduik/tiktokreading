@@ -17,6 +17,9 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List passages
  */
+export const listPassagesQueryFactoryTagRegExp = new RegExp(
+  "^v[0-9]+(?:_[0-9]+)?$",
+);
 export const listPassagesQueryOffsetMin = 0;
 
 export const ListPassagesQueryParams = zod.object({
@@ -27,7 +30,10 @@ export const ListPassagesQueryParams = zod.object({
   question_type_index: zod
     .enum(["tfng", "mcq", "sentence_completion", "short_answer"])
     .optional(),
-  factory_tag: zod.enum(["v1", "v2", "v3", "v4", "v4_5"]).optional(),
+  factory_tag: zod.coerce
+    .string()
+    .regex(listPassagesQueryFactoryTagRegExp)
+    .optional(),
   topic_index: zod.coerce.string().optional(),
   status: zod.coerce.string().optional(),
   language_code: zod.coerce.string().optional(),
@@ -73,10 +79,17 @@ export const ListPassagesResponse = zod.object({
 /**
  * @summary Get active passage id pool
  */
+export const listPassageIdsQueryFactoryTagRegExp = new RegExp(
+  "^v[0-9]+(?:_[0-9]+)?$",
+);
+
 export const ListPassageIdsQueryParams = zod.object({
   status: zod.coerce.string().optional(),
   language_code: zod.coerce.string().optional(),
-  factory_tag: zod.enum(["v1", "v2", "v3", "v4", "v4_5"]).optional(),
+  factory_tag: zod.coerce
+    .string()
+    .regex(listPassageIdsQueryFactoryTagRegExp)
+    .optional(),
 });
 
 export const ListPassageIdsResponse = zod.object({
@@ -91,12 +104,18 @@ export const ListPassageIdsResponse = zod.object({
 /**
  * @summary Bootstrap the feed with a random set and full id pool
  */
+export const bootstrapPassageFeedQueryFactoryTagRegExp = new RegExp(
+  "^v[0-9]+(?:_[0-9]+)?$",
+);
 export const bootstrapPassageFeedQueryLimitMax = 80;
 
 export const BootstrapPassageFeedQueryParams = zod.object({
   status: zod.coerce.string().optional(),
   language_code: zod.coerce.string().optional(),
-  factory_tag: zod.enum(["v1", "v2", "v3", "v4", "v4_5"]).optional(),
+  factory_tag: zod.coerce
+    .string()
+    .regex(bootstrapPassageFeedQueryFactoryTagRegExp)
+    .optional(),
   include_answer_key: zod.coerce.boolean().optional(),
   limit: zod.coerce
     .number()
@@ -284,15 +303,22 @@ export const ReportPassageParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const reportPassageBodyCustomFeedbackMax = 500;
+
 export const ReportPassageBody = zod.object({
   reportType: zod.enum([
     "wrong_answer_key",
     "question_unclear",
     "questions_too_easy",
+    "questions_too_hard",
     "passage_text_issue",
     "formatting_issue",
     "other",
   ]),
+  customFeedback: zod
+    .string()
+    .max(reportPassageBodyCustomFeedbackMax)
+    .optional(),
 });
 
 export const ReportPassageResponse = zod.object({
@@ -302,16 +328,19 @@ export const ReportPassageResponse = zod.object({
     "wrong_answer_key",
     "question_unclear",
     "questions_too_easy",
+    "questions_too_hard",
     "passage_text_issue",
     "formatting_issue",
     "other",
   ]),
+  custom_feedback_saved: zod.boolean(),
   aggregates: zod.array(
     zod.object({
       report_type: zod.enum([
         "wrong_answer_key",
         "question_unclear",
         "questions_too_easy",
+        "questions_too_hard",
         "passage_text_issue",
         "formatting_issue",
         "other",
@@ -346,6 +375,9 @@ export const GetMyProfileResponse = zod.object({
       total_questions_answered: zod.number(),
       total_correct: zod.number(),
       total_incorrect: zod.number(),
+      current_practice_streak_days: zod.number(),
+      best_practice_streak_days: zod.number(),
+      last_practice_date_local: zod.coerce.date().nullable(),
       created_at: zod.coerce.date(),
       updated_at: zod.coerce.date(),
     }),
@@ -401,6 +433,9 @@ export const UpdateMyProfileResponse = zod.object({
       total_questions_answered: zod.number(),
       total_correct: zod.number(),
       total_incorrect: zod.number(),
+      current_practice_streak_days: zod.number(),
+      best_practice_streak_days: zod.number(),
+      last_practice_date_local: zod.coerce.date().nullable(),
       created_at: zod.coerce.date(),
       updated_at: zod.coerce.date(),
     }),
@@ -456,6 +491,9 @@ export const BootstrapMyProfileResponse = zod.object({
       total_questions_answered: zod.number(),
       total_correct: zod.number(),
       total_incorrect: zod.number(),
+      current_practice_streak_days: zod.number(),
+      best_practice_streak_days: zod.number(),
+      last_practice_date_local: zod.coerce.date().nullable(),
       created_at: zod.coerce.date(),
       updated_at: zod.coerce.date(),
     }),
@@ -661,6 +699,9 @@ export const GetMyDashboardStatsResponse = zod
         total_questions_answered: zod.number(),
         total_correct: zod.number(),
         total_incorrect: zod.number(),
+        current_practice_streak_days: zod.number(),
+        best_practice_streak_days: zod.number(),
+        last_practice_date_local: zod.coerce.date().nullable(),
         created_at: zod.coerce.date(),
         updated_at: zod.coerce.date(),
       }),
@@ -923,9 +964,13 @@ export const SubmitRankedAnswerResponse = zod.object({
     total_questions_answered: zod.number(),
     total_correct: zod.number(),
     total_incorrect: zod.number(),
+    current_practice_streak_days: zod.number(),
+    best_practice_streak_days: zod.number(),
+    last_practice_date_local: zod.coerce.date().nullable(),
     created_at: zod.coerce.date(),
     updated_at: zod.coerce.date(),
   }),
+  current_streak_days: zod.number(),
   next_rank_progress: zod.object({
     currentRank: zod.string(),
     nextRank: zod.string().nullable(),

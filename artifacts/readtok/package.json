@@ -12,7 +12,7 @@
     "serve": "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-$CLERK_PUBLISHABLE_KEY} VITE_CLERK_PROXY_URL=${VITE_CLERK_PROXY_URL:-$CLERK_PROXY_URL} vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pretest": "node ../../scripts/check-toolchain.mjs --pnpm",
-    "test": "tsx --test ./src/lib/daily-goal.test.ts ./src/lib/rank-visual.test.ts ./src/lib/practice-tracking.test.ts ./src/lib/passage-feed-runtime.test.ts ./src/lib/api-cache.test.ts"
+    "test": "tsx --test ./src/lib/daily-goal.test.ts ./src/lib/rank-visual.test.ts ./src/lib/practice-tracking.test.ts ./src/lib/passage-feed-runtime.test.ts ./src/lib/api-cache.test.ts ./src/lib/mcq-answer.test.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

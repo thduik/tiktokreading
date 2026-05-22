@@ -12,5 +12,6 @@ export interface PassageReportResponse {
   ok: boolean;
   passage_id: string;
   report_type: PassageReportType;
+  custom_feedback_saved: boolean;
   aggregates: PassageReportAggregate[];
 }

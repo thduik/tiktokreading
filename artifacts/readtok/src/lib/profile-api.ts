@@ -46,6 +46,9 @@ export interface UserProgress {
   total_questions_answered: number;
   total_correct: number;
   total_incorrect: number;
+  current_practice_streak_days: number;
+  best_practice_streak_days: number;
+  last_practice_date_local: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -436,12 +439,14 @@ function applyDashboardStatsPatch(
     bandGroup,
     questionType,
     progress,
+    currentStreakDays,
   }: {
     localDate: string;
     isCorrect: boolean;
     bandGroup: AnswerStatBandGroup | null;
     questionType: AnswerStatQuestionType | null;
     progress: UserProgress;
+    currentStreakDays: number;
   },
 ) {
   const patchedPeriods = applyAnswerStatsEnvelopePatch(envelope, {
@@ -460,7 +465,7 @@ function applyDashboardStatsPatch(
     ...patchedPeriods,
     local_date: envelope.local_date,
     progress,
-    current_streak_days: Math.max(1, envelope.current_streak_days),
+    current_streak_days: currentStreakDays,
     daily_goal: {
       ...envelope.daily_goal,
       attempted_today: nextTodayAttempted,
@@ -608,6 +613,7 @@ export interface SubmitRankedAnswerRequest {
 
 export interface SubmitRankedAnswerResponse {
   progress: UserProgress;
+  current_streak_days: number;
   next_rank_progress: {
     currentRank: string;
     nextRank: string | null;
@@ -688,6 +694,7 @@ export function applySubmitAnswerCachePatch({
         bandGroup: normalizedBandGroup,
         questionType: normalizedQuestionType,
         progress: response.progress,
+        currentStreakDays: response.current_streak_days,
       });
     },
     { scope: PROFILE_CACHE_SCOPE, ttlMs: PROFILE_CACHE_TTL_MS },

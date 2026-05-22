@@ -12,6 +12,7 @@ import type { UserProgress } from "./userProgress";
 
 export interface SubmitAnswerResponse {
   progress: UserProgress;
+  current_streak_days: number;
   next_rank_progress: NextRankProgress;
   answer_result: AnswerResult;
   question_timing: QuestionTimingAck | null;
