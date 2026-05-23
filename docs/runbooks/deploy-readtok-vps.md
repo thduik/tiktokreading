@@ -77,6 +77,27 @@ Canonical config lives at:
 
 `ops/nginx/readtok.conf`
 
+## Nginx Abuse-Protection Baseline
+
+`ops/nginx/readtok.conf` also carries the first app-layer DDoS foundation. This
+is meant to blunt simple request floods and slow/oversized clients; volumetric
+DDoS still needs provider/CDN protection.
+
+Current production limits:
+
+- global request budget: `20r/s` per IP with `burst=60`
+- API request budget: `8r/s` per IP with `burst=30`
+- write/auth-adjacent API budget: `2r/s` per IP with `burst=8`
+- global concurrent connections: `100` per IP
+- API concurrent connections: `50` per IP
+- max request body size: `1m`
+- client header/body timeout: `10s`
+- keepalive timeout: `15s`
+
+After changing this file, install it through the deploy script or copy it to
+`/etc/nginx/sites-available/readtok`, then run `nginx -t` before reloading. If
+`nginx -t` fails, restore the previous site config instead of reloading.
+
 ## Database Migrations
 
 When a change adds files under `lib/db/migrations`, run migrations on the VPS
