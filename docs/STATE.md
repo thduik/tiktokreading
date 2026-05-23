@@ -142,6 +142,12 @@ Last updated: 2026-05-14 (UTC)
   config error instead of silently falling Profile back to local mode. The VPS
   deploy script rewrites and verifies `/var/www/readtok/runtime-config.js` after
   `rsync` so the checked-in placeholder cannot be the final live file.
+- Production Nginx hardening:
+  `ops/nginx/readtok.conf` includes the first app-layer abuse/DDoS baseline:
+  per-IP request budgets for global/API/write routes, `100` global and `50` API
+  concurrent-connection caps, `10s` header/body timeouts, `15s` keepalive, and a
+  `1m` max request body. These protect against simple floods and slow/oversized
+  requests; volumetric DDoS still needs provider/CDN protection.
 - Toolchain:
   Node `20.19.5` via `.nvmrc` / `.node-version`; pnpm `10.33.2` via
   `packageManager`. Run `corepack pnpm run doctor` before build/deploy

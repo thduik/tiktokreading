@@ -94,6 +94,28 @@ Current production limits:
 - client header/body timeout: `10s`
 - keepalive timeout: `15s`
 
+Meaning:
+
+- `20r/s`, `8r/s`, and `2r/s` mean sustained requests per second from the same
+  client IP. Requests above the budget are rejected with `429`.
+- `burst=60`, `burst=30`, and `burst=8` allow short spikes before rejection.
+  This keeps normal page loads and rapid answer taps feeling fine while still
+  stopping continuous hammering.
+- Global limits apply to the whole HTTPS site. API limits apply to `/api/*`.
+  Write/auth-adjacent limits apply to mutating routes such as answer submit,
+  profile/bootstrap writes, vocab saves, report submits, and admin login/logout.
+- Connection limits cap concurrent open connections from the same IP. The
+  initial planning value was `40` global / `20` API, but production uses the
+  more generous user-approved caps: `100` global / `50` API.
+- Header/body timeouts close slow clients that take too long to send a request,
+  reducing slowloris-style pressure on Nginx and the API service.
+- `keepalive_timeout=15s` keeps normal browser reuse cheap without letting idle
+  connections linger for too long.
+- `client_max_body_size=1m` means Nginx rejects request payloads over one
+  megabyte before they reach Node. ReadTok currently sends tiny JSON writes, so
+  `1m` is intentionally generous. Raise this only if the app adds file uploads
+  or other legitimate large payloads.
+
 After changing this file, install it through the deploy script or copy it to
 `/etc/nginx/sites-available/readtok`, then run `nginx -t` before reloading. If
 `nginx -t` fails, restore the previous site config instead of reloading.
