@@ -85,9 +85,9 @@ DDoS still needs provider/CDN protection.
 
 Current production limits:
 
-- global request budget: `20r/s` per IP with `burst=60`
-- API request budget: `8r/s` per IP with `burst=30`
-- write/auth-adjacent API budget: `2r/s` per IP with `burst=8`
+- global request budget: `30r/s` per IP with `burst=90`
+- API request budget: `12r/s` per IP with `burst=45`
+- write/auth-adjacent API budget: `3r/s` per IP with `burst=12`
 - global concurrent connections: `100` per IP
 - API concurrent connections: `50` per IP
 - max request body size: `1m`
@@ -96,9 +96,9 @@ Current production limits:
 
 Meaning:
 
-- `20r/s`, `8r/s`, and `2r/s` mean sustained requests per second from the same
+- `30r/s`, `12r/s`, and `3r/s` mean sustained requests per second from the same
   client IP. Requests above the budget are rejected with `429`.
-- `burst=60`, `burst=30`, and `burst=8` allow short spikes before rejection.
+- `burst=90`, `burst=45`, and `burst=12` allow short spikes before rejection.
   This keeps normal page loads and rapid answer taps feeling fine while still
   stopping continuous hammering.
 - Global limits apply to the whole HTTPS site. API limits apply to `/api/*`.
