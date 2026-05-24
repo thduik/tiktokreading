@@ -12,52 +12,51 @@ import {
   writeStoredPassageFactoryTag,
   type PassageFactoryTag,
   type PassageListItem,
-  type QuestionTypeIndex,
+  type QuestionSetTypeIndex,
 } from "@/lib/passages-api";
 import { AppPageHeader } from "@/components/app-page-header";
 import { PassageListContentSkeleton } from "@/components/page-skeletons";
 
 const bandFilterOptions = [
-  { key: "all", label: "All", band: null as number | null },
-  { key: "60", label: "Band 6.0", band: 60 },
-  { key: "70", label: "Band 7.0", band: 70 },
-  { key: "75", label: "Band 7.5", band: 75 },
-  { key: "80", label: "Band 8.0+", band: 80 },
+  { key: "all", label: "All bands", band: null as number | null },
+  { key: "80", label: "8.0+", band: 80 },
+  { key: "75", label: "7.5", band: 75 },
+  { key: "70", label: "7.0", band: 70 },
+  { key: "60", label: "6.0", band: 60 },
 ];
 
-const typeFilterOptions: Array<{
-  key: "all" | QuestionTypeIndex;
+type VisibleQuestionSetType = Extract<QuestionSetTypeIndex, "mixed" | "tfng" | "mcq">;
+
+const setTypeFilterOptions: Array<{
+  key: VisibleQuestionSetType;
   label: string;
-  type: QuestionTypeIndex | null;
+  type: VisibleQuestionSetType;
 }> = [
-  { key: "all", label: "All", type: null },
+  { key: "mixed", label: "Mixed", type: "mixed" },
   { key: "tfng", label: "TFNG", type: "tfng" },
   { key: "mcq", label: "MCQ", type: "mcq" },
-  {
-    key: "sentence_completion",
-    label: "Sentence Completion",
-    type: "sentence_completion",
-  },
-  { key: "short_answer", label: "Short Answer", type: "short_answer" },
 ];
 
-type FilterMode = "band" | "question_type";
 const PAGE_SIZE = 30;
 const SESSION_LIST_KEY_PREFIX = "readtok_home_session_list_v4:";
+
+function normalizeVisibleQuestionSetType(value: string | null): VisibleQuestionSetType | null {
+  if (value === "mixed" || value === "tfng" || value === "mcq") {
+    return value;
+  }
+  return null;
+}
 
 function readInitialFilters() {
   if (typeof window === "undefined") {
     return {
-      filterMode: "band" as FilterMode,
       activeBand: null as number | null,
-      activeType: null as QuestionTypeIndex | null,
+      activeSetType: "mixed" as VisibleQuestionSetType,
       activeFactoryTag: null as PassageFactoryTag | null,
     };
   }
 
   const params = new URLSearchParams(window.location.search);
-  const rawMode = params.get("filterMode");
-  const mode: FilterMode = rawMode === "question_type" ? "question_type" : "band";
 
   const rawBand = params.get("band");
   const parsedBand =
@@ -65,17 +64,12 @@ function readInitialFilters() {
       ? Number(rawBand)
       : null;
 
-  const rawType = params.get("questionType");
-  const allowedTypes: QuestionTypeIndex[] = [
-    "tfng",
-    "mcq",
-    "sentence_completion",
-    "short_answer",
-  ];
-  const parsedType =
-    rawType && allowedTypes.includes(rawType as QuestionTypeIndex)
-      ? (rawType as QuestionTypeIndex)
-      : null;
+  const parsedSetType =
+    normalizeVisibleQuestionSetType(params.get("questionSetType")) ??
+    // Legacy links used questionType for passage set type chips. Keep them
+    // readable, but expose only the simplified Mixed/TFNG/MCQ product choices.
+    normalizeVisibleQuestionSetType(params.get("questionType")) ??
+    "mixed";
   const parsedFactoryTag =
     normalizePassageFactoryTagFilter(
       params.get("factoryTag") ?? params.get("factory_tag"),
@@ -83,9 +77,8 @@ function readInitialFilters() {
   const searchQuery = params.get("q")?.trim() ?? "";
 
   return {
-    filterMode: mode,
     activeBand: parsedBand,
-    activeType: parsedType,
+    activeSetType: parsedSetType,
     activeFactoryTag: parsedFactoryTag,
     searchQuery,
   };
@@ -144,12 +137,11 @@ function writeSessionItems(
 }
 
 export default function Home() {
-  const [filterMode, setFilterMode] = useState<FilterMode>(() => readInitialFilters().filterMode);
   const [activeBand, setActiveBand] = useState<number | null>(
     () => readInitialFilters().activeBand,
   );
-  const [activeType, setActiveType] = useState<QuestionTypeIndex | null>(
-    () => readInitialFilters().activeType,
+  const [activeSetType, setActiveSetType] = useState<VisibleQuestionSetType>(
+    () => readInitialFilters().activeSetType,
   );
   const [activeFactoryTag, setActiveFactoryTag] = useState<PassageFactoryTag | null>(
     () => readInitialFilters().activeFactoryTag,
@@ -171,7 +163,7 @@ export default function Home() {
     const initial = readInitialFilters();
     return (
       initial.activeBand !== null ||
-      initial.activeType !== null ||
+      initial.activeSetType !== "mixed" ||
       initial.activeFactoryTag !== null
     );
   });
@@ -181,10 +173,10 @@ export default function Home() {
 
   const queryKey = useMemo(
     () =>
-      `${filterMode}|${activeBand ?? "all"}|${activeType ?? "all"}|${
+      `${activeBand ?? "all"}|${activeSetType}|${
         activeFactoryTag ?? "all"
       }|${debouncedSearchQuery.trim().toLowerCase() || "all"}`,
-    [filterMode, activeBand, activeType, activeFactoryTag, debouncedSearchQuery],
+    [activeBand, activeSetType, activeFactoryTag, debouncedSearchQuery],
   );
 
   useEffect(() => {
@@ -255,10 +247,8 @@ export default function Home() {
 
         const response = await fetchPassageList({
           status: "active",
-          band_index:
-            filterMode === "band" ? (activeBand ?? undefined) : undefined,
-          question_type_index:
-            filterMode === "question_type" ? (activeType ?? undefined) : undefined,
+          band_index: activeBand ?? undefined,
+          question_set_type_index: activeSetType,
           factory_tag: activeFactoryTag ?? undefined,
           title_contains: debouncedSearchQuery || undefined,
           limit: PAGE_SIZE,
@@ -304,7 +294,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [activeBand, activeType, filterMode, queryKey, activeFactoryTag, debouncedSearchQuery]);
+  }, [activeBand, activeSetType, queryKey, activeFactoryTag, debouncedSearchQuery]);
 
   useEffect(() => {
     if (isLoading || isLoadingMore || !hasMore || !loadMoreRef.current) {
@@ -329,10 +319,8 @@ export default function Home() {
           .then(() =>
             fetchPassageList({
               status: "active",
-              band_index:
-                filterMode === "band" ? (activeBand ?? undefined) : undefined,
-              question_type_index:
-                filterMode === "question_type" ? (activeType ?? undefined) : undefined,
+              band_index: activeBand ?? undefined,
+              question_set_type_index: activeSetType,
               factory_tag: activeFactoryTag ?? undefined,
               title_contains: debouncedSearchQuery || undefined,
               limit: PAGE_SIZE,
@@ -391,24 +379,21 @@ export default function Home() {
     isLoadingMore,
     hasMore,
     nextOffset,
-    filterMode,
     activeBand,
-    activeType,
+    activeSetType,
     activeFactoryTag,
     debouncedSearchQuery,
     queryKey,
   ]);
 
   const selectedBandValue = activeBand === null ? "all" : String(activeBand);
-  const selectedTypeValue = activeType ?? "all";
+  const selectedSetTypeValue = activeSetType;
   const selectedFactoryTagValue = activeFactoryTag ?? "all";
   const hasActiveFilters =
-    activeBand !== null || activeType !== null || activeFactoryTag !== null;
+    activeBand !== null || activeSetType !== "mixed" || activeFactoryTag !== null;
   const filterSummary = [
-    filterMode === "band"
-      ? bandFilterOptions.find((option) => option.band === activeBand)?.label ?? "All bands"
-      : typeFilterOptions.find((option) => option.type === activeType)?.label ??
-        "All types",
+    bandFilterOptions.find((option) => option.band === activeBand)?.label ?? "All bands",
+    setTypeFilterOptions.find((option) => option.type === activeSetType)?.label ?? "Mixed",
     activeFactoryTag ? formatPassageFactoryTagLabel(activeFactoryTag) : "All versions",
   ].join(" · ");
 
@@ -429,12 +414,11 @@ export default function Home() {
     writeStoredPassageFactoryTag(activeFactoryTag);
 
     const params = new URLSearchParams();
-    params.set("filterMode", filterMode);
-    if (filterMode === "band" && activeBand !== null) {
+    if (activeBand !== null) {
       params.set("band", String(activeBand));
     }
-    if (filterMode === "question_type" && activeType !== null) {
-      params.set("questionType", activeType);
+    if (activeSetType !== "mixed") {
+      params.set("questionSetType", activeSetType);
     }
     if (activeFactoryTag) {
       params.set("factoryTag", activeFactoryTag);
@@ -446,7 +430,7 @@ export default function Home() {
     const nextSearch = params.toString();
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
     window.history.replaceState({}, "", nextUrl);
-  }, [activeBand, activeFactoryTag, activeType, filterMode, searchQuery]);
+  }, [activeBand, activeFactoryTag, activeSetType, searchQuery]);
 
   useEffect(() => {
     if (!isFiltersOpen) {
@@ -520,56 +504,44 @@ export default function Home() {
               <div className="mb-3">
                 <p className="text-sm font-semibold text-foreground">Filters</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {hasActiveFilters ? filterSummary : "All passages are currently visible."}
+                  {filterSummary}
                 </p>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <div className="min-w-0 flex-1">
                   <select
-                    value={filterMode}
+                    value={selectedBandValue}
                     onChange={(event) => {
-                      setFilterMode(event.target.value as FilterMode);
+                      const value = event.target.value;
+                      setActiveBand(value === "all" ? null : Number(value));
                     }}
                     className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                   >
-                    <option value="band">Band score</option>
-                    <option value="question_type">Question type</option>
+                    {bandFilterOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  {filterMode === "band" ? (
-                    <select
-                      value={selectedBandValue}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setActiveBand(value === "all" ? null : Number(value));
-                      }}
-                      className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                    >
-                      {bandFilterOptions.map((option) => (
-                        <option key={option.key} value={option.key}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      value={selectedTypeValue}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setActiveType(value === "all" ? null : (value as QuestionTypeIndex));
-                      }}
-                      className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                    >
-                      {typeFilterOptions.map((option) => (
-                        <option key={option.key} value={option.key}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <select
+                    value={selectedSetTypeValue}
+                    onChange={(event) => {
+                      const nextType =
+                        normalizeVisibleQuestionSetType(event.target.value) ?? "mixed";
+                      setActiveSetType(nextType);
+                    }}
+                    className="h-11 w-full rounded-lg border border-border bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                  >
+                    {setTypeFilterOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="min-w-0 sm:col-span-2">

@@ -555,10 +555,10 @@ function TopStatusRow({
 
 function PassageMetaTags({ passage }: { passage: PassageDetail }) {
   const factoryTagQuery = `&factoryTag=${encodeURIComponent(passage.factory_tag)}`;
-  const questionFilterHref = `/list?filterMode=question_type&questionType=${encodeURIComponent(
+  const questionFilterHref = `/list?questionSetType=${encodeURIComponent(
     passage.question_set_type_index,
   )}${factoryTagQuery}`;
-  const bandFilterHref = `/list?filterMode=band&band=${encodeURIComponent(
+  const bandFilterHref = `/list?band=${encodeURIComponent(
     String(passage.band_index),
   )}`;
 

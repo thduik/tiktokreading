@@ -19,6 +19,7 @@ export const PASSAGE_FACTORY_TAG_FILTER_VALUES: PassageFactoryTag[] = [
   "v5",
   "v5_5",
   "v6",
+  "v6_plus",
   // Keep this open-ended bucket so future v6/v7/... passage batches appear
   // without another frontend filter change.
   "v5_plus",

@@ -55,7 +55,8 @@ Notes:
   stored answer keys, bumps the parent passage `updated_at` timestamps so the
   frontend rotates its content namespace, invalidates Redis passage caches, and
   then refreshes the search catalog.
-- The List filter exposes `v5+` as the forward-looking production bucket. New
+- The List filter exposes `v6+` for modern passage batches and `v5+` as the
+  broad forward-looking production bucket. New
   passage generations at `v5`, `v6`, `v6.5`, `v7`, and above should continue to appear
   there automatically; do not add a new frontend version option for each new
   passage machine increment unless product behavior changes.
