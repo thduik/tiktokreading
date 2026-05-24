@@ -517,7 +517,7 @@ async function run() {
     throw new Error("Usage: tsx ingest-ndjson-cards.ts <input.ndjson>");
   }
   const defaultFactoryTag =
-    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v6") || "v6";
+    normalizeFactoryTag(process.env.READTOK_FACTORY_TAG_DEFAULT ?? "v7.0") || "v7_0";
   const factoryTagArg = process.argv
     .slice(3)
     .find((arg) => arg.startsWith("--factory-tag="));

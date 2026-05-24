@@ -44,10 +44,10 @@ pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path
 
 Notes:
 
-- `factory_tag` now defaults to `v6` in `ingest-ndjson-cards.ts`.
-- 2026-05-22 note: the final `v6` production batches have been ingested. For
-  the next batch, confirm and pass the new tag explicitly, for example
-  `--factory-tag=v7`, rather than relying on the historical `v6` default.
+- `factory_tag` now defaults to `v7_0` in `ingest-ndjson-cards.ts`.
+- 2026-05-24 note: the final `v6.5` production batches were ingested as
+  `v6_5`. The next batch should be imported as `v7.0`, which normalizes to
+  `v7_0`, unless the user explicitly gives a different tag.
 - Pick-two MCQ answer keys are preserved canonically, for example `B and D`
   becomes `B, D`, so do not manually flatten them before ingest.
 - If older `v5+` passages were written before that fix, run
@@ -56,13 +56,13 @@ Notes:
   frontend rotates its content namespace, invalidates Redis passage caches, and
   then refreshes the search catalog.
 - The List filter exposes `v5+` as the forward-looking production bucket. New
-  passage generations at `v5`, `v6`, `v7`, and above should continue to appear
+  passage generations at `v5`, `v6`, `v6.5`, `v7`, and above should continue to appear
   there automatically; do not add a new frontend version option for each new
   passage machine increment unless product behavior changes.
 - You can still override explicitly when needed:
 
 ```bash
-pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v6
+pnpm --filter @workspace/db exec tsx ./src/scripts/ingest-ndjson-cards.ts ./path/to/batch.ndjson --factory-tag=v7.0
 ```
 
 - If a batch omits `band`, pass it explicitly:
