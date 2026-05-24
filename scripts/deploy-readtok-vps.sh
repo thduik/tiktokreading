@@ -178,11 +178,11 @@ echo "[deploy] live check:"
 LIVE_INDEX_HTML="$(curl -fsSL "${PRODUCTION_ORIGIN}")"
 printf '%s\n' "${LIVE_INDEX_HTML}" | sed -n '1,20p'
 
-LIVE_BUNDLE_PATH="$(printf '%s\n' "${LIVE_INDEX_HTML}" | python3 - <<'PY'
+LIVE_BUNDLE_PATH="$(LIVE_INDEX_HTML="${LIVE_INDEX_HTML}" python3 - <<'PY'
 import re
-import sys
+import os
 
-html = sys.stdin.read()
+html = os.environ.get("LIVE_INDEX_HTML", "")
 match = re.search(r'<script\s+type="module"\s+crossorigin\s+src="([^"]*assets/index-[^"]+\.js)"', html)
 print(match.group(1) if match else '')
 PY
