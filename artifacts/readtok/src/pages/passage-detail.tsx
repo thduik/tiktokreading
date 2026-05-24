@@ -41,6 +41,7 @@ import {
 } from "@/lib/passages-api";
 import {
   ACTIVE_PASSAGE_BACKUP_HEARTBEAT_MS,
+  RANDOM_SHOWN_ID_STORAGE_LIMIT,
   formatElapsedTimer,
   passageReportSessionKey,
   readActivePassageResume,
@@ -1753,7 +1754,9 @@ export default function PassageDetailPage() {
         const poolIds = uniqueIds(bootstrapResponse.all_passage_ids);
         writeIdArrayToStorage(RANDOM_POOL_STORAGE_KEY, poolIds);
 
-        const alreadyShown = readIdArrayFromStorage(RANDOM_SHOWN_STORAGE_KEY);
+        const alreadyShown = readIdArrayFromStorage(RANDOM_SHOWN_STORAGE_KEY, {
+          maxIds: RANDOM_SHOWN_ID_STORAGE_LIMIT,
+        });
         const randomDetails = bootstrapResponse.random_passages;
         const alreadyShownSet = new Set(alreadyShown);
         const randomIds = randomDetails
@@ -1811,10 +1814,11 @@ export default function PassageDetailPage() {
           setFeedIds(poolIds);
           setListOffset(0);
           setStartupPreviewSource(null);
-          writeIdArrayToStorage(RANDOM_SHOWN_STORAGE_KEY, [
-            ...alreadyShown,
-            ...initialIds,
-          ]);
+          writeIdArrayToStorage(
+            RANDOM_SHOWN_STORAGE_KEY,
+            [...alreadyShown, ...initialIds],
+            { maxIds: RANDOM_SHOWN_ID_STORAGE_LIMIT },
+          );
 
           const requestedIndex =
             bootstrapSeedPassageId.length > 0
@@ -1875,7 +1879,9 @@ export default function PassageDetailPage() {
       }
 
       const loadedIds = passages.map((item) => item.id);
-      const alreadyShown = readIdArrayFromStorage(RANDOM_SHOWN_STORAGE_KEY);
+      const alreadyShown = readIdArrayFromStorage(RANDOM_SHOWN_STORAGE_KEY, {
+        maxIds: RANDOM_SHOWN_ID_STORAGE_LIMIT,
+      });
       const nextIds = selectRandomIdsFromPool({
         poolIds,
         alreadyShownIds: alreadyShown,
@@ -1904,10 +1910,11 @@ export default function PassageDetailPage() {
       if (addedCount > 0) {
         setPassages((current) => [...current, ...dedupedDetails]);
       }
-      writeIdArrayToStorage(RANDOM_SHOWN_STORAGE_KEY, [
-        ...alreadyShown,
-        ...nextIds,
-      ]);
+      writeIdArrayToStorage(
+        RANDOM_SHOWN_STORAGE_KEY,
+        [...alreadyShown, ...nextIds],
+        { maxIds: RANDOM_SHOWN_ID_STORAGE_LIMIT },
+      );
       return addedCount;
     } catch {
       // Ignore append failures and keep the current feed.

@@ -36,6 +36,7 @@ type PersistedActivePassageResumeSnapshot = ActivePassageResumeSnapshot & {
 export const PASSAGE_REPORT_SESSION_KEY_PREFIX = "readtok_reported_passage:";
 export const ACTIVE_PASSAGE_RESUME_TTL_MS = 5 * 60 * 1000;
 export const ACTIVE_PASSAGE_BACKUP_HEARTBEAT_MS = 30 * 1000;
+export const RANDOM_SHOWN_ID_STORAGE_LIMIT = 600;
 const ACTIVE_PASSAGE_RESUME_STORAGE_PREFIX = "readtok_active_passage_resume_v1:";
 
 export function passageReportSessionKey(passageId: string) {
@@ -196,6 +197,17 @@ export function uniqueIds(ids: string[]) {
   return ordered;
 }
 
+function compactIdsForStorage(ids: string[], maxIds?: number) {
+  const unique = uniqueIds(ids);
+  if (!maxIds || maxIds <= 0 || unique.length <= maxIds) {
+    return unique;
+  }
+
+  // Random shown-history is only a repeat-reduction hint. Keeping the most
+  // recent window gives good UX without letting localStorage grow forever.
+  return unique.slice(-maxIds);
+}
+
 export function shuffleIds(ids: string[]) {
   const cloned = [...ids];
   for (let index = cloned.length - 1; index > 0; index -= 1) {
@@ -207,12 +219,21 @@ export function shuffleIds(ids: string[]) {
   return cloned;
 }
 
-export function readIdArrayFromStorage(storageKey: string) {
+export function readIdArrayFromStorage(
+  storageKey: string,
+  options?: { maxIds?: number },
+) {
   if (typeof window === "undefined") {
     return [];
   }
 
-  const raw = window.localStorage.getItem(storageKey);
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(storageKey);
+  } catch {
+    return [];
+  }
+
   if (!raw) {
     return [];
   }
@@ -223,20 +244,42 @@ export function readIdArrayFromStorage(storageKey: string) {
       return [];
     }
 
-    return parsed.filter(
-      (value): value is string => typeof value === "string" && value.length > 0,
+    return compactIdsForStorage(
+      parsed.filter(
+        (value): value is string => typeof value === "string" && value.length > 0,
+      ),
+      options?.maxIds,
     );
   } catch {
     return [];
   }
 }
 
-export function writeIdArrayToStorage(storageKey: string, ids: string[]) {
+export function writeIdArrayToStorage(
+  storageKey: string,
+  ids: string[],
+  options?: { maxIds?: number },
+) {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.setItem(storageKey, JSON.stringify(uniqueIds(ids)));
+  const serialized = JSON.stringify(compactIdsForStorage(ids, options?.maxIds));
+
+  try {
+    window.localStorage.setItem(storageKey, serialized);
+  } catch {
+    try {
+      window.localStorage.removeItem(storageKey);
+      window.localStorage.setItem(storageKey, serialized);
+    } catch {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // Ignore storage cleanup failures; feed randomization is best-effort.
+      }
+    }
+  }
 }
 
 export function selectRandomIdsFromPool({

@@ -4,9 +4,11 @@ import {
   buildActivePassageResumeStorageKey,
   formatElapsedTimer,
   readActivePassageResume,
+  readIdArrayFromStorage,
   selectRandomIdsFromPool,
   uniqueIds,
   writeActivePassageResume,
+  writeIdArrayToStorage,
   ACTIVE_PASSAGE_RESUME_TTL_MS,
 } from "@/lib/passage-feed-runtime";
 import type { ActivePassageResumeSnapshot } from "@/lib/passage-feed-runtime";
@@ -66,6 +68,53 @@ test("passage feed runtime formats elapsed timers defensively", () => {
   assert.equal(formatElapsedTimer(9), "0:09");
   assert.equal(formatElapsedTimer(125), "2:05");
   assert.equal(formatElapsedTimer(Number.NaN), "0:00");
+});
+
+test("passage feed runtime caps stored random shown ids to recent entries", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const localStorage = createMockStorage();
+  (globalThis as { window?: { localStorage: typeof localStorage } }).window = {
+    localStorage,
+  };
+
+  try {
+    writeIdArrayToStorage("shown", ["p1", "p2", "p3", "p4"], { maxIds: 2 });
+    assert.deepEqual(readIdArrayFromStorage("shown"), ["p3", "p4"]);
+
+    localStorage.setItem("shown-raw", JSON.stringify(["p1", "p2", "p3"]));
+    assert.deepEqual(readIdArrayFromStorage("shown-raw", { maxIds: 2 }), [
+      "p2",
+      "p3",
+    ]);
+  } finally {
+    (globalThis as { window?: unknown }).window = originalWindow;
+  }
+});
+
+test("passage feed runtime ignores localStorage quota failures for id arrays", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {
+      throw new Error("QuotaExceededError");
+    },
+    removeItem() {
+      // no-op
+    },
+  };
+  (globalThis as { window?: { localStorage: typeof localStorage } }).window = {
+    localStorage,
+  };
+
+  try {
+    assert.doesNotThrow(() => {
+      writeIdArrayToStorage("shown", ["p1", "p2"], { maxIds: 1 });
+    });
+  } finally {
+    (globalThis as { window?: unknown }).window = originalWindow;
+  }
 });
 
 test("passage feed runtime restores a recent active resume snapshot", () => {
