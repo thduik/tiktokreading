@@ -165,8 +165,9 @@ Last updated: 2026-05-14 (UTC)
   `repair-v5-plus-multi-key-mcq.ts`, which also bumps passage `updated_at` so
   frontend content namespaces rotate and invalidates passage Redis caches before
   the search catalog is rewarmed. The `v6.5` production batches were ingested
-  on 2026-05-24 as `v6_5`. The default `factory_tag` baseline is now `v7_0`;
-  confirm the next content-machine tag explicitly before each import.
+  on 2026-05-24 as `v6_5`; `v6.7` was ingested on 2026-05-25 as `v6_7`.
+  The default `factory_tag` baseline is now `v7_0`; when the user names a batch
+  version, pass it explicitly instead of relying on the default.
 - Backups:
   Daily PostgreSQL backup script exists for S3-compatible storage.
 

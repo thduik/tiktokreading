@@ -48,6 +48,9 @@ Notes:
 - 2026-05-24 note: the final `v6.5` production batches were ingested as
   `v6_5`. The next batch should be imported as `v7.0`, which normalizes to
   `v7_0`, unless the user explicitly gives a different tag.
+- 2026-05-25 note: the latest production batches were explicitly ingested as
+  `v6.7`, which normalizes to `v6_7`. Do not rely on the default when the user
+  gives a batch version; pass `--factory-tag=<version>` explicitly.
 - Pick-two MCQ answer keys are preserved canonically, for example `B and D`
   becomes `B, D`, so do not manually flatten them before ingest.
 - If older `v5+` passages were written before that fix, run
@@ -57,7 +60,7 @@ Notes:
   then refreshes the search catalog.
 - The List filter exposes `v6+` for modern passage batches and `v5+` as the
   broad forward-looking production bucket. New
-  passage generations at `v5`, `v6`, `v6.5`, `v7`, and above should continue to appear
+  passage generations at `v5`, `v6`, `v6.5`, `v6.7`, `v7`, and above should continue to appear
   there automatically; do not add a new frontend version option for each new
   passage machine increment unless product behavior changes.
 - You can still override explicitly when needed:
