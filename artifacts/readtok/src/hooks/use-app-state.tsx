@@ -37,6 +37,7 @@ import {
 import {
   advanceSessionSummaryProgress,
   defaultSessionSummaryProgress,
+  MAX_STORED_MISTAKES,
   sanitizeMistakes,
   type MistakeEntry,
   type SessionSummaryProgress,
@@ -137,13 +138,55 @@ function buildScopedStorageKey(key: string, scope: string) {
   return `${key}:${scope}`;
 }
 
+function safeLocalStorageSetItem(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeLocalStorageRemoveItem(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Ignore cleanup failures.
+  }
+}
+
+function writeMistakesStorage(key: string, entries: MistakeEntry[]) {
+  const compacted = sanitizeMistakes(entries);
+  const candidateLists = [
+    compacted,
+    compacted.slice(0, Math.min(50, MAX_STORED_MISTAKES)),
+    compacted.slice(0, 20),
+    [],
+  ];
+
+  for (const candidate of candidateLists) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(candidate));
+      return candidate;
+    } catch {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // Keep trying smaller payloads.
+      }
+    }
+  }
+
+  return [] as MistakeEntry[];
+}
+
 function purgeSyncedUserStorage() {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.removeItem(STORAGE_KEYS.stats);
-  window.localStorage.removeItem(STORAGE_KEYS.rankedIdentity);
+  safeLocalStorageRemoveItem(STORAGE_KEYS.stats);
+  safeLocalStorageRemoveItem(STORAGE_KEYS.rankedIdentity);
 }
 
 const defaultStats: UserStats = {
@@ -428,31 +471,34 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
       return;
     }
 
-    localStorage.setItem(
+    safeLocalStorageSetItem(
       STORAGE_KEYS.onboarding,
       hasCompletedOnboarding ? "true" : "false",
     );
-    localStorage.setItem(
+    safeLocalStorageSetItem(
       buildScopedStorageKey(STORAGE_KEYS.saved, activeStorageScope),
       JSON.stringify(savedCardIds),
     );
     if (shouldPersistSyncedUserState()) {
-      localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats));
-      localStorage.setItem(
+      safeLocalStorageSetItem(STORAGE_KEYS.stats, JSON.stringify(stats));
+      safeLocalStorageSetItem(
         STORAGE_KEYS.rankedIdentity,
         JSON.stringify(rankedIdentity),
       );
     } else {
       purgeSyncedUserStorage();
     }
-    localStorage.setItem(
+    safeLocalStorageSetItem(
       buildScopedStorageKey(STORAGE_KEYS.feedbackPreferences, activeStorageScope),
       JSON.stringify(feedbackPreferences),
     );
-    localStorage.setItem(
+    const storedMistakes = writeMistakesStorage(
       buildScopedStorageKey(STORAGE_KEYS.mistakes, activeStorageScope),
-      JSON.stringify(mistakes),
+      mistakes,
     );
+    if (storedMistakes.length !== mistakes.length) {
+      setMistakes(storedMistakes);
+    }
   }, [
     activeStorageScope,
     feedbackPreferences,

@@ -1,6 +1,10 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  MAX_MISTAKE_ANSWER_LENGTH,
+  MAX_MISTAKE_PROMPT_LENGTH,
+  MAX_MISTAKE_TITLE_LENGTH,
+  MAX_STORED_MISTAKES,
   SESSION_STREAK_BONUS_LP,
   advanceSessionSummaryProgress,
   createMistakeEntry,
@@ -75,4 +79,44 @@ test("sanitizeMistakes keeps only valid entries", () => {
   ])
 
   assert.deepEqual(sanitized, [validEntry])
+})
+
+test("createMistakeEntry compacts bulky text fields", () => {
+  const entry = createMistakeEntry({
+    passageId: "passage_1",
+    questionId: 2,
+    passageTitle: "T".repeat(MAX_MISTAKE_TITLE_LENGTH + 20),
+    questionPrompt: "P".repeat(MAX_MISTAKE_PROMPT_LENGTH + 20),
+    band: "8.0+",
+    type: "Sentence Completion",
+    userAnswer: "U".repeat(MAX_MISTAKE_ANSWER_LENGTH + 20),
+    correctAnswer: "C".repeat(MAX_MISTAKE_ANSWER_LENGTH + 20),
+    createdAt: "2026-05-27T00:00:00.000Z",
+  })
+
+  assert.equal(entry.passageTitle.length, MAX_MISTAKE_TITLE_LENGTH)
+  assert.equal(entry.questionPrompt.length, MAX_MISTAKE_PROMPT_LENGTH)
+  assert.equal(entry.userAnswer.length, MAX_MISTAKE_ANSWER_LENGTH)
+  assert.equal(entry.correctAnswer.length, MAX_MISTAKE_ANSWER_LENGTH)
+})
+
+test("sanitizeMistakes caps stored mistake count", () => {
+  const entries = Array.from({ length: MAX_STORED_MISTAKES + 25 }, (_, index) =>
+    createMistakeEntry({
+      passageId: `passage_${index}`,
+      questionId: index + 1,
+      passageTitle: "Safety Matches",
+      questionPrompt: "What changed?",
+      band: "6.0",
+      type: "MCQ",
+      userAnswer: "A",
+      correctAnswer: "B",
+      createdAt: `2026-05-27T00:${String(index % 60).padStart(2, "0")}:00.000Z`,
+    }),
+  )
+
+  const sanitized = sanitizeMistakes(entries)
+
+  assert.equal(sanitized.length, MAX_STORED_MISTAKES)
+  assert.equal(sanitized[0]?.passageId, "passage_0")
 })

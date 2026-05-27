@@ -7,7 +7,10 @@ import {
 export const SESSION_SUMMARY_INTERVAL = 10
 export const SESSION_STREAK_BONUS_STREAK = 10
 export const SESSION_STREAK_BONUS_LP = 10
-export const MAX_STORED_MISTAKES = 500
+export const MAX_STORED_MISTAKES = 100
+export const MAX_MISTAKE_TITLE_LENGTH = 140
+export const MAX_MISTAKE_PROMPT_LENGTH = 360
+export const MAX_MISTAKE_ANSWER_LENGTH = 240
 
 export const QUESTION_TYPE_DISPLAY_LABELS: Record<QuestionType, string> = {
   MCQ: "MCQ",
@@ -67,6 +70,11 @@ export interface MistakeEntry {
   userAnswer: string
   correctAnswer: string
   createdAt: string
+}
+
+function compactText(value: unknown, maxLength: number) {
+  const text = typeof value === "string" ? value.trim() : ""
+  return text.length > maxLength ? text.slice(0, maxLength).trimEnd() : text
 }
 
 function zeroQuestionTypeProgress(): SessionQuestionTypeProgress {
@@ -242,14 +250,12 @@ export function sanitizeMistakes(value: unknown): MistakeEntry[] {
             : `${passageId}:${Math.trunc(questionId)}:${createdAt}`,
         passageId,
         questionId: Math.trunc(questionId),
-        passageTitle:
-          typeof entry.passageTitle === "string" ? entry.passageTitle.trim() : "",
-        questionPrompt:
-          typeof entry.questionPrompt === "string" ? entry.questionPrompt.trim() : "",
-        band: typeof entry.band === "string" ? entry.band.trim() : "",
-        type: typeof entry.type === "string" ? entry.type.trim() : "Unknown",
-        userAnswer: typeof entry.userAnswer === "string" ? entry.userAnswer : "",
-        correctAnswer: typeof entry.correctAnswer === "string" ? entry.correctAnswer : "",
+        passageTitle: compactText(entry.passageTitle, MAX_MISTAKE_TITLE_LENGTH),
+        questionPrompt: compactText(entry.questionPrompt, MAX_MISTAKE_PROMPT_LENGTH),
+        band: compactText(entry.band, 20),
+        type: compactText(entry.type, 60) || "Unknown",
+        userAnswer: compactText(entry.userAnswer, MAX_MISTAKE_ANSWER_LENGTH),
+        correctAnswer: compactText(entry.correctAnswer, MAX_MISTAKE_ANSWER_LENGTH),
         createdAt,
       } satisfies MistakeEntry
     })
@@ -275,12 +281,12 @@ export function createMistakeEntry(input: {
     id: `${input.passageId}:${input.questionId}:${createdAt}`,
     passageId: input.passageId,
     questionId: Math.trunc(input.questionId),
-    passageTitle: input.passageTitle.trim(),
-    questionPrompt: input.questionPrompt.trim(),
-    band: input.band.trim(),
-    type: input.type.trim() || "Unknown",
-    userAnswer: input.userAnswer,
-    correctAnswer: input.correctAnswer,
+    passageTitle: compactText(input.passageTitle, MAX_MISTAKE_TITLE_LENGTH),
+    questionPrompt: compactText(input.questionPrompt, MAX_MISTAKE_PROMPT_LENGTH),
+    band: compactText(input.band, 20),
+    type: compactText(input.type, 60) || "Unknown",
+    userAnswer: compactText(input.userAnswer, MAX_MISTAKE_ANSWER_LENGTH),
+    correctAnswer: compactText(input.correctAnswer, MAX_MISTAKE_ANSWER_LENGTH),
     createdAt,
   }
 }
