@@ -130,44 +130,6 @@ function shouldPreferResumeSnapshotForInitialMount() {
   return true;
 }
 
-function syncRefreshResumeMarkerToActivePassage(
-  passageId: string,
-  factoryTagFilter: PassageFactoryTag | null,
-) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    const nextUrl = new URL(window.location.href);
-    if (nextUrl.pathname !== "/") {
-      return;
-    }
-
-    if (
-      nextUrl.searchParams.get("start") === passageId &&
-      nextUrl.searchParams.get("factoryTag") === factoryTagFilter
-    ) {
-      return;
-    }
-
-    nextUrl.searchParams.set("start", passageId);
-    if (factoryTagFilter) {
-      nextUrl.searchParams.set("factoryTag", factoryTagFilter);
-    } else {
-      nextUrl.searchParams.delete("factoryTag");
-    }
-
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
-    );
-  } catch {
-    // The local resume snapshot is the real recovery path; this marker is only
-    // a second line of defense for browser refresh behavior.
-  }
-}
 const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
   value: PassageReportType;
   label: string;
@@ -2171,11 +2133,8 @@ export default function PassageDetailPage() {
     // The short-lived resume layer should always follow the passage currently
     // on screen, so a swipe updates the exact resume target immediately instead
     // of waiting for the slower periodic persistence cycle.
-    if (activePassage?.id && startupPreviewSource !== "cold_backup") {
-      syncRefreshResumeMarkerToActivePassage(activePassage.id, activeFactoryTag);
-    }
     persistActivePassageResumeSnapshot();
-  }, [activePassage?.id, activeFactoryTag, startupPreviewSource]);
+  }, [activePassage?.id, activeFactoryTag]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
