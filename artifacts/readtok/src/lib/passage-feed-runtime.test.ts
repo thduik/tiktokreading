@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildActivePassageResumeStorageKey,
+  createActivePassageBackupEntry,
   formatElapsedTimer,
+  initiateActivePassageSnapshot,
   readActivePassageResume,
   readIdArrayFromStorage,
   selectRandomIdsFromPool,
@@ -12,6 +14,7 @@ import {
   ACTIVE_PASSAGE_RESUME_TTL_MS,
 } from "@/lib/passage-feed-runtime";
 import type { ActivePassageResumeSnapshot } from "@/lib/passage-feed-runtime";
+import type { PassageDetail } from "@/lib/passages-api";
 
 function createMockStorage() {
   const store = new Map<string, string>();
@@ -28,6 +31,31 @@ function createMockStorage() {
     clear() {
       store.clear();
     },
+  };
+}
+
+function createTestPassage(id: string, status = "active"): PassageDetail {
+  return {
+    id,
+    schema_version: "1",
+    exam_index: "e1",
+    exam_label: "Exam 1",
+    band_index: 75,
+    band_label: "7.5",
+    question_set_type_index: "mixed",
+    question_set_type_label: "Mixed",
+    topic_index: "topic",
+    topic_label: "Topic",
+    title: `Passage ${id}`,
+    factory_tag: status === "backup" ? "cold_backup" : "v6",
+    language_code: "en",
+    status,
+    passage: "Text",
+    passage_meta: { sentence_count: 1, word_count: 1 },
+    vocab: [],
+    passage_sentences: [{ sentence_index: 1, text: "Text" }],
+    questions: [],
+    answer_key: [],
   };
 }
 
@@ -216,6 +244,98 @@ test("passage feed runtime drops stale active resume snapshots after five minute
     const restored = readActivePassageResume(null, 2_000 + ACTIVE_PASSAGE_RESUME_TTL_MS + 1);
     assert.equal(restored, null);
     assert.equal(localStorage.getItem(buildActivePassageResumeStorageKey(null)), null);
+  } finally {
+    (globalThis as { window?: unknown }).window = originalWindow;
+  }
+});
+
+test("passage feed runtime initiates from recent resume snapshot when available", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const localStorage = createMockStorage();
+  (globalThis as { window?: { localStorage: typeof localStorage } }).window = {
+    localStorage,
+  };
+
+  const resumeSnapshot: ActivePassageResumeSnapshot = {
+    factoryTagFilter: "v6",
+    entry: createActivePassageBackupEntry(createTestPassage("resume"), {
+      answersByQuestionId: { "1": "A" },
+      revealedByQuestionId: { "1": true },
+      elapsedSeconds: 12,
+      viewedAt: 5_000,
+    }),
+  };
+
+  try {
+    writeActivePassageResume(resumeSnapshot, 5_000);
+    const initiated = initiateActivePassageSnapshot({
+      factoryTagFilter: "v6",
+      defaultPassage: createTestPassage("backup", "backup"),
+      now: 5_000 + ACTIVE_PASSAGE_RESUME_TTL_MS - 1,
+    });
+
+    assert.equal(initiated.source, "resume");
+    assert.deepEqual(initiated.snapshot, resumeSnapshot);
+  } finally {
+    (globalThis as { window?: unknown }).window = originalWindow;
+  }
+});
+
+test("passage feed runtime initiates from default backup snapshot without resume", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const localStorage = createMockStorage();
+  (globalThis as { window?: { localStorage: typeof localStorage } }).window = {
+    localStorage,
+  };
+
+  const defaultPassage = createTestPassage("backup", "backup");
+
+  try {
+    const initiated = initiateActivePassageSnapshot({
+      factoryTagFilter: null,
+      defaultPassage,
+      now: 6_000,
+    });
+
+    assert.equal(initiated.source, "default_backup");
+    assert.equal(initiated.snapshot.factoryTagFilter, null);
+    assert.equal(initiated.snapshot.entry.passage, defaultPassage);
+    assert.deepEqual(initiated.snapshot.entry.answersByQuestionId, {});
+    assert.deepEqual(initiated.snapshot.entry.revealedByQuestionId, {});
+    assert.equal(initiated.snapshot.entry.elapsedSeconds, 0);
+    assert.equal(initiated.snapshot.entry.viewedAt, 6_000);
+  } finally {
+    (globalThis as { window?: unknown }).window = originalWindow;
+  }
+});
+
+test("passage feed runtime ignores mismatched resume when a target passage is required", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const localStorage = createMockStorage();
+  (globalThis as { window?: { localStorage: typeof localStorage } }).window = {
+    localStorage,
+  };
+
+  try {
+    writeActivePassageResume(
+      {
+        factoryTagFilter: "v6",
+        entry: createActivePassageBackupEntry(createTestPassage("old-resume"), {
+          viewedAt: 7_000,
+        }),
+      },
+      7_000,
+    );
+
+    const initiated = initiateActivePassageSnapshot({
+      factoryTagFilter: "v6",
+      defaultPassage: createTestPassage("backup", "backup"),
+      targetPassageId: "required-passage",
+      now: 7_000,
+    });
+
+    assert.equal(initiated.source, "default_backup");
+    assert.equal(initiated.snapshot.entry.passage.id, "backup");
   } finally {
     (globalThis as { window?: unknown }).window = originalWindow;
   }

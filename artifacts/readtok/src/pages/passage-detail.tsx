@@ -42,12 +42,14 @@ import {
 import {
   ACTIVE_PASSAGE_BACKUP_HEARTBEAT_MS,
   RANDOM_SHOWN_ID_STORAGE_LIMIT,
+  createActivePassageBackupEntry,
   formatElapsedTimer,
+  initiateActivePassageSnapshot,
   passageReportSessionKey,
-  readActivePassageResume,
   readIdArrayFromStorage,
   selectRandomIdsFromPool,
   type ActivePassageBackupEntry,
+  type InitialActivePassageSnapshot,
   type ActivePassageResumeSnapshot,
   type FeedRuntimeSession,
   uniqueIds,
@@ -1555,16 +1557,14 @@ export default function PassageDetailPage() {
       return null;
     }
 
-    return {
-      passage,
+    return createActivePassageBackupEntry(passage, {
       answersByQuestionId: answersByPassageId[passage.id] ?? {},
       revealedByQuestionId: revealedByPassageId[passage.id] ?? {},
       elapsedSeconds: elapsedSecondsByPassageId[passage.id] ?? 0,
       questionOrder:
         questionOrderByPassageRef.current[passage.id] ??
         passage.questions.map((question) => question.id),
-      viewedAt: Date.now(),
-    };
+    });
   }
 
   function persistResumeEntry(entry: ActivePassageBackupEntry | null) {
@@ -1759,33 +1759,15 @@ export default function PassageDetailPage() {
     return restored;
   }
 
-  function restoreFromActivePassageResume(targetPassageId?: string) {
-    const cachedSnapshot = readActivePassageResume(activeFactoryTag);
-    if (!cachedSnapshot) {
-      return false;
-    }
-
-    if (
-      targetPassageId &&
-      targetPassageId.length > 0 &&
-      cachedSnapshot.entry.passage.id !== targetPassageId
-    ) {
-      return false;
-    }
-
-    restoreSinglePassagePreview(cachedSnapshot.entry.passage, {
-      answersByQuestionId: cachedSnapshot.entry.answersByQuestionId,
-      revealedByQuestionId: cachedSnapshot.entry.revealedByQuestionId,
-      elapsedSeconds: cachedSnapshot.entry.elapsedSeconds,
-      questionOrder: cachedSnapshot.entry.questionOrder,
-      source: "resume",
+  function restoreFromInitialSnapshot(initialSnapshot: InitialActivePassageSnapshot) {
+    const { entry } = initialSnapshot.snapshot;
+    restoreSinglePassagePreview(entry.passage, {
+      answersByQuestionId: entry.answersByQuestionId,
+      revealedByQuestionId: entry.revealedByQuestionId,
+      elapsedSeconds: entry.elapsedSeconds,
+      questionOrder: entry.questionOrder,
+      source: initialSnapshot.source === "resume" ? "resume" : "cold_backup",
     });
-    return true;
-  }
-
-  function restoreFromColdBackup() {
-    const coldPassage = selectColdBackupPassage(activeFactoryTag);
-    restoreSinglePassagePreview(coldPassage, { source: "cold_backup" });
     return true;
   }
 
@@ -1809,13 +1791,18 @@ export default function PassageDetailPage() {
     prefetchCountRef.current = 0;
     questionOrderByPassageRef.current = {};
 
-    // Startup favors continuity first: same-tab runtime, then the recent
-    // exact resume snapshot, then the bundled cold backup. In every case the
-    // live feed bootstrap still runs and replaces the preview when fresh data lands.
+    const startupSnapshot = initiateActivePassageSnapshot({
+      factoryTagFilter: activeFactoryTag,
+      defaultPassage: selectColdBackupPassage(activeFactoryTag),
+      targetPassageId: startupTargetPassageId,
+    });
+
+    // Startup has one explicit fallback contract: use the recent exact resume
+    // snapshot when it exists, otherwise show one bundled backup passage while
+    // the live feed bootstrap replaces it with fresh data.
     const restoredPreview =
       restoreFromRuntimeSession(startupTargetPassageId) ||
-      restoreFromActivePassageResume(startupTargetPassageId) ||
-      restoreFromColdBackup();
+      restoreFromInitialSnapshot(startupSnapshot);
 
     async function loadInitialPassages() {
       try {

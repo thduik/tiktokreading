@@ -27,6 +27,11 @@ export type ActivePassageResumeSnapshot = {
   entry: ActivePassageBackupEntry;
 };
 
+export type InitialActivePassageSnapshot = {
+  source: "resume" | "default_backup";
+  snapshot: ActivePassageResumeSnapshot;
+};
+
 type PersistedActivePassageResumeSnapshot = ActivePassageResumeSnapshot & {
   version: 1;
   savedAt: number;
@@ -107,6 +112,27 @@ export function buildActivePassageResumeStorageKey(factoryTagFilter: PassageFact
   return `${ACTIVE_PASSAGE_RESUME_STORAGE_PREFIX}${factoryTagFilter ?? "all"}`;
 }
 
+export function createActivePassageBackupEntry(
+  passage: PassageDetail,
+  options?: {
+    answersByQuestionId?: Record<string, string>;
+    revealedByQuestionId?: Record<string, boolean>;
+    elapsedSeconds?: number;
+    questionOrder?: number[];
+    viewedAt?: number;
+  },
+): ActivePassageBackupEntry {
+  return {
+    passage,
+    answersByQuestionId: options?.answersByQuestionId ?? {},
+    revealedByQuestionId: options?.revealedByQuestionId ?? {},
+    elapsedSeconds: options?.elapsedSeconds ?? 0,
+    questionOrder:
+      options?.questionOrder ?? passage.questions.map((question) => question.id),
+    viewedAt: options?.viewedAt ?? Date.now(),
+  };
+}
+
 export function clearActivePassageResume(factoryTagFilter: PassageFactoryTag | null) {
   if (!canUseStorage()) {
     return;
@@ -182,6 +208,40 @@ export function readActivePassageResume(
     window.localStorage.removeItem(storageKey);
     return null;
   }
+}
+
+export function initiateActivePassageSnapshot({
+  factoryTagFilter,
+  defaultPassage,
+  targetPassageId = "",
+  now = Date.now(),
+}: {
+  factoryTagFilter: PassageFactoryTag | null;
+  defaultPassage: PassageDetail;
+  targetPassageId?: string;
+  now?: number;
+}): InitialActivePassageSnapshot {
+  const recentSnapshot = readActivePassageResume(factoryTagFilter, now);
+  const normalizedTargetPassageId = targetPassageId.trim();
+
+  if (
+    recentSnapshot &&
+    (normalizedTargetPassageId.length === 0 ||
+      recentSnapshot.entry.passage.id === normalizedTargetPassageId)
+  ) {
+    return {
+      source: "resume",
+      snapshot: recentSnapshot,
+    };
+  }
+
+  return {
+    source: "default_backup",
+    snapshot: {
+      factoryTagFilter,
+      entry: createActivePassageBackupEntry(defaultPassage, { viewedAt: now }),
+    },
+  };
 }
 
 export function uniqueIds(ids: string[]) {
