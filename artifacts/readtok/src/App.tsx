@@ -49,6 +49,7 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const pendingDisplayNameStorageKey = "readtok_pending_display_name";
 const sessionStreakDismissedStorageKey = "readtok_session_streak_dismissed_v1";
 const forcedReloadVersionStorageKey = "readtok_forced_reload_version_v1";
+const serviceWorkerCleanupReloadStorageKey = "readtok_service_worker_cleanup_reloaded_v1";
 const authAppearance = {
   theme: "simple",
   variables: {
@@ -763,13 +764,30 @@ function AppContent() {
 
     const unregisterServiceWorkers = async () => {
       try {
+        const hadController = Boolean(navigator.serviceWorker.controller);
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.all(registrations.map((registration) => registration.unregister()));
 
+        let cacheNames: string[] = [];
         if ("caches" in window) {
-          const cacheNames = await caches.keys();
+          cacheNames = await caches.keys();
           await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
         }
+
+        const hadServiceWorkerState =
+          hadController || registrations.length > 0 || cacheNames.length > 0;
+        if (!hadServiceWorkerState) {
+          return;
+        }
+
+        const alreadyReloaded =
+          window.sessionStorage.getItem(serviceWorkerCleanupReloadStorageKey) === "1";
+        if (alreadyReloaded) {
+          return;
+        }
+
+        window.sessionStorage.setItem(serviceWorkerCleanupReloadStorageKey, "1");
+        window.location.reload();
       } catch (err) {
         console.error("ServiceWorker cleanup failed: ", err);
       }
