@@ -48,6 +48,7 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const pendingDisplayNameStorageKey = "readtok_pending_display_name";
 const sessionStreakDismissedStorageKey = "readtok_session_streak_dismissed_v1";
+const forcedReloadVersionStorageKey = "readtok_forced_reload_version_v1";
 const authAppearance = {
   theme: "simple",
   variables: {
@@ -118,20 +119,43 @@ const authAppearance = {
 };
 
 const buildUpdateCheckIntervalMs = 60 * 1000;
-const currentBundleScriptSelector = 'script[type="module"][src*="/assets/index-"]';
 
-function currentBundleSrc() {
-  if (typeof document === "undefined") {
-    return null;
-  }
-  return document
-    .querySelector<HTMLScriptElement>(currentBundleScriptSelector)
-    ?.getAttribute("src");
+type AppVersionManifest = {
+  version: string;
+  buildTime?: string;
+  gitSha?: string;
+  bundle?: string | null;
+};
+
+function normalizeAppVersion(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-function nextBundleSrcFromHtml(html: string) {
-  const match = html.match(/<script\s+type="module"\s+crossorigin\s+src="([^"]*\/assets\/index-[^"]+\.js)"/i);
-  return match?.[1] ?? null;
+function forceReloadToAppVersion(version: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const normalizedVersion = normalizeAppVersion(version);
+  if (!normalizedVersion) {
+    window.location.reload();
+    return;
+  }
+
+  try {
+    const previousAttempt =
+      window.sessionStorage.getItem(forcedReloadVersionStorageKey) ?? "";
+    if (previousAttempt === normalizedVersion) {
+      return;
+    }
+
+    window.sessionStorage.setItem(forcedReloadVersionStorageKey, normalizedVersion);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("appVersion", normalizedVersion);
+    window.location.replace(nextUrl.toString());
+  } catch {
+    window.location.reload();
+  }
 }
 
 function stripBase(path: string): string {
@@ -761,23 +785,20 @@ function AppContent() {
 
     let cancelled = false;
     let inFlight = false;
-    const initialBundleSrc = currentBundleSrc();
+    const currentAppVersion = normalizeAppVersion(__READTOK_APP_VERSION__);
 
-    if (!initialBundleSrc) {
-      return;
-    }
-
-    const checkForNewBundle = async () => {
+    const checkForNewAppVersion = async () => {
       if (cancelled || inFlight || document.visibilityState === "hidden") {
         return;
       }
 
       inFlight = true;
       try {
-        const response = await fetch(`${basePath || ""}/index.html`, {
+        const versionUrl = `${basePath || ""}/version.json?t=${Date.now()}`;
+        const response = await fetch(versionUrl, {
           cache: "no-store",
           headers: {
-            Accept: "text/html",
+            Accept: "application/json",
           },
         });
 
@@ -785,34 +806,40 @@ function AppContent() {
           return;
         }
 
-        const html = await response.text();
-        const latestBundleSrc = nextBundleSrcFromHtml(html);
-        if (!latestBundleSrc || latestBundleSrc === initialBundleSrc) {
+        const manifest = (await response.json()) as Partial<AppVersionManifest>;
+        const latestAppVersion = normalizeAppVersion(manifest.version);
+        if (!latestAppVersion || latestAppVersion === currentAppVersion) {
+          try {
+            window.sessionStorage.removeItem(forcedReloadVersionStorageKey);
+          } catch {
+            // Ignore sessionStorage cleanup failures.
+          }
           return;
         }
 
-        window.location.reload();
+        forceReloadToAppVersion(latestAppVersion);
       } catch (error) {
-        console.warn("Build update check failed", error);
+        console.warn("App version update check failed", error);
       } finally {
         inFlight = false;
       }
     };
 
     const intervalId = window.setInterval(() => {
-      void checkForNewBundle();
+      void checkForNewAppVersion();
     }, buildUpdateCheckIntervalMs);
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        void checkForNewBundle();
+        void checkForNewAppVersion();
       }
     };
 
     const handleFocus = () => {
-      void checkForNewBundle();
+      void checkForNewAppVersion();
     };
 
+    void checkForNewAppVersion();
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleFocus);
 

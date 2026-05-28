@@ -16,12 +16,16 @@ SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/id_rsa}"
 SSH_PASSWORD="${SSH_PASSWORD:-}"
 SUDO_PASSWORD="${SUDO_PASSWORD:-${SSH_PASSWORD}}"
 PRODUCTION_ORIGIN="${PRODUCTION_ORIGIN:-https://ieltstok.online}"
+DEPLOY_BUILD_TIME="$(date -u +%Y%m%dT%H%M%SZ)"
+DEPLOY_GIT_SHA="$(git -C "${LOCAL_REPO_DIR}" rev-parse --short=12 HEAD 2>/dev/null || printf 'unknown')"
+READTOK_DEPLOY_VERSION="${READTOK_DEPLOY_VERSION:-${DEPLOY_BUILD_TIME}-${DEPLOY_GIT_SHA}}"
 
 echo "[deploy] source dir:  ${LOCAL_REPO_DIR}"
 echo "[deploy] target host: ${VPS_HOST}"
 echo "[deploy] repo dir:    ${REMOTE_REPO_DIR}"
 echo "[deploy] webroot dir: ${REMOTE_WEBROOT_DIR}"
 echo "[deploy] api service: ${REMOTE_API_SERVICE}"
+echo "[deploy] app version: ${READTOK_DEPLOY_VERSION}"
 
 SSH_COMMON_ARGS=(
   -F /dev/null
@@ -63,7 +67,7 @@ rsync -az --partial --delete \
   "${LOCAL_REPO_DIR}/" "${VPS_HOST}:${REMOTE_REPO_DIR}/"
 
 "${SSH_CMD[@]}" "${VPS_HOST}" \
-  "REMOTE_REPO_DIR='${REMOTE_REPO_DIR}' REMOTE_WEBROOT_DIR='${REMOTE_WEBROOT_DIR}' REMOTE_API_SERVICE='${REMOTE_API_SERVICE}' SUDO_PASSWORD='${SUDO_PASSWORD}' bash -s" <<'REMOTE'
+  "REMOTE_REPO_DIR='${REMOTE_REPO_DIR}' REMOTE_WEBROOT_DIR='${REMOTE_WEBROOT_DIR}' REMOTE_API_SERVICE='${REMOTE_API_SERVICE}' SUDO_PASSWORD='${SUDO_PASSWORD}' READTOK_DEPLOY_VERSION='${READTOK_DEPLOY_VERSION}' READTOK_DEPLOY_GIT_SHA='${DEPLOY_GIT_SHA}' bash -s" <<'REMOTE'
 set -euo pipefail
 
 cd "${REMOTE_REPO_DIR}"
@@ -107,7 +111,7 @@ corepack pnpm --filter @workspace/db run migrate
 corepack pnpm --filter @workspace/api-server run build
 corepack pnpm --filter @workspace/api-server exec tsx ./src/scripts/refresh-passage-search-catalog.ts
 corepack pnpm --filter @workspace/readtok run typecheck
-corepack pnpm --filter @workspace/readtok run build
+READTOK_APP_VERSION="${READTOK_DEPLOY_VERSION}" READTOK_GIT_SHA="${READTOK_DEPLOY_GIT_SHA}" corepack pnpm --filter @workspace/readtok run build
 
 cat > "${REMOTE_REPO_DIR}/artifacts/readtok/dist/public/runtime-config.js" <<EOF
 window.__READTOK_CONFIG = Object.assign({}, window.__READTOK_CONFIG, {
@@ -144,6 +148,11 @@ if ! grep -q 'clerkPublishableKey: ".' "${REMOTE_WEBROOT_DIR}/runtime-config.js"
   exit 1
 fi
 
+if ! grep -q "\"version\": \"${READTOK_DEPLOY_VERSION}\"" "${REMOTE_WEBROOT_DIR}/version.json"; then
+  echo "[deploy] version.json does not contain the deploy app version; refusing deploy"
+  exit 1
+fi
+
 systemctl is-active "${REMOTE_API_SERVICE}"
 
 api_ready=0
@@ -162,6 +171,8 @@ fi
 
 echo "[deploy] published bundle:"
 head -n 20 "${REMOTE_WEBROOT_DIR}/index.html"
+echo "[deploy] published app version:"
+cat "${REMOTE_WEBROOT_DIR}/version.json"
 echo "[deploy] runtime config: verified Clerk key present"
 REMOTE
 
@@ -205,6 +216,10 @@ curl -fsSL "${PRODUCTION_ORIGIN}${LIVE_BUNDLE_PATH}" >/dev/null
 echo "[deploy] live runtime config check:"
 curl -fsSL "${PRODUCTION_ORIGIN}/runtime-config.js" | grep -q 'clerkPublishableKey: ".'
 echo "[deploy] live runtime config: verified Clerk key present"
+
+echo "[deploy] live app version check:"
+curl -fsSL "${PRODUCTION_ORIGIN}/version.json?t=$(date +%s)" | grep -q "\"version\": \"${READTOK_DEPLOY_VERSION}\""
+echo "[deploy] live app version: ${READTOK_DEPLOY_VERSION}"
 
 echo "[deploy] live API check:"
 curl -fsSL "${PRODUCTION_ORIGIN}/api/passages?limit=1" >/dev/null
