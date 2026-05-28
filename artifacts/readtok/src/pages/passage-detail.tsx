@@ -48,6 +48,7 @@ import {
   readIdArrayFromStorage,
   selectRandomIdsFromPool,
   type ActivePassageBackupEntry,
+  type ActivePassageResumeSnapshot,
   type FeedRuntimeSession,
   uniqueIds,
   writeActivePassageResume,
@@ -103,6 +104,68 @@ type SelectedVocabContext = {
 };
 
 let feedRuntimeSession: FeedRuntimeSession | null = null;
+let hasConsumedReloadResumePreference = false;
+
+function isReloadNavigation() {
+  if (typeof window === "undefined" || typeof window.performance === "undefined") {
+    return false;
+  }
+
+  const navigationEntry = window.performance.getEntriesByType?.("navigation")[0];
+  return (
+    typeof PerformanceNavigationTiming !== "undefined" &&
+    navigationEntry instanceof PerformanceNavigationTiming &&
+    navigationEntry.type === "reload"
+  );
+}
+
+function shouldPreferResumeSnapshotForInitialMount() {
+  if (hasConsumedReloadResumePreference || !isReloadNavigation()) {
+    return false;
+  }
+
+  hasConsumedReloadResumePreference = true;
+  return true;
+}
+
+function syncRefreshResumeMarkerToActivePassage(
+  passageId: string,
+  factoryTagFilter: PassageFactoryTag | null,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const nextUrl = new URL(window.location.href);
+    if (nextUrl.pathname !== "/") {
+      return;
+    }
+
+    if (
+      nextUrl.searchParams.get("start") === passageId &&
+      nextUrl.searchParams.get("factoryTag") === factoryTagFilter
+    ) {
+      return;
+    }
+
+    nextUrl.searchParams.set("start", passageId);
+    if (factoryTagFilter) {
+      nextUrl.searchParams.set("factoryTag", factoryTagFilter);
+    } else {
+      nextUrl.searchParams.delete("factoryTag");
+    }
+
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
+    );
+  } catch {
+    // The local resume snapshot is the real recovery path; this marker is only
+    // a second line of defense for browser refresh behavior.
+  }
+}
 const PASSAGE_REPORT_TYPE_OPTIONS: Array<{
   value: PassageReportType;
   label: string;
@@ -1480,6 +1543,12 @@ export default function PassageDetailPage() {
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const mobileSwipeLockUntilRef = useRef(0);
   const startupPreviewPassageIdRef = useRef<string | null>(null);
+  const latestActiveResumeSnapshotRef = useRef<ActivePassageResumeSnapshot | null>(
+    null,
+  );
+  const preferResumeSnapshotOnInitialMountRef = useRef(
+    shouldPreferResumeSnapshotForInitialMount(),
+  );
 
   function buildResumeEntryForPassage(passage: PassageDetail): ActivePassageBackupEntry | null {
     if (passage.status !== "active") {
@@ -1503,10 +1572,12 @@ export default function PassageDetailPage() {
       return;
     }
 
-    writeActivePassageResume({
+    const snapshot = {
       factoryTagFilter: activeFactoryTag,
       entry,
-    });
+    } satisfies ActivePassageResumeSnapshot;
+    latestActiveResumeSnapshotRef.current = snapshot;
+    writeActivePassageResume(snapshot);
   }
 
   function persistResumeForPassage(passage: PassageDetail | null | undefined) {
@@ -1517,12 +1588,12 @@ export default function PassageDetailPage() {
   }
 
   function persistActivePassageResumeSnapshot() {
-    const nextEntry = activePassage ? buildResumeEntryForPassage(activePassage) : null;
-    if (!nextEntry) {
+    const snapshot = latestActiveResumeSnapshotRef.current;
+    if (!snapshot) {
       return;
     }
 
-    persistResumeEntry(nextEntry);
+    writeActivePassageResume(snapshot);
   }
 
   function restoreFromFeedSession(
@@ -1720,6 +1791,10 @@ export default function PassageDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const startupTargetPassageId = preferResumeSnapshotOnInitialMountRef.current
+      ? ""
+      : routePassageId;
+    preferResumeSnapshotOnInitialMountRef.current = false;
     setIsLoading(true);
     setError(null);
     setPassages([]);
@@ -1738,13 +1813,14 @@ export default function PassageDetailPage() {
     // exact resume snapshot, then the bundled cold backup. In every case the
     // live feed bootstrap still runs and replaces the preview when fresh data lands.
     const restoredPreview =
-      restoreFromRuntimeSession(routePassageId) ||
-      restoreFromActivePassageResume(routePassageId) ||
+      restoreFromRuntimeSession(startupTargetPassageId) ||
+      restoreFromActivePassageResume(startupTargetPassageId) ||
       restoreFromColdBackup();
 
     async function loadInitialPassages() {
       try {
-        const bootstrapSeedPassageId = routePassageId || startupPreviewPassageIdRef.current || "";
+        const bootstrapSeedPassageId =
+          startupTargetPassageId || startupPreviewPassageIdRef.current || "";
         const bootstrapResponse = await fetchPassageFeedBootstrap({
           status: "active",
           factoryTag: activeFactoryTag ?? undefined,
@@ -1792,7 +1868,7 @@ export default function PassageDetailPage() {
           .filter((detail): detail is PassageDetail => Boolean(detail));
 
         if (details.length === 0) {
-          if (!routePassageId && bootstrapResponse.total === 0 && activeFactoryTag) {
+          if (!startupTargetPassageId && bootstrapResponse.total === 0 && activeFactoryTag) {
             throw new Error(
               `No passages are available for ${formatPassageFactoryTagLabel(activeFactoryTag)} yet.`,
             );
@@ -1967,6 +2043,28 @@ export default function PassageDetailPage() {
     : 0;
 
   useEffect(() => {
+    if (!activePassage || startupPreviewSource === "cold_backup") {
+      latestActiveResumeSnapshotRef.current = null;
+      return;
+    }
+
+    const entry = buildResumeEntryForPassage(activePassage);
+    latestActiveResumeSnapshotRef.current = entry
+      ? {
+          factoryTagFilter: activeFactoryTag,
+          entry,
+        }
+      : null;
+  }, [
+    activePassage,
+    activeFactoryTag,
+    answersByPassageId,
+    elapsedSecondsByPassageId,
+    revealedByPassageId,
+    startupPreviewSource,
+  ]);
+
+  useEffect(() => {
     if (!activePassage || activePassage.status !== "active") {
       return;
     }
@@ -2086,8 +2184,11 @@ export default function PassageDetailPage() {
     // The short-lived resume layer should always follow the passage currently
     // on screen, so a swipe updates the exact resume target immediately instead
     // of waiting for the slower periodic persistence cycle.
+    if (activePassage?.id && startupPreviewSource !== "cold_backup") {
+      syncRefreshResumeMarkerToActivePassage(activePassage.id, activeFactoryTag);
+    }
     persistActivePassageResumeSnapshot();
-  }, [activePassage?.id, activeFactoryTag]);
+  }, [activePassage?.id, activeFactoryTag, startupPreviewSource]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
